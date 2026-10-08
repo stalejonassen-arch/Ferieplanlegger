@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { useApp } from "../App";
+import { api } from "../lib/api";
+import { prosjektTimer, t2 } from "../lib/timer";
+
+export function Prosjekter() {
+  const { d, leder, kjor } = useApp();
+  const [sok, setSok] = useState("");
+  const [visAvsluttet, setVisAvsluttet] = useState(false);
+  const [navn, setNavn] = useState("");
+  const [kundeId, setKundeId] = useState("");
+  const [nyKunde, setNyKunde] = useState("");
+  const [estimat, setEstimat] = useState("");
+  const brukt = prosjektTimer(d);
+  const kunde = (id: string | null) => d.kunder.find((k) => k.id === id)?.navn ?? "";
+  const q = sok.trim().toLowerCase();
+  const liste = d.prosjekter
+    .filter((p) => visAvsluttet || p.aktiv)
+    .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q));
+  const fraVisma = d.prosjekter.some((p) => p.visma_nr);
+
+  const leggTil = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!navn.trim()) return;
+    const ok = await kjor(() => api.lagreProsjekt({ navn: navn.trim(), kunde_id: kundeId || null, estimert_timer: Number(estimat.replace(",", ".")) || null }, kundeId ? undefined : nyKunde),
+      `Prosjektet «${navn.trim()}» er lagt til`);
+    if (ok) { setNavn(""); setKundeId(""); setNyKunde(""); setEstimat(""); }
+  };
+
+  return (
+    <>
+      <section className="panel">
+        <div className="cal-head">
+          <h2 style={{ margin: 0 }}>Prosjekter</h2>
+          <div className="row">
+            <input type="search" aria-label="Søk i prosjekter" placeholder="Søk på nr, navn, kunde" value={sok} onChange={(e) => setSok(e.target.value)} />
+            <label className="row small"><input type="checkbox" checked={visAvsluttet} onChange={(e) => setVisAvsluttet(e.target.checked)} /> Vis avsluttede</label>
+          </div>
+        </div>
+        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{leder ? "" : " Timene som vises er dine egne."}</p>
+        {liste.length ? (
+          <div className="scroll" style={{ border: 0 }}>
+            <table className="tbl">
+              <thead><tr><th>Nr</th><th>Prosjekt</th><th>Kunde</th><th>Timer</th>{leder && <th />}</tr></thead>
+              <tbody>
+                {liste.map((p) => {
+                  const b = brukt.get(p.id) ?? 0, est = p.estimert_timer ? Number(p.estimert_timer) : null;
+                  return (
+                    <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
+                      <td className="n">{p.visma_nr ?? "–"}</td>
+                      <td>{p.navn}</td>
+                      <td>{kunde(p.kunde_id)}</td>
+                      <td className="n" style={est && b > est ? { color: "var(--warn)" } : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}</td>
+                      {leder && <td><button className="btn sm" onClick={() => kjor(() => api.lagreProsjekt({ id: p.id, navn: p.navn, aktiv: !p.aktiv }), p.aktiv ? "Avsluttet" : "Åpnet igjen")}>{p.aktiv ? "Avslutt" : "Åpne"}</button></td>}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : <div className="empty">{q ? "Ingen prosjekter passer søket." : "Ingen prosjekter ennå."}</div>}
+      </section>
+
+      {leder && (
+        <form className="panel" onSubmit={leggTil}>
+          <h2>Nytt prosjekt</h2>
+          <p className="small muted">Bruk dette bare for prosjekter som ikke finnes i Visma.</p>
+          <div className="row">
+            <label className="field"><span className="label">Prosjektnavn</span>
+              <input type="text" value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="F.eks. Skifte vindu" required /></label>
+            <label className="field"><span className="label">Kunde</span>
+              <select value={kundeId} onChange={(e) => setKundeId(e.target.value)}>
+                <option value="">Ny kunde …</option>
+                {d.kunder.map((k) => <option key={k.id} value={k.id}>{k.navn}</option>)}
+              </select></label>
+            {!kundeId && <label className="field"><span className="label">Navn på ny kunde</span>
+              <input type="text" value={nyKunde} onChange={(e) => setNyKunde(e.target.value)} placeholder="Valgfritt" /></label>}
+            <label className="field"><span className="label">Estimert (timer)</span>
+              <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
+          </div>
+          <div><button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button></div>
+        </form>
+      )}
+    </>
+  );
+}

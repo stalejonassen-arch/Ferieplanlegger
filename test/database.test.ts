@@ -41,6 +41,7 @@ beforeAll(async () => {
     .replace(/create extension[^;]*;/g, "").replace(/select cron\.schedule\([\s\S]*$/, "");
   await db.exec(v);
   await db.exec(readFileSync("supabase/seed.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0005_bygglogg_timer.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -133,5 +134,39 @@ describe("tilgang", () => {
     await as(STALE, "insert into public.soknader (ansatt_id, fra, til) values ($1,'2027-09-06','2027-09-10')", [sv]);
     const kall = (await db.query<any>("select body from net.kall")).rows.map((r) => r.body.hendelse);
     expect(kall).toEqual(["ny", "behandlet"]);
+  });
+});
+
+describe("timer og prosjekter", () => {
+  const ny = (email: string, ansatt: string, prosjekt: string | null, dato: string, fra: string, til: string, lunsj = 0, extra = "") =>
+    as<any>(email, `insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, lunsj_min${extra ? ", status" : ""}) values ($1,$2,$3,$4,$5,$6${extra ? ", '" + extra + "'" : ""}) returning *`,
+      [ansatt, prosjekt, dato, fra, til, lunsj]);
+
+  it("leder lager prosjekter, ansatte leser dem men kan ikke endre", async () => {
+    const [k] = await as<any>(STALE, "insert into public.kunder (visma_nr, navn) values (1001, 'Merete Austnes') returning id");
+    await as(STALE, "insert into public.prosjekter (visma_nr, navn, kunde_id, estimert_timer) values (5001, 'Skifte vindu', $1, 38)", [k.id]);
+    expect(await as(JIM, "select navn from public.prosjekter")).toEqual([{ navn: "Skifte vindu" }]);
+    await expect(as(JIM, "insert into public.prosjekter (navn) values ('Eget')")).rejects.toThrow();
+    expect(await as("fremmed@example.no", "select * from public.prosjekter")).toHaveLength(0);
+  });
+
+  it("ansatt fører egne timer, regner arbeidstid uten lunsj og kan ikke godkjenne selv", async () => {
+    const jim = await idOf("Jim Kato"), p = (await db.query<any>("select id from public.prosjekter")).rows[0].id;
+    const [t] = await ny(JIM, jim, p, "2027-03-01", "07:00", "15:00", 30, "godkjent");
+    expect(Number(t.timer)).toBe(7.5);
+    expect(t.status).toBe("levert");
+    await expect(ny(JIM, await idOf("Mads Kjerstad"), p, "2027-03-01", "07:00", "15:00")).rejects.toThrow();
+    await expect(ny(JIM, jim, p, "2027-03-01", "14:00", "16:00")).rejects.toThrow(/overlapper/);
+    expect(await as(MADS, "select * from public.timer")).toHaveLength(0);
+  });
+
+  it("leder godkjenner, og da er timene låst for den ansatte", async () => {
+    const [t] = await as<any>(STALE, "select id from public.timer");
+    await as(STALE, "update public.timer set status='godkjent', lunsj_unntak=true where id=$1", [t.id]);
+    const [g] = await as<any>(STALE, "select status, godkjent_av, lunsj_unntak from public.timer where id=$1", [t.id]);
+    expect(g.status).toBe("godkjent");
+    expect(g.godkjent_av).toBe(await idOf("Ståle Jonassen").catch(() => idOf("Ståle")));
+    await expect(as(JIM, "update public.timer set til='16:00' where id=$1", [t.id])).rejects.toThrow(/godkjent/);
+    expect(await as(JIM, "delete from public.timer where id=$1 returning id", [t.id])).toHaveLength(0);
   });
 });

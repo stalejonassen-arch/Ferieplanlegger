@@ -3,6 +3,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Ansatt, Avdeling, Data, Soknad, Status } from "./ferie";
 import { demoApi } from "./demo";
+import type { NyTime, Prosjekt } from "./timer";
 
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
@@ -24,12 +25,21 @@ export interface Api {
   /** Hemmelig lenke-nøkkel for kalenderabonnement. ny=true lager ny og gjør den gamle ugyldig. */
   kalenderToken(ny?: boolean): Promise<string>;
   kalenderUrl(token: string, alle?: boolean): string;
+  lagreTime(t: NyTime): Promise<void>;
+  slettTime(id: string): Promise<void>;
+  /** Leder: godkjenn eller åpne timer igjen */
+  settTimestatus(ids: string[], status: "levert" | "godkjent"): Promise<void>;
+  /** Leder: godta en dag uten lunsjtrekk */
+  lunsjUnntak(id: string, unntak: boolean): Promise<void>;
+  lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
 }
 
 /** Gjør databasefeil om til tekst som gir mening for brukeren. */
 export function feiltekst(e: unknown): string {
   const m = (e as { message?: string })?.message ?? String(e);
-  if (/overlapper|leder med e-post/i.test(m)) return m;
+  if (/overlapper|leder med e-post|godkjent og kan/i.test(m)) return m;
+  if (/timer_check|check constraint/i.test(m)) return "Sluttid må være etter starttid, og lunsjen kan ikke være lengre enn arbeidsøkta.";
+  if (/timer_prosjekt_id_fkey|foreign key/i.test(m)) return "Prosjektet har registrerte timer og kan ikke slettes.";
   if (/ansatte_epost_unik|duplicate key/i.test(m)) return "Den e-postadressen er allerede brukt av en annen ansatt.";
   if (/row-level security|permission denied/i.test(m)) return "Du har ikke tilgang til å gjøre dette.";
   if (/Token has expired|invalid/i.test(m)) return "Koden er feil eller utløpt. Be om en ny kode.";
@@ -55,13 +65,21 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
-      const [avdelinger, ansatte, ferieaar, soknader] = await Promise.all([
+      const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
         sb.from("soknader").select("*").order("fra"),
+        sb.from("kunder").select("*").order("navn"),
+        sb.from("prosjekter").select("*").order("visma_nr", { ascending: false, nullsFirst: true }),
+        sb.from("timer").select("*").gte("dato", fraDato).order("dato").order("fra").limit(20000),
       ]);
-      return { avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader) } as Data;
+      return {
+        avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
+        kunder: ok(kunder), prosjekter: ok(prosjekter),
+        timer: (ok(timer) as any[]).map((t) => ({ ...t, timer: Number(t.timer), km: Number(t.km), reisetid: Number(t.reisetid), fra: t.fra.slice(0, 5), til: t.til.slice(0, 5) })),
+      } as Data;
     },
     abonner(cb) {
       let t: number | undefined;
@@ -71,6 +89,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "ansatte" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "ferieaar" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avdelinger" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "timer" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "prosjekter" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -94,6 +114,19 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     kalenderUrl(token, alle) {
       return `${url}/functions/v1/kalender?t=${token}${alle ? "&alle=1" : ""}`;
+    },
+    async lagreTime(t) {
+      const { id, ...rad } = t;
+      ok(id ? await sb.from("timer").update(rad).eq("id", id) : await sb.from("timer").insert(rad));
+    },
+    async slettTime(id) { ok(await sb.from("timer").delete().eq("id", id)); },
+    async settTimestatus(ids, status) { if (ids.length) ok(await sb.from("timer").update({ status }).in("id", ids)); },
+    async lunsjUnntak(id, unntak) { ok(await sb.from("timer").update({ lunsj_unntak: unntak }).eq("id", id)); },
+    async lagreProsjekt(p, nyKunde) {
+      let kunde_id = p.kunde_id ?? null;
+      if (nyKunde?.trim()) kunde_id = (ok(await sb.from("kunder").insert({ navn: nyKunde.trim() }).select("id").single()) as { id: string }).id;
+      const { id, ...rad } = { ...p, kunde_id };
+      ok(id ? await sb.from("prosjekter").update(rad).eq("id", id) : await sb.from("prosjekter").insert(rad));
     },
   };
 }

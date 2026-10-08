@@ -144,3 +144,4 @@ table.tbl td.n { text-align: right; font-family: var(--f-mono); font-variant-num
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 600; z-index: 20; max-width: calc(100% - 32px); }
 .toast.feil { background: var(--warn); color: #fff; }
 @media (prefers-reduced-motion: no-preference) { .item, .panel { transition: border-color .2s; } }
+.panel > .field { flex: none; }

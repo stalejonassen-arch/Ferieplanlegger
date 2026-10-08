@@ -8,6 +8,8 @@ import { Soknader } from "./views/Soknader";
 import { Regler } from "./views/Regler";
 import { Oppsett } from "./views/Oppsett";
 import { Lonn } from "./views/Lonn";
+import { Timer } from "./views/Timer";
+import { Prosjekter } from "./views/Prosjekter";
 
 export interface Ctx {
   d: Data;
@@ -21,10 +23,10 @@ export interface Ctx {
 const AppCtx = createContext<Ctx>(null!);
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "prosjekter" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "min";
+  return (["timer", "prosjekter", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -96,8 +98,8 @@ export function App() {
 
   const leder = meg.rolle === "leder";
   const venter = d.soknader.filter((s) => s.status === "venter").length;
-  const faner: [Fane, string][] = [["min", "Min ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
-  const aktiv = faner.some(([f]) => f === fane) ? fane : "min";
+  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["min", "Ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const aktiv = faner.some(([f]) => f === fane) ? fane : "timer";
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
 
@@ -105,7 +107,7 @@ export function App() {
     <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor }}>
       <div className="wrap">
         <header className="top">
-          <div className="brand"><small>N L Austnes AS</small><h1>Ferieplanlegger</h1></div>
+          <div className="brand"><small>N L Austnes AS</small><h1>ByggLogg</h1></div>
           <div className="who">
             <span className="small muted">{meg.navn}{leder ? " · leder" : ""}</span>
             <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
@@ -127,6 +129,8 @@ export function App() {
           ))}
         </nav>
 
+        {aktiv === "timer" && <Timer />}
+        {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "min" && <MinFerie />}
         {aktiv === "kal" && <Kalender />}
         {aktiv === "sok" && <Soknader />}
@@ -143,7 +147,7 @@ function Skall({ children, epost }: { children: React.ReactNode; epost?: string 
   return (
     <div className="wrap">
       <header className="top">
-        <div className="brand"><small>N L Austnes AS</small><h1>Ferieplanlegger</h1></div>
+        <div className="brand"><small>N L Austnes AS</small><h1>ByggLogg</h1></div>
         {epost && <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>}
       </header>
       {children}

@@ -2,7 +2,8 @@
 // Brukes når appen kjøres uten Supabase-nøkler.
 import type { Api } from "./api";
 import type { Ansatt, Data, Soknad } from "./ferie";
-import { isoOf } from "./ferie";
+import { addDays, isoOf } from "./ferie";
+import { mandag, varighet, type Time } from "./timer";
 
 const y0 = new Date().getFullYear();
 const y = y0 + 1;
@@ -36,7 +37,24 @@ function startdata(): Data {
     naa("n1", "jim", "10-19", "10-24", "godkjent"), naa("n2", "snekker5", "11-02", "11-07", "godkjent"),
     naa("n3", "karianne", "12-21", "12-31", "venter"), naa("n4", "stale", "12-27", "12-31", "godkjent"),
   );
-  return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader };
+  for (const x of ansatte) if (["karianne", "jim", "snekker3", "snekker4", "snekker5"].includes(x.id)) Object.assign(x, { lunsjtrekk: true, lunsj_min: 30 });
+  for (const x of ansatte) if (["snekker3", "snekker4", "snekker5"].includes(x.id)) x.normaltid_uke = 40;
+  const kunder = [
+    { id: "k1", visma_nr: 10021, navn: "Merete Austnes", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+    { id: "k2", visma_nr: 10022, navn: "Jonas Haram", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+  ];
+  const prosjekter = [
+    { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "", estimert_timer: 38, start: null, slutt: null, aktiv: true },
+    { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
+  ];
+  // Forrige uke: Mads har litt overtid, Snekker 3 har glemt lunsj én dag
+  const m0 = addDays(mandag(isoOf(new Date())), -7);
+  const t = (id: string, ansatt_id: string, dag: number, fra: string, til: string, lunsj: number, prosjekt_id: string | null = "p1"): Time =>
+    ({ id, ansatt_id, prosjekt_id, dato: addDays(m0, dag), fra, til, lunsj_min: lunsj, timer: varighet(fra, til, lunsj), lunsj_unntak: false, km: 12, reisetid: 0, beskrivelse: "", status: "levert" });
+  const timer: Time[] = [];
+  for (let i = 0; i < 5; i++) timer.push(t(`tm${i}`, "mads", i, "07:00", i === 4 ? "17:00" : "15:30", 30, i < 3 ? "p1" : "p2"));
+  for (let i = 0; i < 5; i++) timer.push(t(`ts${i}`, "snekker3", i, "07:00", "15:30", i === 2 ? 0 : 30, "p2"));
+  return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer };
 }
 
 export function demoApi(): Api {
@@ -97,6 +115,42 @@ export function demoApi(): Api {
     },
     async kalenderToken(ny) { return ny ? crypto.randomUUID() : "00000000-0000-4000-8000-000000000000"; },
     kalenderUrl(token, alle) { return `https://demo.invalid/kalender?t=${token}${alle ? "&alle=1" : ""}`; },
+    async lagreTime(n) {
+      const m = meg();
+      if (!m || (!leder() && n.ansatt_id !== m.id)) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      if (n.til <= n.fra) throw new Error("Sluttid må være etter starttid, og lunsjen kan ikke være lengre enn arbeidsøkta.");
+      if (d.timer.some((t) => t.ansatt_id === n.ansatt_id && t.dato === n.dato && t.id !== n.id && t.fra < n.til && t.til > n.fra)) throw new Error("Tiden overlapper med en annen registrering samme dag.");
+      const gammel = n.id ? d.timer.find((t) => t.id === n.id) : undefined;
+      if (gammel?.status === "godkjent" && !leder()) throw new Error("Timene er godkjent og kan bare endres av leder.");
+      const ny = { ...(gammel ?? { id: nyId(), lunsj_unntak: false, status: "levert" as const }), ...n, timer: varighet(n.fra, n.til, n.lunsj_min) } as Time;
+      if (gammel) Object.assign(gammel, ny); else d.timer.push(ny);
+      endret();
+    },
+    async slettTime(id) {
+      const i = d.timer.findIndex((t) => t.id === id);
+      if (i >= 0 && (leder() || (d.timer[i].ansatt_id === meg()?.id && d.timer[i].status === "levert"))) d.timer.splice(i, 1);
+      endret();
+    },
+    async settTimestatus(ids, status) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      for (const t of d.timer) if (ids.includes(t.id)) t.status = status;
+      endret();
+    },
+    async lunsjUnntak(id, unntak) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const t = d.timer.find((x) => x.id === id);
+      if (t) t.lunsj_unntak = unntak;
+      endret();
+    },
+    async lagreProsjekt(p, nyKunde) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      let kunde_id = p.kunde_id ?? null;
+      if (nyKunde?.trim()) { kunde_id = nyId(); d.kunder.push({ id: kunde_id, visma_nr: null, navn: nyKunde.trim(), adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true }); }
+      const gammel = p.id ? d.prosjekter.find((x) => x.id === p.id) : undefined;
+      const ny = { ...(gammel ?? { id: nyId(), visma_nr: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: true }), ...p, kunde_id };
+      if (gammel) Object.assign(gammel, ny); else d.prosjekter.unshift(ny as any);
+      endret();
+    },
     async lagreOverfort(ansatt_id, aar, overfort) {
       const x = d.ferieaar.find((f) => f.ansatt_id === ansatt_id && f.aar === aar);
       if (x) x.overfort = overfort; else d.ferieaar.push({ ansatt_id, aar, overfort });

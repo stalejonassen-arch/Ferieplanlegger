@@ -1,6 +1,8 @@
 // Ferieregler for N L Austnes AS: datoer, helligdager, saldo og regelsjekk.
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
+import type { Kunde, Prosjekt, Time } from "./timer";
+
 export type Status = "venter" | "godkjent" | "avslatt";
 export type Rolle = "ansatt" | "leder";
 
@@ -8,13 +10,21 @@ export interface Avdeling { id: number; navn: string; maks_borte: number; rekkef
 export interface Ansatt {
   id: string; navn: string; epost: string | null; avdeling_id: number; rolle: Rolle;
   dager: number; over60: boolean; aktiv: boolean; rekkefolge: number;
+  /** Normal arbeidstid per uke (37,5 eller 40) */
+  normaltid_uke?: number;
+  /** Trekkes for lunsj */
+  lunsjtrekk?: boolean;
+  lunsj_min?: number;
 }
 export interface Ferieaar { ansatt_id: string; aar: number; overfort: number }
 export interface Soknad {
   id: string; ansatt_id: string; fra: string; til: string; merknad: string; status: Status;
   kommentar: string; behandlet_av: string | null; behandlet_tid: string | null; opprettet: string;
 }
-export interface Data { avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[] }
+export interface Data {
+  avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
+  kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
+}
 
 /** «1 feriedag», «2 feriedager» */
 export const vd = (n: number) => `${n} ${Math.abs(n) === 1 ? "feriedag" : "feriedager"}`;

@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "Ferieplanlegger – N L Austnes",
-        short_name: "Ferie",
+        name: "ByggLogg – N L Austnes",
+        short_name: "ByggLogg",
         description: "Ferieoversikt, feriekalender og søknader for N L Austnes AS",
         lang: "nb",
         theme_color: "#1E5A4A",

@@ -96,6 +96,27 @@ export function Oppsett() {
           ))}
         </div>
       </section>
+      <section className="panel">
+        <h2>Arbeidstid og lunsj</h2>
+        <p className="small muted">Brukes i lønnsgrunnlaget. Overtid regnes når uka går over normaltiden. Ansatte med lunsjtrekk får lunsj trukket på dager over 5,5 timer der lunsj ikke er registrert.</p>
+        <div className="scroll" style={{ border: 0 }}>
+          <table className="tbl">
+            <thead><tr><th>Ansatt</th><th>Normaltid per uke</th><th>Lunsjtrekk</th><th>Lunsj (min)</th></tr></thead>
+            <tbody>
+              {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => (
+                <tr key={`${a.id}-${a.normaltid_uke}-${a.lunsjtrekk}-${a.lunsj_min}`}>
+                  <td>{a.navn}</td>
+                  <td><select aria-label={`Normaltid ${a.navn}`} value={String(a.normaltid_uke ?? 37.5)} onChange={(e) => lagre(a, { normaltid_uke: Number(e.target.value) })}>
+                    <option value="37.5">37,5 timer</option><option value="40">40 timer</option></select></td>
+                  <td><input type="checkbox" aria-label={`Lunsjtrekk ${a.navn}`} checked={!!a.lunsjtrekk} onChange={(e) => lagre(a, { lunsjtrekk: e.target.checked })} /></td>
+                  <td><input type="number" aria-label={`Lunsj minutter ${a.navn}`} min={0} max={120} step={5} style={{ width: 80 }} defaultValue={a.lunsj_min ?? 30}
+                    onBlur={(e) => { const v = Math.max(0, Math.min(120, Number(e.target.value) || 0)); if (v !== (a.lunsj_min ?? 30)) lagre(a, { lunsj_min: v }); }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }

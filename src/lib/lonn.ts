@@ -1,5 +1,6 @@
 // Ferie i lønnskjøringen: godkjente feriedager per ansatt per måned, og CSV-fil for Excel.
 import { MND, sorterAnsatte, virkedager, type Ansatt, type Data } from "./ferie";
+import { lonnTimer, type LonnTimer } from "./timer";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const sisteDag = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -81,4 +82,20 @@ export function lastNedCsv(innhold: string, filnavn: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/** Lønnsgrunnlag fra timeføringen for en måned, alle aktive ansatte. */
+export function lonnTimerMaaned(d: Data, aar: number, mnd: number): LonnTimer[] {
+  const start = `${aar}-${pad(mnd)}-01`, slutt = `${aar}-${pad(mnd)}-${pad(sisteDag(aar, mnd))}`;
+  return sorterAnsatte(d).filter((a) => a.aktiv).map((a) => lonnTimer(d, a, start, slutt));
+}
+
+const tall = (n: number) => (n ? String(Math.round(n * 100) / 100).replace(".", ",") : "");
+
+export function lonnTimerCsv(rader: LonnTimer[], aar: number, mnd: number) {
+  return csv([
+    [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
+    ["Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer"],
+    ...rader.map((r) => [r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || ""]),
+  ]);
 }
