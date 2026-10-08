@@ -3,6 +3,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { HOVEDFERIE, ferierett, harFeil, regelsjekk, saldo, sorterAnsatte } from "../lib/ferie";
 import { Sjekkliste, SoknadRad } from "./felles";
+import { lagIcs, lastNedIcs } from "../lib/ics";
 
 export function MinFerie() {
   const { d, meg, leder, aar, idag, kjor } = useApp();
@@ -21,6 +22,7 @@ export function MinFerie() {
   const mine = d.soknader
     .filter((s) => s.ansatt_id === hvem.id && (s.fra.startsWith(`${aar}`) || s.til.startsWith(`${aar}`)))
     .sort((a, b) => a.fra.localeCompare(b.fra));
+  const godkjente = mine.filter((s) => s.status === "godkjent");
   const pct = (v: number) => `${Math.max(0, Math.min(100, (v / Math.max(sd.total, 1)) * 100))}%`;
   const avd = d.avdelinger.find((x) => x.id === hvem.avdeling_id)?.navn ?? "";
 
@@ -84,14 +86,21 @@ export function MinFerie() {
       </div>
 
       <section className="panel">
-        <h2>{meSelv ? "Mine søknader" : `Søknader for ${hvem.navn}`} {aar}</h2>
+        <div className="cal-head">
+          <h2>{meSelv ? "Mine søknader" : `Søknader for ${hvem.navn}`} {aar}</h2>
+          {godkjente.length > 1 && (
+            <button className="btn sm" onClick={() => lastNedIcs(lagIcs(godkjente, hvem.navn), `ferie-${aar}.ics`)}>Legg all ferie {aar} i kalenderen</button>
+          )}
+        </div>
         {mine.length ? (
           <div className="list">
             {mine.map((s) => (
               <SoknadRad key={s.id} s={s} handlinger={
                 s.status === "venter" && (meSelv || leder)
                   ? <button className="btn sm" onClick={() => kjor(() => api.slettSoknad(s.id), "Søknaden er trukket")}>Trekk</button>
-                  : null
+                  : s.status === "godkjent"
+                    ? <button className="btn sm" onClick={() => lastNedIcs(lagIcs([s], hvem.navn), `ferie-${s.fra}.ics`)}>Legg i kalender</button>
+                    : null
               } />
             ))}
           </div>
