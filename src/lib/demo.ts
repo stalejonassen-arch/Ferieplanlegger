@@ -142,6 +142,7 @@ export function demoApi(): Api {
       if (t) t.lunsj_unntak = unntak;
       endret();
     },
+    async vismaStatus() { return null; },
     async lagreProsjekt(p, nyKunde) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       let kunde_id = p.kunde_id ?? null;

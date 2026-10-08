@@ -9,12 +9,12 @@ create table public.bedrifter (
   id              smallint primary key,
   navn            text not null,
   orgnr           text,
-  visma_kunde_nr  integer,   -- Visma-kundenummer (første tall i Business NXT-adressen)
-  visma_firma_nr  integer,   -- firmanummer i Business NXT
+  visma_kunde_nr  integer,   -- Visma-kundenummer
+  visma_firma_nr  integer,   -- firmanummer i Business NXT (vises som «N L Austnes AS - 10052»)
   opprettet       timestamptz not null default now()
 );
 insert into public.bedrifter (id, navn, orgnr, visma_kunde_nr, visma_firma_nr)
-values (1, 'N L Austnes AS', '832507652', 10052, 10032);
+values (1, 'N L Austnes AS', '832507652', null, 10052);
 
 alter table public.avdelinger add column bedrift_id smallint not null default 1 references public.bedrifter(id);
 alter table public.ansatte    add column bedrift_id smallint not null default 1 references public.bedrifter(id);

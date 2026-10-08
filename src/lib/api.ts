@@ -32,6 +32,8 @@ export interface Api {
   /** Leder: godta en dag uten lunsjtrekk */
   lunsjUnntak(id: string, unntak: boolean): Promise<void>;
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
+  /** Leder: siste henting fra Visma */
+  vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
 }
 
 /** Gjør databasefeil om til tekst som gir mening for brukeren. */
@@ -122,6 +124,10 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettTime(id) { ok(await sb.from("timer").delete().eq("id", id)); },
     async settTimestatus(ids, status) { if (ids.length) ok(await sb.from("timer").update({ status }).in("id", ids)); },
     async lunsjUnntak(id, unntak) { ok(await sb.from("timer").update({ lunsj_unntak: unntak }).eq("id", id)); },
+    async vismaStatus() {
+      const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);
+      return r.data?.[0] ?? null;
+    },
     async lagreProsjekt(p, nyKunde) {
       let kunde_id = p.kunde_id ?? null;
       if (nyKunde?.trim()) kunde_id = (ok(await sb.from("kunder").insert({ navn: nyKunde.trim() }).select("id").single()) as { id: string }).id;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { prosjektTimer, t2 } from "../lib/timer";
@@ -12,6 +12,8 @@ export function Prosjekter() {
   const [nyKunde, setNyKunde] = useState("");
   const [estimat, setEstimat] = useState("");
   const brukt = prosjektTimer(d);
+  const [visma, setVisma] = useState<{ tid: string; ok: boolean; melding: string } | null>(null);
+  useEffect(() => { if (leder) api.vismaStatus().then(setVisma).catch(() => {}); }, [leder, d]);
   const kunde = (id: string | null) => d.kunder.find((k) => k.id === id)?.navn ?? "";
   const q = sok.trim().toLowerCase();
   const liste = d.prosjekter
@@ -38,6 +40,11 @@ export function Prosjekter() {
           </div>
         </div>
         <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{leder ? "" : " Timene som vises er dine egne."}</p>
+        {leder && visma && (
+          <p className="small" style={{ color: visma.ok ? "var(--muted)" : "var(--warn)" }}>
+            Sist hentet fra Visma {new Date(visma.tid).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" })}: {visma.ok ? "OK" : visma.melding.includes("VISMA_CLIENT_SECRET") ? "venter på nøkkel fra Visma Developer Portal" : visma.melding.slice(0, 160)}
+          </p>
+        )}
         {liste.length ? (
           <div className="scroll" style={{ border: 0 }}>
             <table className="tbl">
