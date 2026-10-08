@@ -31,6 +31,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync("supabase/migrations/0001_init.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0002_feriedager_man_fre.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0003_kalenderabonnement.sql", "utf8"));
   await db.exec(readFileSync("supabase/seed.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
@@ -101,5 +102,16 @@ describe("tilgang", () => {
   it("deaktivert ansatt mister tilgang", async () => {
     await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
     expect(await as(MADS, "select * from public.soknader")).toHaveLength(0);
+  });
+
+  it("kalenderlenker er private og kan byttes", async () => {
+    const [{ min_kalender_token: a }] = await as<any>(JIM, "select public.min_kalender_token()");
+    const [{ min_kalender_token: a2 }] = await as<any>(JIM, "select public.min_kalender_token()");
+    expect(a).toBe(a2);
+    await expect(as(JIM, "select * from public.kalender_tokens")).rejects.toThrow();
+    const [{ ny_kalender_token: b }] = await as<any>(JIM, "select public.ny_kalender_token()");
+    expect(b).not.toBe(a);
+    await expect(as("fremmed@example.no", "select public.min_kalender_token()")).rejects.toThrow(/ansatt/);
+    await expect(as(null, "select public.min_kalender_token()")).rejects.toThrow();
   });
 });

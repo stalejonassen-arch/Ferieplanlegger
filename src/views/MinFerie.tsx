@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { HOVEDFERIE, ferierett, harFeil, regelsjekk, saldo, sorterAnsatte } from "../lib/ferie";
 import { Sjekkliste, SoknadRad } from "./felles";
 import { lagIcs, lastNedIcs } from "../lib/ics";
+import { Kalenderabonnement } from "./Kalenderabonnement";
 
 export function MinFerie() {
   const { d, meg, leder, aar, idag, kjor } = useApp();
@@ -106,6 +107,7 @@ export function MinFerie() {
           </div>
         ) : <div className="empty">Ingen søknader for {aar}.</div>}
       </section>
+      {meSelv && <Kalenderabonnement />}
     </>
   );
 }

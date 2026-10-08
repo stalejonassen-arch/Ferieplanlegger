@@ -21,6 +21,9 @@ export interface Api {
   lagreAnsatt(a: Partial<Ansatt> & { navn: string; avdeling_id: number }): Promise<void>;
   lagreAvdeling(a: Pick<Avdeling, "id" | "maks_borte">): Promise<void>;
   lagreOverfort(ansatt_id: string, aar: number, overfort: number): Promise<void>;
+  /** Hemmelig lenke-nøkkel for kalenderabonnement. ny=true lager ny og gjør den gamle ugyldig. */
+  kalenderToken(ny?: boolean): Promise<string>;
+  kalenderUrl(token: string, alle?: boolean): string;
 }
 
 /** Gjør databasefeil om til tekst som gir mening for brukeren. */
@@ -85,6 +88,12 @@ function supabaseApi(sb: SupabaseClient): Api {
     async lagreAvdeling(a) { ok(await sb.from("avdelinger").update({ maks_borte: a.maks_borte }).eq("id", a.id)); },
     async lagreOverfort(ansatt_id, aar, overfort) {
       ok(await sb.from("ferieaar").upsert({ ansatt_id, aar, overfort }));
+    },
+    async kalenderToken(ny) {
+      return ok(await sb.rpc(ny ? "ny_kalender_token" : "min_kalender_token")) as string;
+    },
+    kalenderUrl(token, alle) {
+      return `${url}/functions/v1/kalender?t=${token}${alle ? "&alle=1" : ""}`;
     },
   };
 }

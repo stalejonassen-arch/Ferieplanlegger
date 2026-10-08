@@ -95,6 +95,8 @@ export function demoApi(): Api {
       if (x) x.maks_borte = a.maks_borte;
       endret();
     },
+    async kalenderToken(ny) { return ny ? crypto.randomUUID() : "00000000-0000-4000-8000-000000000000"; },
+    kalenderUrl(token, alle) { return `https://demo.invalid/kalender?t=${token}${alle ? "&alle=1" : ""}`; },
     async lagreOverfort(ansatt_id, aar, overfort) {
       const x = d.ferieaar.find((f) => f.ansatt_id === ansatt_id && f.aar === aar);
       if (x) x.overfort = overfort; else d.ferieaar.push({ ansatt_id, aar, overfort });
