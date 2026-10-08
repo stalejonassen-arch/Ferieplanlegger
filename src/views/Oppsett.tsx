@@ -24,7 +24,7 @@ export function Oppsett() {
     <>
       <section className="panel">
         <h2>Ansatte</h2>
-        <p className="small muted">Endringer lagres når du går ut av feltet. E-posten er den ansatte bruker for å logge inn. «Dager» er 25 etter ferieloven eller 30 med femte ferieuke. «Overført» er ferie avtalt flyttet fra {aar - 1} til {aar}.</p>
+        <p className="small muted">Endringer lagres når du går ut av feltet. E-posten er den ansatte bruker for å logge inn. «Dager» er feriedager per år regnet mandag–fredag: 25 er 5 uker, 21 er lovens minimum. «Overført» er ferie avtalt flyttet fra {aar - 1} til {aar}.</p>
         <div className="staff">
           <div className="staff-row staff-head">
             <span>Navn</span><span>E-post</span><span>Avdeling</span><span>Rolle</span><span>Dager</span><span>Overført {aar}</span><span>Over 60</span><span>Aktiv</span>
@@ -51,7 +51,7 @@ export function Oppsett() {
               </span>
               <span className="lbl" data-l="Dager">
                 <select id={`dager-${a.id}`} aria-label="Feriedager" value={a.dager} onChange={(e) => lagre(a, { dager: Number(e.target.value) })}>
-                  <option value={25}>25</option><option value={30}>30</option>
+                  <option value={21}>21</option><option value={25}>25</option>
                 </select>
               </span>
               <span className="lbl" data-l={`Overført ${aar}`}>

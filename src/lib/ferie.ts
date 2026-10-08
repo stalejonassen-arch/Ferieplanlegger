@@ -16,8 +16,11 @@ export interface Soknad {
 }
 export interface Data { avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[] }
 
-/** «1 virkedag», «2 virkedager» */
-export const vd = (n: number) => `${n} ${Math.abs(n) === 1 ? "virkedag" : "virkedager"}`;
+/** «1 feriedag», «2 feriedager» */
+export const vd = (n: number) => `${n} ${Math.abs(n) === 1 ? "feriedag" : "feriedager"}`;
+
+/** Hovedferie: 18 virkedager etter loven = 3 uker = 15 feriedager (man–fre). */
+export const HOVEDFERIE = 15;
 
 export type Sjekk = { niva: "ok" | "advarsel" | "feil" | "info"; tekst: string };
 
@@ -65,8 +68,9 @@ export function helligdager(y: number) {
 }
 export const helligdag = (iso: string) => helligdager(aarAv(iso)).get(iso);
 
-/** Ferieloven § 5: virkedager er alle dager unntatt søndager og helligdager (lørdag teller). */
-export const erVirkedag = (iso: string) => ukedag(iso) !== 0 && !helligdag(iso);
+/** N L Austnes teller feriedager mandag–fredag: lørdag, søndag og helligdager trekkes ikke.
+ *  (Ferieloven teller lørdag; 25 virkedager etter loven tilsvarer ca. 21 dager man–fre.) */
+export const erVirkedag = (iso: string) => ukedag(iso) !== 0 && ukedag(iso) !== 6 && !helligdag(iso);
 
 export function hverDag(fra: string, til: string, fn: (d: string) => void) {
   for (let d = fra; d <= til; d = addDays(d, 1)) fn(d);
@@ -87,7 +91,7 @@ export function hovedferieDager(fra: string, til: string, y: number) {
 
 export function ferierett(a: Ansatt, y: number, ferieaar: Ferieaar[]) {
   const overfort = ferieaar.find((f) => f.ansatt_id === a.id && f.aar === y)?.overfort ?? 0;
-  return { grunn: a.dager || 25, ekstra60: a.over60 ? 6 : 0, overfort, total: (a.dager || 25) + (a.over60 ? 6 : 0) + overfort };
+  return { grunn: a.dager || 25, ekstra60: a.over60 ? 5 : 0, overfort, total: (a.dager || 25) + (a.over60 ? 5 : 0) + overfort };
 }
 
 export interface Saldo { total: number; godkjent: number; venter: number; igjen: number; hovedferie: number }
@@ -122,8 +126,8 @@ export function regelsjekk(
   if (aarAv(fra) !== aarAv(til)) return [{ niva: "feil", tekst: "Del opp ferie over nyttår i to søknader, én for hvert ferieår." }];
 
   const y = aarAv(fra), n = virkedager(fra, til);
-  if (n === 0) return [{ niva: "feil", tekst: "Perioden har ingen virkedager." }];
-  ut.push({ niva: "info", tekst: `${vd(n)} trekkes. Lørdager teller, søndager og helligdager gjør ikke.` });
+  if (n === 0) return [{ niva: "feil", tekst: "Perioden har ingen feriedager (bare helg eller helligdager)." }];
+  ut.push({ niva: "info", tekst: `${vd(n)} trekkes. Lørdager, søndager og helligdager teller ikke.` });
   const hd: string[] = [];
   hverDag(fra, til, (x) => { const h = helligdag(x); if (h) hd.push(h); });
   if (hd.length) ut.push({ niva: "info", tekst: `Helligdager som ikke trekkes: ${hd.join(", ")}.` });
@@ -145,7 +149,7 @@ export function regelsjekk(
   const hf = hovedferieDager(fra, til, y);
   if (hf > 0) {
     const tot = sd.hovedferie + hf;
-    ut.push({ niva: tot >= 18 ? "ok" : "info", tekst: `Hovedferie 1. juni–30. september: ${Math.min(tot, 18)} av 18 virkedager ${hen} kan kreve.` });
+    ut.push({ niva: tot >= HOVEDFERIE ? "ok" : "info", tekst: `Hovedferie 1. juni–30. september: ${Math.min(tot, HOVEDFERIE)} av ${HOVEDFERIE} feriedager (3 uker) ${hen} kan kreve.` });
   }
 
   const avd = d.avdelinger.find((x) => x.id === a.avdeling_id);

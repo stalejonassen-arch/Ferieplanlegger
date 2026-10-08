@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { ferierett, harFeil, regelsjekk, saldo, sorterAnsatte } from "../lib/ferie";
+import { HOVEDFERIE, ferierett, harFeil, regelsjekk, saldo, sorterAnsatte } from "../lib/ferie";
 import { Sjekkliste, SoknadRad } from "./felles";
 
 export function MinFerie() {
@@ -48,7 +48,7 @@ export function MinFerie() {
           <div className="label">Saldo {aar} · {avd}</div>
           <div className="saldo-top">
             <span className="big num">{sd.igjen}</span>
-            <span className="muted">virkedager igjen av <b className="num">{sd.total}</b></span>
+            <span className="muted">feriedager igjen av <b className="num">{sd.total}</b></span>
           </div>
           <div className="bar" aria-hidden="true">
             <span className="bg-approved" style={{ width: pct(sd.godkjent) }} />
@@ -57,10 +57,10 @@ export function MinFerie() {
           <div className="legend">
             <div><span className="label"><i className="dot bg-approved" />Godkjent</span><span className="v">{sd.godkjent}</span></div>
             <div><span className="label"><i className="dot stripe" />Venter</span><span className="v">{sd.venter}</span></div>
-            <div><span className="label">Hovedferie</span><span className="v">{Math.min(sd.hovedferie, 18)}<span className="muted"> / 18</span></span></div>
+            <div><span className="label">Hovedferie</span><span className="v">{Math.min(sd.hovedferie, HOVEDFERIE)}<span className="muted"> / {HOVEDFERIE}</span></span></div>
           </div>
           <p className="small muted">
-            Rett: {rett.grunn} virkedager{rett.ekstra60 ? ` + ${rett.ekstra60} (over 60)` : ""}{rett.overfort ? ` + ${rett.overfort} overført fra ${aar - 1}` : ""}. En uke ferie er 6 virkedager.
+            Rett: {rett.grunn} feriedager{rett.ekstra60 ? ` + ${rett.ekstra60} (over 60)` : ""}{rett.overfort ? ` + ${rett.overfort} overført fra ${aar - 1}` : ""}. Feriedager telles mandag–fredag, så en uke ferie er 5 dager.
           </p>
         </section>
 

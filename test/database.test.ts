@@ -30,6 +30,7 @@ beforeAll(async () => {
     grant execute on function auth.jwt() to anon, authenticated;
   `);
   await db.exec(readFileSync("supabase/migrations/0001_init.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0002_feriedager_man_fre.sql", "utf8"));
   await db.exec(readFileSync("supabase/seed.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';

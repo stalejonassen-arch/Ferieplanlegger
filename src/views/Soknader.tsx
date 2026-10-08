@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { regelsjekk, saldo, sorterAnsatte, type Soknad, type Status } from "../lib/ferie";
+import { HOVEDFERIE, regelsjekk, saldo, sorterAnsatte, type Soknad, type Status } from "../lib/ferie";
 import { Sjekkliste, SoknadRad } from "./felles";
 
 export function Soknader() {
@@ -68,14 +68,14 @@ export function Soknader() {
                 return (
                   <tr key={a.id}>
                     <td>{a.navn}</td><td className="n">{s.total}</td><td className="n">{s.godkjent}</td><td className="n">{s.venter}</td>
-                    <td className="n" style={s.igjen < 0 ? { color: "var(--warn)" } : undefined}>{s.igjen}</td><td className="n">{Math.min(s.hovedferie, 18)} / 18</td>
+                    <td className="n" style={s.igjen < 0 ? { color: "var(--warn)" } : undefined}>{s.igjen}</td><td className="n">{Math.min(s.hovedferie, HOVEDFERIE)} / {HOVEDFERIE}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <p className="small muted">Ferie som ikke er tatt ved årets slutt kan overføres med skriftlig avtale, inntil 12 virkedager. Legg det inn under Oppsett for neste år.</p>
+        <p className="small muted">Ferie som ikke er tatt ved årets slutt kan overføres med skriftlig avtale, inntil 2 uker (10 feriedager). Legg det inn under Oppsett for neste år.</p>
       </section>
     </>
   );

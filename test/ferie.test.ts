@@ -18,14 +18,14 @@ describe("datoer", () => {
     expect(helligdag("2027-05-17")).toBeTruthy();
     expect(helligdag("2027-07-01")).toBeUndefined();
   });
-  it("teller virkedager som ferieloven", () => {
-    expect(virkedager("2027-07-05", "2027-07-24")).toBe(18); // tre uker man–lør
-    expect(virkedager("2027-07-05", "2027-07-10")).toBe(6);  // én uke = 6 virkedager
-    expect(virkedager("2026-03-30", "2026-04-11")).toBe(9);  // påske 2026: 4 helligdager + 2 søndager unntatt
-    expect(virkedager("2027-12-20", "2027-12-31")).toBe(10); // 1. juledag (lørdag) og søndag/2. juledag unntatt
+  it("teller feriedager mandag–fredag", () => {
+    expect(virkedager("2027-07-05", "2027-07-23")).toBe(15); // tre uker man–fre
+    expect(virkedager("2027-07-05", "2027-07-11")).toBe(5);  // én uke = 5 feriedager
+    expect(virkedager("2026-03-30", "2026-04-10")).toBe(7);  // påske 2026: skjærtorsdag, langfredag, 2. påskedag unntatt
+    expect(virkedager("2027-12-20", "2027-12-31")).toBe(10); // juledagene faller i helgen
   });
   it("teller hovedferiedager bare i juni–september", () => {
-    expect(hovedferieDager("2027-05-24", "2027-06-05", 2027)).toBe(5); // 1.–5. juni
+    expect(hovedferieDager("2027-05-24", "2027-06-05", 2027)).toBe(4); // 1.–4. juni (5. er lørdag)
     expect(hovedferieDager("2027-10-01", "2027-10-10", 2027)).toBe(0);
   });
 });
@@ -38,16 +38,16 @@ describe("saldo og regelsjekk", () => {
     soknader: [sok("s1", "a", "2027-07-05", "2027-07-24"), sok("s2", "a", "2027-10-11", "2027-10-16", "venter"), sok("s3", "b", "2027-07-19", "2027-07-31", "avslatt")],
   };
   it("regner saldo med overført ferie", () => {
-    expect(saldo(d.ansatte[0], 2027, d)).toEqual({ total: 29, godkjent: 18, venter: 6, igjen: 5, hovedferie: 18 });
-    expect(saldo(d.ansatte[2], 2027, d).total).toBe(31);
+    expect(saldo(d.ansatte[0], 2027, d)).toEqual({ total: 29, godkjent: 15, venter: 5, igjen: 9, hovedferie: 15 });
+    expect(saldo(d.ansatte[2], 2027, d).total).toBe(30);
   });
   it("ser bort fra søknaden som behandles", () => {
-    expect(saldo(d.ansatte[0], 2027, d, "s2").igjen).toBe(11);
+    expect(saldo(d.ansatte[0], 2027, d, "s2").igjen).toBe(14);
     expect(harFeil(regelsjekk(d, d.ansatte[0], "2027-10-11", "2027-10-16", "2027-01-10", { unntaId: "s2" }))).toBe(false);
   });
   it("stopper overforbruk og overlapp", () => {
-    const r = regelsjekk(d, d.ansatte[0], "2027-08-02", "2027-08-14", "2027-01-10");
-    expect(r.some((x) => x.niva === "feil" && x.tekst.includes("har 5 virkedager igjen"))).toBe(true);
+    const r = regelsjekk(d, d.ansatte[0], "2027-08-02", "2027-08-13", "2027-01-10");
+    expect(r.some((x) => x.niva === "feil" && x.tekst.includes("har 9 feriedager igjen"))).toBe(true);
     expect(harFeil(regelsjekk(d, d.ansatte[0], "2027-07-20", "2027-07-21", "2027-01-10"))).toBe(true);
   });
   it("varsler om bemanning og kort varsel, men ikke for avslåtte", () => {
