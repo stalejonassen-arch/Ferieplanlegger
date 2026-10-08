@@ -7,6 +7,8 @@ const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const CLIENT_ID = Deno.env.get("VISMA_CLIENT_ID") ?? "isv_bygglogg";
 const SCOPE = "business-graphql-service-api:access-group-based-readonly";
 const GQL = "https://business.visma.net/api/graphql-service";
+const PROSJEKT_TYPE = "Project";
+const PROSJEKT_TABELL = "project";
 
 async function token() {
   const secret = Deno.env.get("VISMA_CLIENT_SECRET");
@@ -57,7 +59,15 @@ Deno.serve(async (req) => {
   try {
     const { data: bedrifter } = await sb.from("bedrifter").select("id, visma_firma_nr").not("visma_firma_nr", "is", null);
     const tok = await token();
-    const [aFelt, pFelt] = await Promise.all([felt(tok, "Associate"), felt(tok, "Project")]);
+    if (url.searchParams.get("typer")) {
+      const re = new RegExp(url.searchParams.get("typer")!, "i");
+      const d = await gql(tok, `{ __schema { types { name } } }`);
+      return Response.json(d.__schema.types.map((t: { name: string }) => t.name).filter((n: string) => re.test(n)));
+    }
+    if (url.searchParams.get("type")) {
+      return Response.json([...(await felt(tok, url.searchParams.get("type")!))].sort());
+    }
+    const [aFelt, pFelt] = await Promise.all([felt(tok, "Associate"), felt(tok, PROSJEKT_TYPE)]);
     if (url.searchParams.get("skjema") === "1") {
       return Response.json({ Associate: [...aFelt].sort(), Project: [...pFelt].sort() });
     }
@@ -80,7 +90,7 @@ Deno.serve(async (req) => {
       const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
       const kundeId = new Map((kmap ?? []).map((k) => [k.visma_nr, k.id]));
 
-      const prosjekter = (await alle(tok, b.visma_firma_nr, "project", prosjektFelt))
+      const prosjekter = (await alle(tok, b.visma_firma_nr, PROSJEKT_TABELL, prosjektFelt))
         .filter((p) => Number(p.projectNo) > 0)
         .map((p) => {
           const rad: Record<string, unknown> = {
