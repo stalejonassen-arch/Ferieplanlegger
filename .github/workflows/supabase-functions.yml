@@ -15,7 +15,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Hopp over hvis nøkkelen mangler
         id: sjekk
-        run: echo "ok=${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "ok=${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+          echo "::notice::SUPABASE_ACCESS_TOKEN finnes: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }} (lengde ${#SUPABASE_ACCESS_TOKEN})"
       - uses: supabase/setup-cli@v1
         if: steps.sjekk.outputs.ok == 'true'
         with:
