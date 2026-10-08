@@ -1,0 +1,28 @@
+# Laster opp Supabase-funksjonene automatisk når koden i supabase/functions endres.
+# Krever GitHub-hemmeligheten SUPABASE_ACCESS_TOKEN (Supabase → Account → Access Tokens).
+name: Last opp Supabase-funksjoner
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/functions/**", ".github/workflows/supabase-functions.yml"]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hopp over hvis nøkkelen mangler
+        id: sjekk
+        run: echo "ok=${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+      - uses: supabase/setup-cli@v1
+        if: steps.sjekk.outputs.ok == 'true'
+        with:
+          version: latest
+      - name: Last opp
+        if: steps.sjekk.outputs.ok == 'true'
+        run: |
+          for f in kalender varsle paaminnelse visma-sync; do
+            supabase functions deploy "$f" --project-ref xsetojjfpxyatmeozrzh --no-verify-jwt
+          done
