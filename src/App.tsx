@@ -7,6 +7,7 @@ import { Kalender } from "./views/Kalender";
 import { Soknader } from "./views/Soknader";
 import { Regler } from "./views/Regler";
 import { Oppsett } from "./views/Oppsett";
+import { Lonn } from "./views/Lonn";
 
 export interface Ctx {
   d: Data;
@@ -20,10 +21,10 @@ export interface Ctx {
 const AppCtx = createContext<Ctx>(null!);
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "min" | "kal" | "sok" | "regler" | "oppsett";
+type Fane = "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["min", "kal", "sok", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "min";
+  return (["min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "min";
 };
 
 export function App() {
@@ -95,7 +96,7 @@ export function App() {
 
   const leder = meg.rolle === "leder";
   const venter = d.soknader.filter((s) => s.status === "venter").length;
-  const faner: [Fane, string][] = [["min", "Min ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const faner: [Fane, string][] = [["min", "Min ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const aktiv = faner.some(([f]) => f === fane) ? fane : "min";
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
@@ -129,6 +130,7 @@ export function App() {
         {aktiv === "min" && <MinFerie />}
         {aktiv === "kal" && <Kalender />}
         {aktiv === "sok" && <Soknader />}
+        {aktiv === "lonn" && <Lonn />}
         {aktiv === "regler" && <Regler />}
         {aktiv === "oppsett" && <Oppsett />}
       </div>
