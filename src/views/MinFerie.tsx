@@ -46,6 +46,9 @@ export function MinFerie() {
           </select>
         </div>
       )}
+      {meSelv && aar === Number(idag.slice(0, 4)) && Number(idag.slice(5, 7)) <= 5 && sd.hovedferie < HOVEDFERIE && (
+        <div className="banner"><span><b>Sommerferien {aar}:</b> du har søkt om {sd.hovedferie} av {HOVEDFERIE} dager hovedferie (1. juni–30. september). Søk gjerne snart, så blir sommerplanen klar i god tid.</span></div>
+      )}
       <div className="grid2">
         <section className="panel" aria-label="Saldo">
           <div className="label">Saldo {aar} · {avd}</div>

@@ -32,6 +32,14 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0001_init.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0002_feriedager_man_fre.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0003_kalenderabonnement.sql", "utf8"));
+  // 0004 uten utvidelsene (pg_net/pg_cron finnes ikke i testdatabasen): stubb net.http_post og hopp over cron
+  await db.exec(`create schema net; create table net.kall (body jsonb);
+    create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as
+      $$ insert into net.kall values (body); select 1::bigint $$;
+    grant usage on schema net to authenticated; grant insert on net.kall to authenticated;`);
+  const v = readFileSync("supabase/migrations/0004_varsler.sql", "utf8")
+    .replace(/create extension[^;]*;/g, "").replace(/select cron\.schedule\([\s\S]*$/, "");
+  await db.exec(v);
   await db.exec(readFileSync("supabase/seed.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
@@ -113,5 +121,17 @@ describe("tilgang", () => {
     expect(b).not.toBe(a);
     await expect(as("fremmed@example.no", "select public.min_kalender_token()")).rejects.toThrow(/ansatt/);
     await expect(as(null, "select public.min_kalender_token()")).rejects.toThrow();
+  });
+
+  it("varsler sendes når ansatt søker og når leder behandler, ikke når leder registrerer", async () => {
+    await db.exec("delete from net.kall");
+    const sv = await idOf("Snekker 2 (navn)");
+    await db.exec("update public.ansatte set epost='svein@example.no' where navn='Snekker 2 (navn)'");
+    const [s] = await as<any>("svein@example.no", "insert into public.soknader (ansatt_id, fra, til) values ($1,'2027-08-02','2027-08-06') returning id", [sv]);
+    await as(STALE, "update public.soknader set status='godkjent' where id=$1", [s.id]);
+    await as(STALE, "update public.soknader set kommentar='ok' where id=$1", [s.id]);
+    await as(STALE, "insert into public.soknader (ansatt_id, fra, til) values ($1,'2027-09-06','2027-09-10')", [sv]);
+    const kall = (await db.query<any>("select body from net.kall")).rows.map((r) => r.body.hendelse);
+    expect(kall).toEqual(["ny", "behandlet"]);
   });
 });
