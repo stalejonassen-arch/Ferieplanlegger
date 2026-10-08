@@ -7,8 +7,6 @@ const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const CLIENT_ID = Deno.env.get("VISMA_CLIENT_ID") ?? "isv_bygglogg";
 const SCOPE = "business-graphql-service-api:access-group-based-readonly";
 const GQL = "https://business.visma.net/api/graphql-service";
-const PROSJEKT_TYPE = "Project";
-const PROSJEKT_TABELL = "project";
 
 async function token() {
   const secret = Deno.env.get("VISMA_CLIENT_SECRET");
@@ -67,15 +65,21 @@ Deno.serve(async (req) => {
     if (url.searchParams.get("type")) {
       return Response.json([...(await felt(tok, url.searchParams.get("type")!))].sort());
     }
-    const [aFelt, pFelt] = await Promise.all([felt(tok, "Associate"), felt(tok, PROSJEKT_TYPE)]);
-    if (url.searchParams.get("skjema") === "1") {
-      return Response.json({ Associate: [...aFelt].sort(), Project: [...pFelt].sort() });
-    }
+    const aFelt = await felt(tok, "Associate");
     const kundeFelt = velg(aFelt, ["associateNo", "customerNo", "name", "addressLine1", "postCode", "postalArea", "phone", "mobilePhone", "emailAddress"]);
-    const prosjektFelt = velg(pFelt, ["projectNo", "name", "description", "customerNo", "addressLine1", "postalArea", "fromDate", "toDate", "finished", "closed"]);
     const rapport: Record<string, unknown> = {};
 
     for (const b of bedrifter ?? []) {
+      // I Business NXT er prosjekter en «organisatorisk enhet» (orgUnit1–12). Finn klassen som heter Prosjekt.
+      const navnFelt = Array.from({ length: 12 }, (_, i) => `orgUnit${i + 1}Name`);
+      const ci = await gql(tok, `{ useCompany(no: ${b.visma_firma_nr}) { companyInformation { items { ${navnFelt.join(" ")} } } } }`);
+      const info = ci.useCompany.companyInformation.items?.[0] ?? {};
+      const klasser = navnFelt.map((f, i) => ({ nr: i + 1, navn: s(info[f]) }));
+      const klasse = klasser.find((k) => /prosjekt|project/i.test(k.navn));
+      if (url.searchParams.get("skjema") === "1") {
+        return Response.json({ klasser, Associate: [...aFelt].sort(), prosjektFelt: klasse ? [...(await felt(tok, `OrgUnit${klasse.nr}`))].filter((f) => !/^join|AsDate$|AsTime$|AsEnum$|Flags$/.test(f)).sort() : null });
+      }
+
       // Kunder: alle aktører med kundenummer
       const kunder = (await alle(tok, b.visma_firma_nr, "associate", kundeFelt, "{ customerNo: { _gt: 0 } }"))
         .map((k) => ({
@@ -90,19 +94,23 @@ Deno.serve(async (req) => {
       const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
       const kundeId = new Map((kmap ?? []).map((k) => [k.visma_nr, k.id]));
 
-      const prosjekter = (await alle(tok, b.visma_firma_nr, PROSJEKT_TABELL, prosjektFelt))
-        .filter((p) => Number(p.projectNo) > 0)
+      if (!klasse) throw new Error(`Fant ingen organisatorisk enhet som heter Prosjekt (${klasser.map((k) => k.navn).filter(Boolean).join(", ")})`);
+      const pFelt = await felt(tok, `OrgUnit${klasse.nr}`);
+      const nrFelt = ["orgUnitNo", "no"].find((f) => pFelt.has(f)) ?? "orgUnitNo";
+      const prosjektFelt = [nrFelt, ...velg(pFelt, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"])];
+      const prosjekter = (await alle(tok, b.visma_firma_nr, `orgUnit${klasse.nr}`, prosjektFelt))
+        .filter((p) => Number(p[nrFelt]) > 0)
         .map((p) => {
           const rad: Record<string, unknown> = {
-            bedrift_id: b.id, visma_nr: Number(p.projectNo), navn: s(p.name) || s(p.description) || `Prosjekt ${p.projectNo}`,
+            bedrift_id: b.id, visma_nr: Number(p[nrFelt]), navn: s(p.name) || `Prosjekt ${p[nrFelt]}`,
             kunde_id: kundeId.get(Number(p.customerNo)) ?? null, adresse: [s(p.addressLine1), s(p.postalArea)].filter(Boolean).join(", "),
             oppdatert: new Date().toISOString(),
           };
           // Datoer i Business NXT er heltall som 20261001; 0 betyr ikke satt
           const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
-          if ("fromDate" in p) rad.start = dato(p.fromDate);
-          if ("toDate" in p) rad.slutt = dato(p.toDate);
-          const ferdig = p.finished ?? p.closed;
+          if ("actualStartDate" in p) rad.start = dato(p.actualStartDate);
+          if ("actualEndDate" in p) rad.slutt = dato(p.actualEndDate);
+          const ferdig = p.inactive ?? p.blocked ?? p.finished ?? p.closed;
           if (ferdig !== undefined) rad.aktiv = !(ferdig === true || Number(ferdig) > 0);
           return rad;
         });
@@ -110,7 +118,7 @@ Deno.serve(async (req) => {
         const { error } = await sb.from("prosjekter").upsert(prosjekter.slice(i, i + 500), { onConflict: "bedrift_id,visma_nr" });
         if (error) throw error;
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, prosjektklasse: `${klasse.nr} ${klasse.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
