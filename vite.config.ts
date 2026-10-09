@@ -23,7 +23,7 @@ export default defineConfig({
           { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
         ]
       },
-      workbox: { navigateFallbackDenylist: [/^\/auth/] }
+      workbox: { navigateFallbackDenylist: [/^\/auth/], skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true }
     })
   ],
   test: { environment: "node", include: ["test/**/*.test.ts"] }
