@@ -10,6 +10,7 @@ import { Oppsett } from "./views/Oppsett";
 import { Lonn } from "./views/Lonn";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
+import { Avvik } from "./views/Avvik";
 
 export interface Ctx {
   d: Data;
@@ -23,10 +24,10 @@ export interface Ctx {
 const AppCtx = createContext<Ctx>(null!);
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "prosjekter" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "prosjekter" | "avvik" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "prosjekter", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "prosjekter", "avvik", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -98,7 +99,8 @@ export function App() {
 
   const leder = meg.rolle === "leder";
   const venter = d.soknader.filter((s) => s.status === "venter").length;
-  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["min", "Ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
+  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["min", "Ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const aktiv = faner.some(([f]) => f === fane) ? fane : "timer";
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
@@ -125,12 +127,14 @@ export function App() {
           {faner.map(([f, navn]) => (
             <button key={f} role="tab" aria-selected={aktiv === f} onClick={() => velg(f)}>
               {navn}{f === "sok" && venter > 0 && <span className="badge">{venter}</span>}
+              {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
             </button>
           ))}
         </nav>
 
         {aktiv === "timer" && <Timer />}
         {aktiv === "prosjekter" && <Prosjekter />}
+        {aktiv === "avvik" && <Avvik />}
         {aktiv === "min" && <MinFerie />}
         {aktiv === "kal" && <Kalender />}
         {aktiv === "sok" && <Soknader />}

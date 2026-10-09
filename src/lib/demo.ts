@@ -54,7 +54,10 @@ function startdata(): Data {
   const timer: Time[] = [];
   for (let i = 0; i < 5; i++) timer.push(t(`tm${i}`, "mads", i, "07:00", i === 4 ? "17:00" : "15:30", 30, i < 3 ? "p1" : "p2"));
   for (let i = 0; i < 5; i++) timer.push(t(`ts${i}`, "snekker3", i, "07:00", "15:30", i === 2 ? 0 : 30, "p2"));
-  return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer };
+  const avvik: Data["avvik"] = [
+    { id: "av1", prosjekt_id: "p2", meldt_av: "snekker3", type: "ruh", tittel: "Løst rekkverk i trapp", beskrivelse: "Rekkverket i trappa til 2. etasje sitter løst.", ansvarlig_id: null, frist: null, status: "apen", tiltak: "", lukket_av: null, lukket_tid: null, opprettet: new Date().toISOString() },
+  ];
+  return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [] };
 }
 
 export function demoApi(): Api {
@@ -143,6 +146,29 @@ export function demoApi(): Api {
       endret();
     },
     async vismaStatus() { return null; },
+    async lagreAvvik(a) {
+      const m = meg();
+      if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const gammel = a.id ? d.avvik.find((x) => x.id === a.id) : undefined;
+      if (gammel) {
+        if (!leder() && gammel.ansvarlig_id !== m.id && gammel.status !== "apen") throw new Error("Avviket er under behandling og kan ikke endres.");
+        Object.assign(gammel, a, a.status === "lukket" && gammel.status !== "lukket" ? { lukket_av: m.id, lukket_tid: new Date().toISOString() } : {});
+        endret(); return gammel.id;
+      }
+      const ny = { id: nyId(), prosjekt_id: null, type: "avvik", beskrivelse: "", ansvarlig_id: null, frist: null, status: "apen", tiltak: "", lukket_av: null, lukket_tid: null, opprettet: new Date().toISOString(), ...a, meldt_av: m.id } as Data["avvik"][number];
+      d.avvik.unshift(ny); endret(); return ny.id;
+    },
+    async slettAvvik(id) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      d.avvik = d.avvik.filter((x) => x.id !== id); d.bilder = d.bilder.filter((b) => b.avvik_id !== id); endret();
+    },
+    async lastOppBilde(fil, til) {
+      const sti = URL.createObjectURL(fil);
+      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: new Date().toISOString() });
+      endret();
+    },
+    async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },
+    async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async lagreProsjekt(p, nyKunde) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       let kunde_id = p.kunde_id ?? null;

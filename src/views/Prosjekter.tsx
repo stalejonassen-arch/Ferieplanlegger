@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { prosjektTimer, t2 } from "../lib/timer";
+import { Bilder } from "./Bilder";
+import { Avvik } from "./Avvik";
 
 export function Prosjekter() {
   const { d, leder, kjor } = useApp();
@@ -11,6 +13,7 @@ export function Prosjekter() {
   const [kundeId, setKundeId] = useState("");
   const [nyKunde, setNyKunde] = useState("");
   const [estimat, setEstimat] = useState("");
+  const [valgt, setValgt] = useState<string | null>(null);
   const brukt = prosjektTimer(d);
   const [visma, setVisma] = useState<{ tid: string; ok: boolean; melding: string } | null>(null);
   useEffect(() => { if (leder) api.vismaStatus().then(setVisma).catch(() => {}); }, [leder, d]);
@@ -28,6 +31,29 @@ export function Prosjekter() {
       `Prosjektet «${navn.trim()}» er lagt til`);
     if (ok) { setNavn(""); setKundeId(""); setNyKunde(""); setEstimat(""); }
   };
+
+  const vp = valgt ? d.prosjekter.find((p) => p.id === valgt) : undefined;
+  if (vp) {
+    const egne = d.timer.filter((t) => t.prosjekt_id === vp.id);
+    const perAnsatt = new Map<string, number>();
+    for (const t of egne) perAnsatt.set(t.ansatt_id, (perAnsatt.get(t.ansatt_id) ?? 0) + Number(t.timer));
+    const sumT = egne.reduce((n, t) => n + Number(t.timer), 0);
+    return (
+      <>
+        <div><button className="btn sm" onClick={() => setValgt(null)}>‹ Alle prosjekter</button></div>
+        <section className="panel">
+          <h2 style={{ margin: 0 }}>{vp.visma_nr ? `${vp.visma_nr} · ` : ""}{vp.navn}</h2>
+          <div className="small muted">{[kunde(vp.kunde_id), vp.adresse].filter(Boolean).join(" · ")}</div>
+          <div className="legend">
+            <div><span className="label">Timer{leder ? "" : " (dine)"}</span><span className="v">{t2(sumT)}{vp.estimert_timer ? ` / ${t2(Number(vp.estimert_timer))}` : ""}</span></div>
+            {leder && [...perAnsatt].map(([id, n]) => <div key={id}><span className="label">{d.ansatte.find((a) => a.id === id)?.navn}</span><span className="v">{t2(n)}</span></div>)}
+          </div>
+          <Bilder bilder={d.bilder.filter((b) => b.prosjekt_id === vp.id)} til={{ prosjekt_id: vp.id }} tittel="Bilder fra prosjektet" />
+        </section>
+        <Avvik prosjektId={vp.id} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -55,7 +81,9 @@ export function Prosjekter() {
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
                       <td className="n">{p.visma_nr ?? "–"}</td>
-                      <td>{p.navn}</td>
+                      <td><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
+                        {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
+                          return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>
                       <td>{kunde(p.kunde_id)}</td>
                       <td className="n" style={est && b > est ? { color: "var(--warn)" } : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}</td>
                       {leder && <td><button className="btn sm" onClick={() => kjor(() => api.lagreProsjekt({ id: p.id, navn: p.navn, aktiv: !p.aktiv }), p.aktiv ? "Avsluttet" : "Åpnet igjen")}>{p.aktiv ? "Avslutt" : "Åpne"}</button></td>}

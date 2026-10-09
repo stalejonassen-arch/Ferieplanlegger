@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Ansatt, Avdeling, Data, Soknad, Status } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
+import { komprimer, type NyttAvvik } from "./hms";
 
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
@@ -32,6 +33,12 @@ export interface Api {
   /** Leder: godta en dag uten lunsjtrekk */
   lunsjUnntak(id: string, unntak: boolean): Promise<void>;
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
+  lagreAvvik(a: NyttAvvik): Promise<string>;
+  slettAvvik(id: string): Promise<void>;
+  lastOppBilde(fil: File, til: { prosjekt_id?: string | null; avvik_id?: string | null; tekst?: string }): Promise<void>;
+  slettBilde(id: string, sti: string): Promise<void>;
+  /** Midlertidige lenker til bildene (gyldige i en time) */
+  bildeUrler(stier: string[]): Promise<Record<string, string>>;
   /** Leder: siste henting fra Visma */
   vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
 }
@@ -68,7 +75,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -76,10 +83,12 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("kunder").select("*").order("navn"),
         sb.from("prosjekter").select("*").order("visma_nr", { ascending: false, nullsFirst: true }),
         sb.from("timer").select("*").gte("dato", fraDato).order("dato").order("fra").limit(20000),
+        sb.from("avvik").select("*").order("opprettet", { ascending: false }).limit(2000),
+        sb.from("bilder").select("*").order("opprettet", { ascending: false }).limit(5000),
       ]);
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
-        kunder: ok(kunder), prosjekter: ok(prosjekter),
+        kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder),
         timer: (ok(timer) as any[]).map((t) => ({ ...t, timer: Number(t.timer), km: Number(t.km), reisetid: Number(t.reisetid), fra: t.fra.slice(0, 5), til: t.til.slice(0, 5) })),
       } as Data;
     },
@@ -93,6 +102,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "avdelinger" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "timer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "prosjekter" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -124,6 +135,31 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettTime(id) { ok(await sb.from("timer").delete().eq("id", id)); },
     async settTimestatus(ids, status) { if (ids.length) ok(await sb.from("timer").update({ status }).in("id", ids)); },
     async lunsjUnntak(id, unntak) { ok(await sb.from("timer").update({ lunsj_unntak: unntak }).eq("id", id)); },
+    async lagreAvvik(a) {
+      const { id, ...rad } = a;
+      for (const k of ["meldt_av", "lukket_av", "lukket_tid", "opprettet"] as const) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("avvik").update(rad).eq("id", id).select("id").single() : await sb.from("avvik").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettAvvik(id) { ok(await sb.from("avvik").delete().eq("id", id)); },
+    async lastOppBilde(fil, til) {
+      const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+      const mappe = til.prosjekt_id ? `p-${til.prosjekt_id}` : `a-${til.avvik_id}`;
+      const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.jpg`;
+      const data = await komprimer(fil);
+      ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
+      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, tekst: til.tekst ?? "" });
+      if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
+    },
+    async slettBilde(id, sti) {
+      ok(await sb.from("bilder").delete().eq("id", id));
+      await sb.storage.from("bilder").remove([sti]);
+    },
+    async bildeUrler(stier) {
+      if (!stier.length) return {};
+      const r = ok(await sb.storage.from("bilder").createSignedUrls(stier, 3600)) as { path: string | null; signedUrl: string }[];
+      return Object.fromEntries(r.filter((x) => x.path).map((x) => [x.path as string, x.signedUrl]));
+    },
     async vismaStatus() {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);
       return r.data?.[0] ?? null;

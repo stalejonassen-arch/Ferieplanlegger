@@ -42,6 +42,7 @@ beforeAll(async () => {
   await db.exec(v);
   await db.exec(readFileSync("supabase/seed.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0005_bygglogg_timer.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0007_bilder_avvik.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -168,5 +169,43 @@ describe("timer og prosjekter", () => {
     expect(g.godkjent_av).toBe(await idOf("Ståle Jonassen").catch(() => idOf("Ståle")));
     await expect(as(JIM, "update public.timer set til='16:00' where id=$1", [t.id])).rejects.toThrow(/godkjent/);
     expect(await as(JIM, "delete from public.timer where id=$1 returning id", [t.id])).toHaveLength(0);
+  });
+});
+
+describe("avvik og bilder", () => {
+  beforeAll(async () => { await db.exec(`update public.ansatte set aktiv=true where epost='${MADS}'`); });
+  it("ansatt melder avvik, kan ikke tildele seg ansvar eller lukke", async () => {
+    const mads = await idOf("Mads Kjerstad");
+    const [a] = await as<any>(MADS, "insert into public.avvik (tittel, type, status, ansvarlig_id, meldt_av) values ('Løs rekkverk', 'ruh', 'lukket', $1, $1) returning *", [mads]);
+    expect(a.status).toBe("apen");
+    expect(a.ansvarlig_id).toBeNull();
+    expect(a.meldt_av).toBe(mads);
+    expect(await as(JIM, "select id from public.avvik")).toHaveLength(1);   // alle ser avvik
+    await as(MADS, "update public.avvik set beskrivelse='Trapp 2. etasje', status='lukket' where id=$1", [a.id]);
+    const [b] = await as<any>(MADS, "select status, beskrivelse from public.avvik where id=$1", [a.id]);
+    expect(b).toEqual({ status: "apen", beskrivelse: "Trapp 2. etasje" });
+    expect(await as(JIM, "update public.avvik set tittel='x' where id=$1 returning id", [a.id])).toHaveLength(0);
+  });
+
+  it("leder tildeler ansvarlig, ansvarlig skriver tiltak og lukker", async () => {
+    const jim = await idOf("Jim Kato");
+    const [{ id }] = await as<any>(STALE, "select id from public.avvik");
+    await as(STALE, "update public.avvik set ansvarlig_id=$1, frist='2027-01-10', status='under_arbeid' where id=$2", [jim, id]);
+    await expect(as(MADS, "update public.avvik set beskrivelse='endret' where id=$1", [id])).rejects.toThrow(/under behandling/);
+    await as(JIM, "update public.avvik set tiltak='Skrudd fast', status='lukket', frist='2030-01-01' where id=$1", [id]);
+    const [c] = await as<any>(STALE, "select status, tiltak, frist::text, lukket_av from public.avvik where id=$1", [id]);
+    expect(c.status).toBe("lukket");
+    expect(c.tiltak).toBe("Skrudd fast");
+    expect(c.frist).toBe("2027-01-10");
+    expect(c.lukket_av).toBe(jim);
+  });
+
+  it("bilder knyttes til egen bedrift og eier", async () => {
+    const [{ id: p }] = await db.query<any>("select id from public.prosjekter limit 1").then((r) => r.rows);
+    const [bilde] = await as<any>(JIM, "insert into public.bilder (prosjekt_id, sti, ansatt_id) values ($1, '1/p/a.jpg', $2) returning *", [p, await idOf("Mads Kjerstad")]);
+    expect(bilde.ansatt_id).toBe(await idOf("Jim Kato"));
+    await expect(as(JIM, "insert into public.bilder (prosjekt_id, sti) values ($1, '2/p/b.jpg')", [p])).rejects.toThrow(/filsti/);
+    expect(await as(MADS, "delete from public.bilder where id=$1 returning id", [bilde.id])).toHaveLength(0);
+    expect(await as(JIM, "delete from public.bilder where id=$1 returning id", [bilde.id])).toHaveLength(1);
   });
 });

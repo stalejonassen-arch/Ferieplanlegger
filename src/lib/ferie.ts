@@ -2,6 +2,7 @@
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
 import type { Kunde, Prosjekt, Time } from "./timer";
+import type { Avvik, Bilde } from "./hms";
 
 export type Status = "venter" | "godkjent" | "avslatt";
 export type Rolle = "ansatt" | "leder";
@@ -24,6 +25,7 @@ export interface Soknad {
 export interface Data {
   avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
+  avvik: Avvik[]; bilder: Bilde[];
 }
 
 /** «1 feriedag», «2 feriedager» */
