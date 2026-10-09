@@ -43,7 +43,18 @@ export function Prosjekter() {
         <div><button className="btn sm" onClick={() => setValgt(null)}>‹ Alle prosjekter</button></div>
         <section className="panel">
           <h2 style={{ margin: 0 }}>{vp.visma_nr ? `${vp.visma_nr} · ` : ""}{vp.navn}</h2>
-          <div className="small muted">{[kunde(vp.kunde_id), vp.adresse].filter(Boolean).join(" · ")}</div>
+          {(() => {
+            const k = d.kunder.find((x) => x.id === vp.kunde_id);
+            const adr = vp.adresse || [k?.adresse, [k?.postnr, k?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+            return (
+              <div className="row small" style={{ gap: "4px 14px" }}>
+                {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
+                {adr && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}`} target="_blank" rel="noreferrer">{adr} ↗</a>}
+                {k?.telefon && <a href={`tel:${k.telefon.replace(/\s/g, "")}`}>{k.telefon}</a>}
+                {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
+              </div>
+            );
+          })()}
           <div className="legend">
             <div><span className="label">Timer{leder ? "" : " (dine)"}</span><span className="v">{t2(sumT)}{vp.estimert_timer ? ` / ${t2(Number(vp.estimert_timer))}` : ""}</span></div>
             {leder && [...perAnsatt].map(([id, n]) => <div key={id}><span className="label">{d.ansatte.find((a) => a.id === id)?.navn}</span><span className="v">{t2(n)}</span></div>)}
