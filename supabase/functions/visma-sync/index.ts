@@ -43,8 +43,8 @@ async function alle(tok: string, firma: number, tabell: string, felter: string[]
     const d = await gql(tok, `query($etter: String) { useCompany(no: ${firma}) { ${tabell}(first: 500, after: $etter${filter ? `, filter: ${filter}` : ""}) {
       pageInfo { hasNextPage endCursor } items { ${felter.join(" ")} } } } }`, { etter });
     const t = d.useCompany[tabell];
-    ut.push(...t.items);
-    if (!t.pageInfo?.hasNextPage) break;
+    ut.push(...(t?.items ?? []));
+    if (!t?.pageInfo?.hasNextPage) break;
     etter = t.pageInfo.endCursor;
   }
   return ut;
@@ -61,6 +61,17 @@ Deno.serve(async (req) => {
       const re = new RegExp(url.searchParams.get("typer")!, "i");
       const d = await gql(tok, `{ __schema { types { name } } }`);
       return Response.json(d.__schema.types.map((t: { name: string }) => t.name).filter((n: string) => re.test(n)));
+    }
+    if (url.searchParams.get("firmaer")) {
+      const q = await gql(tok, `{ __type(name: "Query") { fields { name type { name kind ofType { name } } } } }`);
+      const f = q.__type.fields.find((x: { name: string }) => x.name === "availableCompanies");
+      const tn = f.type.name ?? f.type.ofType?.name;
+      const t = await gql(tok, `query($n: String!) { __type(name: $n) { fields { name type { name kind ofType { name kind ofType { name } } } } } }`, { n: tn });
+      const items = t.__type.fields.find((x: { name: string }) => x.name === "items");
+      const itn = items?.type.ofType?.ofType?.name ?? items?.type.ofType?.name ?? items?.type.name;
+      const ft = await felt(tok, itn);
+      const d = await gql(tok, `{ availableCompanies { items { ${[...ft].join(" ")} } } }`);
+      return Response.json(d);
     }
     if (url.searchParams.get("type")) {
       return Response.json([...(await felt(tok, url.searchParams.get("type")!))].sort());
@@ -96,7 +107,7 @@ Deno.serve(async (req) => {
 
       if (!klasse) throw new Error(`Fant ingen organisatorisk enhet som heter Prosjekt (${klasser.map((k) => k.navn).filter(Boolean).join(", ")})`);
       const pFelt = await felt(tok, `OrgUnit${klasse.nr}`);
-      const nrFelt = ["orgUnitNo", "no"].find((f) => pFelt.has(f)) ?? "orgUnitNo";
+      const nrFelt = [`orgUnit${klasse.nr}No`, "orgUnitNo", "no"].find((f) => pFelt.has(f)) ?? `orgUnit${klasse.nr}No`;
       const prosjektFelt = [nrFelt, ...velg(pFelt, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"])];
       const prosjekter = (await alle(tok, b.visma_firma_nr, `orgUnit${klasse.nr}`, prosjektFelt))
         .filter((p) => Number(p[nrFelt]) > 0)

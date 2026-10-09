@@ -10,11 +10,11 @@ create table public.bedrifter (
   navn            text not null,
   orgnr           text,
   visma_kunde_nr  integer,   -- Visma-kundenummer
-  visma_firma_nr  integer,   -- firmanummer i Business NXT (vises som «N L Austnes AS - 10052»)
+  visma_firma_nr  integer,   -- Visma.net-firma-ID (useCompany i Business NXT-API-et)
   opprettet       timestamptz not null default now()
 );
 insert into public.bedrifter (id, navn, orgnr, visma_kunde_nr, visma_firma_nr)
-values (1, 'N L Austnes AS', '832507652', null, 10052);
+values (1, 'N L Austnes AS', '832507652', 1184937, 5415636);
 
 alter table public.avdelinger add column bedrift_id smallint not null default 1 references public.bedrifter(id);
 alter table public.ansatte    add column bedrift_id smallint not null default 1 references public.bedrifter(id);
