@@ -105,11 +105,17 @@ Deno.serve(async (req) => {
       const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
       const kundeId = new Map((kmap ?? []).map((k) => [k.visma_nr, k.id]));
 
-      if (!klasse) throw new Error(`Fant ingen organisatorisk enhet som heter Prosjekt (${klasser.map((k) => k.navn).filter(Boolean).join(", ")})`);
-      const pFelt = await felt(tok, `OrgUnit${klasse.nr}`);
-      const nrFelt = [`orgUnit${klasse.nr}No`, "orgUnitNo", "no"].find((f) => pFelt.has(f)) ?? `orgUnit${klasse.nr}No`;
-      const prosjektFelt = [nrFelt, ...velg(pFelt, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"])];
-      const prosjekter = (await alle(tok, b.visma_firma_nr, `orgUnit${klasse.nr}`, prosjektFelt))
+      // Bruk den første prosjektklassen som faktisk har prosjekter (f.eks. «Prosjekt» eller «Kundeprosjekt»)
+      const kandidater = klasser.filter((k) => /prosjekt|project/i.test(k.navn));
+      if (!kandidater.length) throw new Error(`Fant ingen organisatorisk enhet som heter Prosjekt (${klasser.map((k) => k.navn).filter(Boolean).join(", ")})`);
+      let pk = kandidater[0], nrFelt = `orgUnit${pk.nr}No`, rader: Record<string, unknown>[] = [];
+      for (const k of kandidater) {
+        const pf = await felt(tok, `OrgUnit${k.nr}`);
+        const nf = [`orgUnit${k.nr}No`, "orgUnitNo", "no"].find((f) => pf.has(f)) ?? `orgUnit${k.nr}No`;
+        const r = await alle(tok, b.visma_firma_nr, `orgUnit${k.nr}`, [nf, ...velg(pf, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"])]);
+        if (r.some((p) => Number(p[nf]) > 0)) { pk = k; nrFelt = nf; rader = r; break; }
+      }
+      const prosjekter = rader
         .filter((p) => Number(p[nrFelt]) > 0)
         .map((p) => {
           const rad: Record<string, unknown> = {
@@ -129,7 +135,7 @@ Deno.serve(async (req) => {
         const { error } = await sb.from("prosjekter").upsert(prosjekter.slice(i, i + 500), { onConflict: "bedrift_id,visma_nr" });
         if (error) throw error;
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, prosjektklasse: `${klasse.nr} ${klasse.navn}` };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
