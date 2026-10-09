@@ -47,6 +47,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0009_fdv.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0010_maal_aar.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0011_rapporter.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0012_timer_synlig.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -162,7 +163,17 @@ describe("timer og prosjekter", () => {
     expect(t.status).toBe("levert");
     await expect(ny(JIM, await idOf("Mads Kjerstad"), p, "2027-03-01", "07:00", "15:00")).rejects.toThrow();
     await expect(ny(JIM, jim, p, "2027-03-01", "14:00", "16:00")).rejects.toThrow(/overlapper/);
-    expect(await as(MADS, "select * from public.timer")).toHaveLength(0);
+    // Kolleger ser timer på prosjekter (forbruk), men ikke interntid, og kan ikke endre dem
+    const [intern] = await ny(JIM, jim, null, "2027-03-02", "07:00", "09:00");
+    expect(await as(MADS, "select * from public.timer")).toHaveLength(0); // Mads er deaktivert: ser ingenting
+    await as(STALE, "update public.ansatte set aktiv=true where epost=$1", [MADS]);
+    const sett = await as<any>(MADS, "select id, prosjekt_id from public.timer");
+    expect(sett).toHaveLength(1);
+    expect(sett[0].id).toBe(t.id);
+    expect(await as(MADS, "update public.timer set til='16:00' where id=$1 returning id", [t.id])).toHaveLength(0);
+    expect(await as("fremmed@example.no", "select * from public.timer")).toHaveLength(0);
+    await as(JIM, "delete from public.timer where id=$1", [intern.id]);
+    await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
   });
 
   it("leder godkjenner, og da er timene låst for den ansatte", async () => {

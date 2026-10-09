@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "../App";
-import { api } from "../lib/api";
+import { api, type FdvVare } from "../lib/api";
 import { kortDato, langDato } from "../lib/ferie";
 import { TILLEGG_STATUS, VAER, type Tillegg, type TilleggStatus } from "../lib/hms";
 import { t2, type Prosjekt } from "../lib/timer";
@@ -54,6 +54,28 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
       {del === "avvik" && <Avvik prosjektId={p.id} />}
       {del === "okonomi" && <Lonnsomhet p={p} />}
       {del === "sluttdok" && <Sluttdok p={p} />}
+    </>
+  );
+}
+
+// ------------------------------------------------------------ Materiell (forbruk fra Visma)
+
+/** Varer som er tatt ut på prosjektet i Visma (antall, ikke priser – synlig for alle). */
+function Materiell({ p }: { p: Prosjekt }) {
+  const [varer, setVarer] = useState<FdvVare[] | null>(null);
+  const [alle, setAlle] = useState(false);
+  useEffect(() => { api.fdv(p.id).then((x) => setVarer(x.varer)).catch(() => setVarer([])); }, [p.id]);
+  if (!varer?.length) return null;
+  const vis = alle ? varer : varer.slice(0, 15);
+  return (
+    <>
+      <h3 style={{ margin: "8px 0 0" }}>Materiell brukt <span className="small muted">({varer.length} varer fra Visma)</span></h3>
+      <div style={{ overflowX: "auto" }}>
+        <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th></tr></thead><tbody>
+          {vis.map((v) => <tr key={v.varenr}><td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td><td>{t2(v.antall)} {v.enhet.toLowerCase()}</td></tr>)}
+        </tbody></table>
+      </div>
+      {varer.length > 15 && <div><button className="btn sm" onClick={() => setAlle(!alle)}>{alle ? "Vis færre" : `Vis alle ${varer.length}`}</button></div>}
     </>
   );
 }
@@ -120,7 +142,7 @@ function Oversikt({ p }: { p: Prosjekt }) {
     <section className="panel">
       <h2 style={{ margin: 0 }}>Timer og plan</h2>
       <div className="legend">
-        <div><span className="label">Brukt{leder ? "" : " (dine)"}</span><span className="v">{t2(sum)} t</span></div>
+        <div><span className="label">Brukt</span><span className="v">{t2(sum)} t</span></div>
         <div><span className="label">Kalkulert</span><span className="v">{est != null ? `${t2(est)} t` : "–"}</span></div>
         {tilleggT > 0 && <div><span className="label">+ tillegg</span><span className="v">{t2(tilleggT)} t</span></div>}
         <div><span className="label">Igjen</span><span className="v" style={ramme != null && sum > ramme ? { color: "var(--warn)" } : undefined}>{ramme != null ? `${t2(ramme - sum)} t` : "–"}</span></div>
@@ -135,9 +157,13 @@ function Oversikt({ p }: { p: Prosjekt }) {
         <p className="small" style={{ margin: 0 }}>Planlagt: {p.planlagt_start ? langDato(p.planlagt_start) : "?"} – {p.planlagt_slutt ? langDato(p.planlagt_slutt) : "?"}</p>
       )}
       {p.notat && !leder && <p className="small" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{p.notat}</p>}
-      {leder && perAnsatt.size > 0 && (
-        <div className="legend">{[...perAnsatt].map(([id, n]) => <div key={id}><span className="label">{d.ansatte.find((a) => a.id === id)?.navn}</span><span className="v">{t2(n)}</span></div>)}</div>
+      {perAnsatt.size > 0 && (
+        <>
+          <h3 style={{ margin: "8px 0 0" }}>Timer per person</h3>
+          <div className="legend">{[...perAnsatt].sort((a, b) => b[1] - a[1]).map(([id, n]) => <div key={id}><span className="label">{d.ansatte.find((a) => a.id === id)?.navn}</span><span className="v">{t2(n)}</span></div>)}</div>
+        </>
       )}
+      <Materiell p={p} />
       {leder && (
         <div className="panel" style={{ background: "var(--sunk)" }}>
           <div className="row">
