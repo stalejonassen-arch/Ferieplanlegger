@@ -59,7 +59,7 @@ function startdata(): Data {
   ];
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
-  ], tillegg: [], maal: 500 };
+  ], tillegg: [], maal: 7000 };
 }
 
 const demoVarer: FdvVare[] = [
@@ -204,6 +204,10 @@ export function demoApi(): Api {
       ] : [];
     },
     async slettTillegg(id) { d.tillegg = d.tillegg.filter((y) => y.id !== id); endret(); },
+    async settMaal(aar) {
+      if (!leder()) throw new Error("Bare leder kan endre målet.");
+      d.maal = aar; endret();
+    },
     async fdv(pid) {
       const varer = pid === "p2" ? demoVarer : [];
       return { varer: varer.map((v) => ({ ...v, ...(vareEndring[v.varenr] ?? {}) })), dok: demoDok.filter((x) => x.pid === pid) };

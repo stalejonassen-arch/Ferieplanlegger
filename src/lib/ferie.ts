@@ -26,7 +26,7 @@ export interface Data {
   avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
   avvik: Avvik[]; bilder: Bilde[]; dagbok: Dagbok[]; tillegg: Tillegg[];
-  /** Mål for fakturerte timer per måned */
+  /** Mål for fakturerte timer i året */
   maal?: number;
 }
 

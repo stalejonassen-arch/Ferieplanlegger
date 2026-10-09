@@ -61,6 +61,8 @@ export interface Api {
   slettFdv(id: string, sti: string): Promise<void>;
   /** Midlertidig lenke til et dokument (gyldig i en time) */
   dokUrl(sti: string, lastNed?: string): Promise<string>;
+  /** Leder: sett mål for fakturerte timer i året */
+  settMaal(aar: number): Promise<void>;
   /** Leder: siste henting fra Visma */
   vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
 }
@@ -109,13 +111,13 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("bilder").select("*").order("opprettet", { ascending: false }).limit(5000),
         sb.from("dagbok").select("*").order("dato", { ascending: false }).order("opprettet", { ascending: false }).limit(5000),
         sb.from("tillegg").select("*").order("opprettet", { ascending: false }).limit(2000),
-        sb.from("bedrifter").select("maal_fakturert_mnd").limit(1),
+        sb.from("bedrifter").select("maal_fakturert_aar").limit(1),
       ]);
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
         kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
-        maal: Number((ok(bedrift) as { maal_fakturert_mnd: number }[])[0]?.maal_fakturert_mnd ?? 500),
+        maal: Number((ok(bedrift) as { maal_fakturert_aar: number }[])[0]?.maal_fakturert_aar ?? 6000),
         timer: (ok(timer) as any[]).map((t) => ({ ...t, timer: Number(t.timer), km: Number(t.km), reisetid: Number(t.reisetid), fra: t.fra.slice(0, 5), til: t.til.slice(0, 5) })),
       } as Data;
     },
@@ -241,6 +243,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async dokUrl(sti, lastNed) {
       return (ok(await sb.storage.from("dokumenter").createSignedUrl(sti, 3600, lastNed ? { download: lastNed } : undefined)) as { signedUrl: string }).signedUrl;
     },
+    async settMaal(aar) { ok(await sb.rpc("sett_maal", { aar })); },
     async vismaStatus() {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);
       return r.data?.[0] ?? null;

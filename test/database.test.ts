@@ -45,6 +45,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0007_bilder_avvik.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0008_prosjektstyring.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0009_fdv.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0010_maal_aar.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -242,5 +243,14 @@ describe("dagbok og tilleggsarbeid", () => {
     const p = await prosj();
     expect(await as(JIM, "update public.prosjekter set estimert_timer=99 where id=$1 returning id", [p])).toHaveLength(0);
     expect(await as(STALE, "update public.prosjekter set estimert_timer=99, planlagt_start='2027-01-04' where id=$1 returning id", [p])).toHaveLength(1);
+  });
+
+  it("bare leder kan endre målet for fakturerte timer", async () => {
+    expect((await as<any>(STALE, "select maal_fakturert_aar from public.bedrifter"))[0].maal_fakturert_aar).toBe("7000.0");
+    await expect(as(JIM, "select public.sett_maal(9000)")).rejects.toThrow(/leder/);
+    await as(STALE, "select public.sett_maal(7500)");
+    const [b] = await as<any>(STALE, "select maal_fakturert_aar, maal_fakturert_mnd from public.bedrifter");
+    expect(Number(b.maal_fakturert_aar)).toBe(7500);
+    expect(Number(b.maal_fakturert_mnd)).toBe(625);
   });
 });
