@@ -74,17 +74,17 @@ export function Prosjekter() {
         {liste.length ? (
           <div className="scroll" style={{ border: 0 }}>
             <table className="tbl">
-              <thead><tr><th>Nr</th><th>Prosjekt</th><th>Kunde</th><th>Timer</th>{leder && <th />}</tr></thead>
+              <thead><tr><th>Nr</th><th>Prosjekt</th><th>Timer</th>{leder && <th />}</tr></thead>
               <tbody>
                 {liste.map((p) => {
                   const b = brukt.get(p.id) ?? 0, est = p.estimert_timer ? Number(p.estimert_timer) : null;
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
                       <td className="n">{p.visma_nr ?? "–"}</td>
-                      <td><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
+                      <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
+                        {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
                         {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
                           return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>
-                      <td>{kunde(p.kunde_id)}</td>
                       <td className="n" style={est && b > est ? { color: "var(--warn)" } : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}</td>
                       {leder && <td><button className="btn sm" onClick={() => kjor(() => api.lagreProsjekt({ id: p.id, navn: p.navn, aktiv: !p.aktiv }), p.aktiv ? "Avsluttet" : "Åpnet igjen")}>{p.aktiv ? "Avslutt" : "Åpne"}</button></td>}
                     </tr>
