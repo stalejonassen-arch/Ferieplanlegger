@@ -59,7 +59,7 @@ function startdata(): Data {
   ];
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
-  ], tillegg: [], maal: 7000 };
+  ], tillegg: [], maal: 7000, rapporter: [], lest: [] };
 }
 
 const demoVarer: FdvVare[] = [
@@ -204,6 +204,21 @@ export function demoApi(): Api {
       ] : [];
     },
     async slettTillegg(id) { d.tillegg = d.tillegg.filter((y) => y.id !== id); endret(); },
+    async lagreRapport(r) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const sti = r.fil ? URL.createObjectURL(r.fil) : undefined;
+      const gammel = r.id ? d.rapporter.find((x) => x.id === r.id) : undefined;
+      const ny = { id: gammel?.id ?? nyId(), tittel: r.tittel, periode: r.periode, ingress: r.ingress, lenke: r.lenke, sti: sti ?? gammel?.sti ?? "",
+        publisert: gammel?.publisert ?? (r.publiser ? new Date().toISOString() : null), opprettet: gammel?.opprettet ?? new Date().toISOString() };
+      d.rapporter = [ny, ...d.rapporter.filter((x) => x.id !== ny.id)].sort((a, b) => b.periode.localeCompare(a.periode));
+      endret();
+    },
+    async slettRapport(id) { d.rapporter = d.rapporter.filter((x) => x.id !== id); endret(); },
+    async markerLest(id) {
+      const m = meg(); if (!m) return;
+      if (!d.lest.some((l) => l.rapport_id === id && l.ansatt_id === m.id)) d.lest.push({ rapport_id: id, ansatt_id: m.id, lest: new Date().toISOString() });
+      endret();
+    },
     async settMaal(aar) {
       if (!leder()) throw new Error("Bare leder kan endre målet.");
       d.maal = aar; endret();

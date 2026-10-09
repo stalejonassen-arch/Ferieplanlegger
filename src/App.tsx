@@ -11,6 +11,8 @@ import { Lonn } from "./views/Lonn";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
+import { Rapporter, lesRapport } from "./views/Rapporter";
+import { uleste } from "./lib/rapport";
 
 export interface Ctx {
   d: Data;
@@ -24,10 +26,10 @@ export interface Ctx {
 const AppCtx = createContext<Ctx>(null!);
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "prosjekter" | "avvik" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "prosjekter" | "avvik" | "rapporter" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "prosjekter", "avvik", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "prosjekter", "avvik", "rapporter", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -100,7 +102,8 @@ export function App() {
   const leder = meg.rolle === "leder";
   const venter = d.soknader.filter((s) => s.status === "venter").length;
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
-  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["min", "Ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["rapporter", "Rapporter"], ["min", "Ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
   const aktiv = faner.some(([f]) => f === fane) ? fane : "timer";
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
@@ -123,11 +126,17 @@ export function App() {
           <div className="banner"><span><span className="chip demo">Demo</span> Eksempeldata som bare ligger i denne nettleseren. Koble til Supabase for ekte bruk.</span></div>
         )}
 
+        {nyeRapporter[0] && aktiv !== "rapporter" && (
+          <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
+            <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>
+        )}
+
         <nav className="tabs" role="tablist">
           {faner.map(([f, navn]) => (
             <button key={f} role="tab" aria-selected={aktiv === f} onClick={() => velg(f)}>
               {navn}{f === "sok" && venter > 0 && <span className="badge">{venter}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
+              {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
             </button>
           ))}
         </nav>
@@ -135,6 +144,7 @@ export function App() {
         {aktiv === "timer" && <Timer />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
+        {aktiv === "rapporter" && <Rapporter />}
         {aktiv === "min" && <MinFerie />}
         {aktiv === "kal" && <Kalender />}
         {aktiv === "sok" && <Soknader />}

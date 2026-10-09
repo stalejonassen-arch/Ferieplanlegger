@@ -46,6 +46,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0008_prosjektstyring.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0009_fdv.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0010_maal_aar.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0011_rapporter.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -252,5 +253,24 @@ describe("dagbok og tilleggsarbeid", () => {
     const [b] = await as<any>(STALE, "select maal_fakturert_aar, maal_fakturert_mnd from public.bedrifter");
     expect(Number(b.maal_fakturert_aar)).toBe(7500);
     expect(Number(b.maal_fakturert_mnd)).toBe(625);
+  });
+
+  it("månedsrapport: utkast bare for leder, publisert for alle, leder ser hvem som har lest", async () => {
+    await expect(as(JIM, "insert into public.rapporter (tittel, periode, lenke) values ('x', '2026-09-01', 'https://a.no')")).rejects.toThrow();
+    const [r] = await as<any>(STALE, "insert into public.rapporter (tittel, periode, lenke) values ('Månedsrapport september 2026', '2026-09-01', 'https://claude.ai/artifact/x') returning id");
+    expect(await as(JIM, "select id from public.rapporter")).toHaveLength(0);
+    await expect(as(JIM, "select public.marker_lest($1)", [r.id])).rejects.toThrow(/finnes ikke/);
+    await as(STALE, "update public.rapporter set publisert = now() where id=$1", [r.id]);
+    expect(await as(JIM, "select id from public.rapporter")).toHaveLength(1);
+    await as(JIM, "select public.marker_lest($1)", [r.id]);
+    await as(JIM, "select public.marker_lest($1)", [r.id]);
+    expect(await as(MADS, "select * from public.rapport_lest")).toHaveLength(0);
+    expect(await as(JIM, "select * from public.rapport_lest")).toHaveLength(1);
+    const lest = await as<any>(STALE, "select ansatt_id from public.rapport_lest where rapport_id=$1", [r.id]);
+    expect(lest.map((x: any) => x.ansatt_id)).toEqual([await idOf("Jim Kato")]);
+    await expect(as(JIM, "insert into public.rapport_lest (rapport_id, ansatt_id) values ($1, $2)", [r.id, await idOf("Mads Kjerstad")])).rejects.toThrow();
+    // Publisert kan ikke gjøres om til utkast
+    await as(STALE, "update public.rapporter set publisert = null where id=$1", [r.id]);
+    expect(await as(JIM, "select id from public.rapporter")).toHaveLength(1);
   });
 });

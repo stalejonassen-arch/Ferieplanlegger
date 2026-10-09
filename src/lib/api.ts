@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Ansatt, Avdeling, Data, Soknad, Status } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
+import type { NyRapport } from "./rapport";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -61,6 +62,11 @@ export interface Api {
   slettFdv(id: string, sti: string): Promise<void>;
   /** Midlertidig lenke til et dokument (gyldig i en time) */
   dokUrl(sti: string, lastNed?: string): Promise<string>;
+  /** Leder: lagre (og ev. publisere) en månedsrapport. Publisering sender e-post til alle ansatte. */
+  lagreRapport(r: NyRapport): Promise<void>;
+  slettRapport(id: string, sti: string): Promise<void>;
+  /** Merk rapporten som lest av meg */
+  markerLest(id: string): Promise<void>;
   /** Leder: sett mål for fakturerte timer i året */
   settMaal(aar: number): Promise<void>;
   /** Leder: siste henting fra Visma */
@@ -99,7 +105,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -112,11 +118,14 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("dagbok").select("*").order("dato", { ascending: false }).order("opprettet", { ascending: false }).limit(5000),
         sb.from("tillegg").select("*").order("opprettet", { ascending: false }).limit(2000),
         sb.from("bedrifter").select("maal_fakturert_aar").limit(1),
+        sb.from("rapporter").select("id, tittel, periode, ingress, lenke, sti, publisert, opprettet").order("periode", { ascending: false }).limit(200),
+        sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").limit(10000),
       ]);
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
         kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
+        rapporter: rapporter.error ? [] : rapporter.data, lest: lest.error ? [] : lest.data,
         maal: Number((ok(bedrift) as { maal_fakturert_aar: number }[])[0]?.maal_fakturert_aar ?? 6000),
         timer: (ok(timer) as any[]).map((t) => ({ ...t, timer: Number(t.timer), km: Number(t.km), reisetid: Number(t.reisetid), fra: t.fra.slice(0, 5), til: t.til.slice(0, 5) })),
       } as Data;
@@ -135,6 +144,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "dagbok" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "tillegg" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "rapporter" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "rapport_lest" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -243,6 +254,26 @@ function supabaseApi(sb: SupabaseClient): Api {
     async dokUrl(sti, lastNed) {
       return (ok(await sb.storage.from("dokumenter").createSignedUrl(sti, 3600, lastNed ? { download: lastNed } : undefined)) as { signedUrl: string }).signedUrl;
     },
+    async lagreRapport(r) {
+      let sti: string | undefined;
+      if (r.fil) {
+        if (r.fil.type !== "application/pdf") throw new Error("Rapporten må være en PDF.");
+        if (r.fil.size > 25 * 1024 * 1024) throw new Error("Filen er større enn 25 MB.");
+        const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+        sti = `${bedrift}/rapporter/${crypto.randomUUID()}.pdf`;
+        ok(await sb.storage.from("dokumenter").upload(sti, r.fil, { contentType: "application/pdf" }));
+      }
+      const rad: Record<string, unknown> = { tittel: r.tittel.trim(), periode: r.periode, ingress: r.ingress.trim(), lenke: r.lenke.trim() };
+      if (sti) rad.sti = sti;
+      if (r.publiser) rad.publisert = new Date().toISOString();
+      const res = r.id ? await sb.from("rapporter").update(rad).eq("id", r.id) : await sb.from("rapporter").insert(rad);
+      if (res.error) { if (sti) await sb.storage.from("dokumenter").remove([sti]); throw res.error; }
+    },
+    async slettRapport(id, sti) {
+      ok(await sb.from("rapporter").delete().eq("id", id));
+      if (sti) await sb.storage.from("dokumenter").remove([sti]);
+    },
+    async markerLest(id) { ok(await sb.rpc("marker_lest", { rapport: id })); },
     async settMaal(aar) { ok(await sb.rpc("sett_maal", { aar })); },
     async vismaStatus() {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);

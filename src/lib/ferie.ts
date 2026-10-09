@@ -1,3 +1,4 @@
+import type { Lesing, Rapport } from "./rapport";
 // Ferieregler for N L Austnes AS: datoer, helligdager, saldo og regelsjekk.
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
@@ -26,6 +27,7 @@ export interface Data {
   avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
   avvik: Avvik[]; bilder: Bilde[]; dagbok: Dagbok[]; tillegg: Tillegg[];
+  rapporter: Rapport[]; lest: Lesing[];
   /** Mål for fakturerte timer i året */
   maal?: number;
 }
