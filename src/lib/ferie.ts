@@ -2,7 +2,7 @@
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
 import type { Kunde, Prosjekt, Time } from "./timer";
-import type { Avvik, Bilde } from "./hms";
+import type { Avvik, Bilde, Dagbok, Tillegg } from "./hms";
 
 export type Status = "venter" | "godkjent" | "avslatt";
 export type Rolle = "ansatt" | "leder";
@@ -25,7 +25,9 @@ export interface Soknad {
 export interface Data {
   avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
-  avvik: Avvik[]; bilder: Bilde[];
+  avvik: Avvik[]; bilder: Bilde[]; dagbok: Dagbok[]; tillegg: Tillegg[];
+  /** Mål for fakturerte timer per måned */
+  maal?: number;
 }
 
 /** «1 feriedag», «2 feriedager» */

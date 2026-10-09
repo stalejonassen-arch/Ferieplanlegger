@@ -135,7 +135,32 @@ Deno.serve(async (req) => {
         const { error } = await sb.from("prosjekter").upsert(prosjekter.slice(i, i + 500), { onConflict: "bedrift_id,visma_nr" });
         if (error) throw error;
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      // Ordrer knyttet til prosjektene (materiell, salg og dekningsbidrag). Krever lesetilgang til ordretabellen.
+      let ordreAntall: number | string = 0;
+      try {
+        const oFelt = await felt(tok, "Order");
+        const pf = `orgUnit${pk.nr}`;
+        const ofelter = ["orderNo", pf, ...velg(oFelt, ["orderDate", "orderType", "transactionType", "name", "orderSumNetDomestic", "incurredCostTotalDomestic", "grossProfitTotalDomestic", "invoicedAmountTotalDomestic", "finishDate"])];
+        const ordrer = await alle(tok, b.visma_firma_nr, "order", ofelter, `{ ${pf}: { _gt: 0 } }`);
+        const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
+        const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
+        const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
+        const n = (v: unknown) => Number(v) || 0;
+        const rader2 = ordrer.filter((o) => pid.has(Number(o[pf]))).map((o) => ({
+          bedrift_id: b.id, visma_ordrenr: n(o.orderNo), prosjekt_id: pid.get(Number(o[pf])), ordredato: dato(o.orderDate),
+          ordretype: n(o.orderType), transaksjonstype: n(o.transactionType), navn: s(o.name),
+          sum_netto: n(o.orderSumNetDomestic), kostnad: n(o.incurredCostTotalDomestic), dekningsbidrag: n(o.grossProfitTotalDomestic),
+          fakturert: n(o.invoicedAmountTotalDomestic), ferdig: dato(o.finishDate), oppdatert: new Date().toISOString(),
+        }));
+        for (let i = 0; i < rader2.length; i += 500) {
+          const { error } = await sb.from("prosjekt_ordre").upsert(rader2.slice(i, i + 500), { onConflict: "bedrift_id,visma_ordrenr" });
+          if (error) throw error;
+        }
+        ordreAntall = rader2.length;
+      } catch (e) {
+        ordreAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`;
+      }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { prosjektTimer, t2 } from "../lib/timer";
-import { Bilder } from "./Bilder";
-import { Avvik } from "./Avvik";
+import { ProsjektSide } from "./ProsjektSide";
+import { Maal } from "./Maal";
 
 export function Prosjekter() {
   const { d, leder, kjor } = useApp();
@@ -33,41 +33,11 @@ export function Prosjekter() {
   };
 
   const vp = valgt ? d.prosjekter.find((p) => p.id === valgt) : undefined;
-  if (vp) {
-    const egne = d.timer.filter((t) => t.prosjekt_id === vp.id);
-    const perAnsatt = new Map<string, number>();
-    for (const t of egne) perAnsatt.set(t.ansatt_id, (perAnsatt.get(t.ansatt_id) ?? 0) + Number(t.timer));
-    const sumT = egne.reduce((n, t) => n + Number(t.timer), 0);
-    return (
-      <>
-        <div><button className="btn sm" onClick={() => setValgt(null)}>‹ Alle prosjekter</button></div>
-        <section className="panel">
-          <h2 style={{ margin: 0 }}>{vp.visma_nr ? `${vp.visma_nr} · ` : ""}{vp.navn}</h2>
-          {(() => {
-            const k = d.kunder.find((x) => x.id === vp.kunde_id);
-            const adr = vp.adresse || [k?.adresse, [k?.postnr, k?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-            return (
-              <div className="row small" style={{ gap: "4px 14px" }}>
-                {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
-                {adr && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}`} target="_blank" rel="noreferrer">{adr} ↗</a>}
-                {k?.telefon && <a href={`tel:${k.telefon.replace(/\s/g, "")}`}>{k.telefon}</a>}
-                {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
-              </div>
-            );
-          })()}
-          <div className="legend">
-            <div><span className="label">Timer{leder ? "" : " (dine)"}</span><span className="v">{t2(sumT)}{vp.estimert_timer ? ` / ${t2(Number(vp.estimert_timer))}` : ""}</span></div>
-            {leder && [...perAnsatt].map(([id, n]) => <div key={id}><span className="label">{d.ansatte.find((a) => a.id === id)?.navn}</span><span className="v">{t2(n)}</span></div>)}
-          </div>
-          <Bilder bilder={d.bilder.filter((b) => b.prosjekt_id === vp.id)} til={{ prosjekt_id: vp.id }} tittel="Bilder fra prosjektet" />
-        </section>
-        <Avvik prosjektId={vp.id} />
-      </>
-    );
-  }
+  if (vp) return <ProsjektSide p={vp} tilbake={() => setValgt(null)} />;
 
   return (
     <>
+      {leder && <Maal />}
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Prosjekter</h2>

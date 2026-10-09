@@ -3,11 +3,11 @@
 import { addDays, helligdag, ukedag, type Ansatt, type Data } from "./ferie";
 
 export interface Kunde { id: string; visma_nr: number | null; navn: string; adresse: string; postnr: string; poststed: string; telefon: string; epost: string; aktiv: boolean }
-export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean }
+export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string }
 export interface Time {
   id: string; ansatt_id: string; prosjekt_id: string | null; dato: string;
   fra: string; til: string; lunsj_min: number; timer: number; lunsj_unntak: boolean;
-  km: number; reisetid: number; beskrivelse: string; status: "levert" | "godkjent";
+  km: number; reisetid: number; beskrivelse: string; status: "levert" | "godkjent"; fakturerbar?: boolean;
 }
 export type NyTime = Omit<Time, "id" | "timer" | "lunsj_unntak" | "status"> & { id?: string };
 
@@ -100,6 +100,13 @@ export function lonnTimer(d: Data, a: Ansatt, fra: string, til: string): LonnTim
     avvik: dager.filter((x) => x.lunsjavvik).map((x) => x.dato),
     ikkeGodkjent: d.timer.filter((t) => t.ansatt_id === a.id && t.dato >= fra && t.dato <= til && t.status !== "godkjent").length,
   };
+}
+
+/** Fakturerbare timer per måned (1–12) i et år */
+export function fakturertPerMnd(timer: Time[], aar: number) {
+  const ut = Array(12).fill(0) as number[];
+  for (const t of timer) if (t.fakturerbar !== false && t.prosjekt_id && t.dato.startsWith(`${aar}-`)) ut[Number(t.dato.slice(5, 7)) - 1] += Number(t.timer);
+  return ut.map((n) => Math.round(n * 100) / 100);
 }
 
 /** Timer brukt per prosjekt */

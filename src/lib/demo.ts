@@ -57,7 +57,9 @@ function startdata(): Data {
   const avvik: Data["avvik"] = [
     { id: "av1", prosjekt_id: "p2", meldt_av: "snekker3", type: "ruh", tittel: "Løst rekkverk i trapp", beskrivelse: "Rekkverket i trappa til 2. etasje sitter løst.", ansvarlig_id: null, frist: null, status: "apen", tiltak: "", lukket_av: null, lukket_tid: null, opprettet: new Date().toISOString() },
   ];
-  return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [] };
+  return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
+    { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
+  ], tillegg: [], maal: 500 };
 }
 
 export function demoApi(): Api {
@@ -164,9 +166,35 @@ export function demoApi(): Api {
     },
     async lastOppBilde(fil, til) {
       const sti = URL.createObjectURL(fil);
-      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: new Date().toISOString() });
+      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: new Date().toISOString() });
       endret();
     },
+    async lagreDagbok(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const g = x.id ? d.dagbok.find((y) => y.id === x.id) : undefined;
+      if (g) { Object.assign(g, x); endret(); return g.id; }
+      const ny = { id: nyId(), vaer: "", hindringer: "", dato: isoOf(new Date()), opprettet: new Date().toISOString(), ...x, ansatt_id: m.id } as Data["dagbok"][number];
+      d.dagbok.unshift(ny); endret(); return ny.id;
+    },
+    async slettDagbok(id) { d.dagbok = d.dagbok.filter((y) => y.id !== id); endret(); },
+    async lagreTillegg(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      if (x.status === "signert" && (!x.signert_navn?.trim() || (x.signatur ?? "").length < 100)) throw new Error("Kunden må skrive navnet sitt og signere.");
+      const g = x.id ? d.tillegg.find((y) => y.id === x.id) : undefined;
+      if (g) {
+        if (!leder() && g.status !== "utkast") throw new Error("Tilleggsarbeidet er signert og kan bare endres av leder.");
+        Object.assign(g, x, x.status === "signert" && g.status !== "signert" ? { signert_tid: new Date().toISOString() } : {}); endret(); return g.id;
+      }
+      const ny = { id: nyId(), beskrivelse: "", timer: null, materiell: "", pris: null, status: "utkast", signert_navn: "", signatur: "", signert_tid: null, opprettet: new Date().toISOString(), ...x, opprettet_av: m.id } as Data["tillegg"][number];
+      d.tillegg.unshift(ny); endret(); return ny.id;
+    },
+    async prosjektOrdre(pid) {
+      return pid === "p2" ? [
+        { visma_ordrenr: 52011, ordredato: isoOf(new Date()), ordretype: 1, transaksjonstype: 1, navn: "Jonas Haram", sum_netto: 84500, kostnad: 61200, dekningsbidrag: 23300, fakturert: 0, ferdig: null },
+        { visma_ordrenr: 51876, ordredato: isoOf(new Date()), ordretype: 1, transaksjonstype: 1, navn: "Jonas Haram", sum_netto: 12900, kostnad: 8600, dekningsbidrag: 4300, fakturert: 12900, ferdig: isoOf(new Date()) },
+      ] : [];
+    },
+    async slettTillegg(id) { d.tillegg = d.tillegg.filter((y) => y.id !== id); endret(); },
     async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async lagreProsjekt(p, nyKunde) {

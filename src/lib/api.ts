@@ -4,8 +4,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Ansatt, Avdeling, Data, Soknad, Status } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
-import { komprimer, type NyttAvvik } from "./hms";
+import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
+export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
+export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 export interface Api {
@@ -35,7 +37,13 @@ export interface Api {
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
   lagreAvvik(a: NyttAvvik): Promise<string>;
   slettAvvik(id: string): Promise<void>;
-  lastOppBilde(fil: File, til: { prosjekt_id?: string | null; avvik_id?: string | null; tekst?: string }): Promise<void>;
+  lastOppBilde(fil: File, til: BildeMaal): Promise<void>;
+  lagreDagbok(d: Partial<Dagbok> & { prosjekt_id: string; tekst: string }): Promise<string>;
+  slettDagbok(id: string): Promise<void>;
+  lagreTillegg(t: Partial<Tillegg> & { prosjekt_id: string; tittel: string }): Promise<string>;
+  slettTillegg(id: string): Promise<void>;
+  /** Leder: ordrer i Visma knyttet til prosjektet */
+  prosjektOrdre(prosjektId: string): Promise<ProsjektOrdre[]>;
   slettBilde(id: string, sti: string): Promise<void>;
   /** Midlertidige lenker til bildene (gyldige i en time) */
   bildeUrler(stier: string[]): Promise<Record<string, string>>;
@@ -75,7 +83,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -85,10 +93,15 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("timer").select("*").gte("dato", fraDato).order("dato").order("fra").limit(20000),
         sb.from("avvik").select("*").order("opprettet", { ascending: false }).limit(2000),
         sb.from("bilder").select("*").order("opprettet", { ascending: false }).limit(5000),
+        sb.from("dagbok").select("*").order("dato", { ascending: false }).order("opprettet", { ascending: false }).limit(5000),
+        sb.from("tillegg").select("*").order("opprettet", { ascending: false }).limit(2000),
+        sb.from("bedrifter").select("maal_fakturert_mnd").limit(1),
       ]);
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
-        kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder),
+        kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
+        tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
+        maal: Number((ok(bedrift) as { maal_fakturert_mnd: number }[])[0]?.maal_fakturert_mnd ?? 500),
         timer: (ok(timer) as any[]).map((t) => ({ ...t, timer: Number(t.timer), km: Number(t.km), reisetid: Number(t.reisetid), fra: t.fra.slice(0, 5), til: t.til.slice(0, 5) })),
       } as Data;
     },
@@ -104,6 +117,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "prosjekter" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dagbok" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tillegg" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -148,8 +163,26 @@ function supabaseApi(sb: SupabaseClient): Api {
       const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.jpg`;
       const data = await komprimer(fil);
       ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
-      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, tekst: til.tekst ?? "" });
+      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "" });
       if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
+    },
+    async lagreDagbok(x) {
+      const { id, ...rad } = x;
+      for (const k of ["ansatt_id", "opprettet"] as const) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("dagbok").update(rad).eq("id", id).select("id").single() : await sb.from("dagbok").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettDagbok(id) { ok(await sb.from("dagbok").delete().eq("id", id)); },
+    async lagreTillegg(x) {
+      const { id, ...rad } = x;
+      for (const k of ["opprettet_av", "opprettet", "signert_tid"] as const) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("tillegg").update(rad).eq("id", id).select("id").single() : await sb.from("tillegg").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettTillegg(id) { ok(await sb.from("tillegg").delete().eq("id", id)); },
+    async prosjektOrdre(prosjektId) {
+      const r = ok(await sb.from("prosjekt_ordre").select("*").eq("prosjekt_id", prosjektId).order("ordredato", { ascending: false })) as ProsjektOrdre[];
+      return r.map((o) => ({ ...o, sum_netto: Number(o.sum_netto), kostnad: Number(o.kostnad), dekningsbidrag: Number(o.dekningsbidrag), fakturert: Number(o.fakturert) }));
     },
     async slettBilde(id, sti) {
       ok(await sb.from("bilder").delete().eq("id", id));

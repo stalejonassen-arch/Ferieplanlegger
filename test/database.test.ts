@@ -43,6 +43,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/seed.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0005_bygglogg_timer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0007_bilder_avvik.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0008_prosjektstyring.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -207,5 +208,38 @@ describe("avvik og bilder", () => {
     await expect(as(JIM, "insert into public.bilder (prosjekt_id, sti) values ($1, '2/p/b.jpg')", [p])).rejects.toThrow(/filsti/);
     expect(await as(MADS, "delete from public.bilder where id=$1 returning id", [bilde.id])).toHaveLength(0);
     expect(await as(JIM, "delete from public.bilder where id=$1 returning id", [bilde.id])).toHaveLength(1);
+  });
+});
+
+describe("dagbok og tilleggsarbeid", () => {
+  const SIG = "data:image/png;base64," + "A".repeat(200);
+  const prosj = async () => (await db.query<any>("select id from public.prosjekter limit 1")).rows[0].id;
+
+  it("ansatt skriver dagbok, kan ikke skrive i andres navn", async () => {
+    const p = await prosj();
+    const [d] = await as<any>(JIM, "insert into public.dagbok (prosjekt_id, tekst, vaer, ansatt_id) values ($1, 'Montert vinduer', 'Regn', $2) returning *", [p, await idOf("Mads Kjerstad")]);
+    expect(d.ansatt_id).toBe(await idOf("Jim Kato"));
+    expect(await as(MADS, "update public.dagbok set tekst='x' where id=$1 returning id", [d.id])).toHaveLength(0);
+    expect(await as(STALE, "select id from public.dagbok")).toHaveLength(1);
+  });
+
+  it("tilleggsarbeid krever navn og signatur, og låses etter signering", async () => {
+    const p = await prosj();
+    const [t] = await as<any>(JIM, "insert into public.tillegg (prosjekt_id, tittel, timer, status) values ($1, 'Ekstra lekt på loft', 4, 'fakturert') returning *", [p]);
+    expect(t.status).toBe("utkast");
+    await expect(as(JIM, "update public.tillegg set status='signert' where id=$1", [t.id])).rejects.toThrow(/signere/);
+    await as(JIM, "update public.tillegg set status='signert', signert_navn='Merete Austnes', signatur=$2 where id=$1", [t.id, SIG]);
+    const [s] = await as<any>(JIM, "select status, signert_tid from public.tillegg where id=$1", [t.id]);
+    expect(s.status).toBe("signert");
+    expect(s.signert_tid).not.toBeNull();
+    await expect(as(JIM, "update public.tillegg set timer=10 where id=$1", [t.id])).rejects.toThrow(/signert/);
+    await as(STALE, "update public.tillegg set status='fakturert' where id=$1", [t.id]);
+    expect((await as<any>(STALE, "select status from public.tillegg where id=$1", [t.id]))[0].status).toBe("fakturert");
+  });
+
+  it("bare leder kan sette plan på prosjektet", async () => {
+    const p = await prosj();
+    expect(await as(JIM, "update public.prosjekter set estimert_timer=99 where id=$1 returning id", [p])).toHaveLength(0);
+    expect(await as(STALE, "update public.prosjekter set estimert_timer=99, planlagt_start='2027-01-04' where id=$1 returning id", [p])).toHaveLength(1);
   });
 });

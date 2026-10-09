@@ -11,9 +11,11 @@ createRoot(document.getElementById("root")!).render(
 
 // Når en ny versjon av appen er lastet ned, last siden på nytt så alle får den med en gang
 if ("serviceWorker" in navigator) {
+  // Bare ved oppdatering (ikke første gang appen installeres), ellers mister man det man holder på å skrive
+  const haddeVersjon = !!navigator.serviceWorker.controller;
   let lastet = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (lastet) return;
+    if (lastet || !haddeVersjon) return;
     lastet = true;
     location.reload();
   });

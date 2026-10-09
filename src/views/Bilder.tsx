@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "../App";
-import { api, feiltekst } from "../lib/api";
+import { api, feiltekst, type BildeMaal } from "../lib/api";
 import type { Bilde } from "../lib/hms";
 
 /** Bildegalleri med opplasting rett fra mobilkameraet. */
 export function Bilder({ bilder, til, tittel = "Bilder" }: {
-  bilder: Bilde[]; til: { prosjekt_id?: string | null; avvik_id?: string | null }; tittel?: string;
+  bilder: Bilde[]; til: BildeMaal; tittel?: string;
 }) {
   const { d, meg, leder, kjor } = useApp();
   const [urler, setUrler] = useState<Record<string, string>>({});

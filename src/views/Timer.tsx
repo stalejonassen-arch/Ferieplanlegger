@@ -14,7 +14,7 @@ export function Timer() {
   const meSelv = hvem.id === meg.id;
   const lunsjStd = hvem.lunsjtrekk ? (hvem.lunsj_min ?? 30) : 0;
 
-  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "" });
+  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true });
   const [f, setF] = useState(tom);
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
 
@@ -40,11 +40,11 @@ export function Timer() {
     if (!gyldig) return;
     const ok = await kjor(() => api.lagreTime({
       id: f.id, ansatt_id: hvem.id, prosjekt_id: f.prosjekt_id || null, dato: f.dato, fra: f.fra, til: f.til,
-      lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(),
+      lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar,
     }), f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
     if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
   };
-  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse });
+  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false });
   const kanEndre = (t: Time) => leder || t.status !== "godkjent";
 
   return (
@@ -73,6 +73,9 @@ export function Timer() {
               <option value="">Internt arbeid (butikk, lager, verksted)</option>
               {aktive.map((p) => <option key={p.id} value={p.id}>{prosjektNavn(p.id)}</option>)}
             </select></label>
+          {f.prosjekt_id && (
+            <label className="row small"><input type="checkbox" checked={f.fakturerbar} onChange={(e) => sett({ fakturerbar: e.target.checked })} /> Fakturerbart (faktureres kunden)</label>
+          )}
           {hvem.lunsjtrekk && (
             <label className="row small"><input type="checkbox" checked={f.lunsj} onChange={(e) => sett({ lunsj: e.target.checked })} /> Hadde lunsj ({hvem.lunsj_min ?? 30} min trekkes)</label>
           )}
@@ -123,7 +126,7 @@ export function Timer() {
                     <div key={t.id} className={`item ${t.status === "godkjent" ? "godkjent" : "venter"}`}>
                       <div style={{ minWidth: 0 }}>
                         <div className="t">{hhmm(t.fra)}–{hhmm(t.til)} · {t2(t.timer)} t</div>
-                        <div className="s">{prosjektNavn(t.prosjekt_id)}{t.lunsj_min ? ` · lunsj ${t.lunsj_min} min` : ""}{t.km ? ` · ${t2(t.km)} km` : ""}{t.reisetid ? ` · reise ${t2(t.reisetid)} t` : ""}</div>
+                        <div className="s">{prosjektNavn(t.prosjekt_id)}{t.prosjekt_id && t.fakturerbar === false ? " · ikke fakturerbart" : ""}{t.lunsj_min ? ` · lunsj ${t.lunsj_min} min` : ""}{t.km ? ` · ${t2(t.km)} km` : ""}{t.reisetid ? ` · reise ${t2(t.reisetid)} t` : ""}</div>
                         {t.beskrivelse && <div className="s">{t.beskrivelse}</div>}
                       </div>
                       <div className="acts">
