@@ -7,6 +7,12 @@ import type { NyTime, Prosjekt } from "./timer";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
+/** Vare brukt på prosjektet (fra Visma) med FDV-lenke */
+export interface FdvVare { varenr: string; beskrivelse: string; antall: number; enhet: string; nobb_nr: string; fdv_url: string; skjul: boolean }
+/** Eget FDV-dokument lastet opp på prosjektet */
+export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string }
+/** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
+export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
 export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
@@ -47,6 +53,14 @@ export interface Api {
   slettBilde(id: string, sti: string): Promise<void>;
   /** Midlertidige lenker til bildene (gyldige i en time) */
   bildeUrler(stier: string[]): Promise<Record<string, string>>;
+  /** FDV: varer brukt på prosjektet og egne dokumenter */
+  fdv(prosjektId: string): Promise<{ varer: FdvVare[]; dok: FdvDok[] }>;
+  /** Leder: rett NOBB-nr, legg inn egen FDV-lenke eller skjul en vare (gjelder alle prosjekter) */
+  lagreVare(varenr: string, endring: Partial<Pick<FdvVare, "nobb_nr" | "fdv_url" | "skjul">>): Promise<void>;
+  lastOppFdv(prosjektId: string, fil: File): Promise<void>;
+  slettFdv(id: string, sti: string): Promise<void>;
+  /** Midlertidig lenke til et dokument (gyldig i en time) */
+  dokUrl(sti: string, lastNed?: string): Promise<string>;
   /** Leder: siste henting fra Visma */
   vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
 }
@@ -192,6 +206,40 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (!stier.length) return {};
       const r = ok(await sb.storage.from("bilder").createSignedUrls(stier, 3600)) as { path: string | null; signedUrl: string }[];
       return Object.fromEntries(r.filter((x) => x.path).map((x) => [x.path as string, x.signedUrl]));
+    },
+    async fdv(prosjektId) {
+      const [pv, dok] = await Promise.all([
+        sb.from("prosjekt_vare").select("varenr, beskrivelse, antall, enhet").eq("prosjekt_id", prosjektId).order("beskrivelse"),
+        sb.from("fdv_dok").select("id, navn, sti, storrelse, opprettet").eq("prosjekt_id", prosjektId).order("opprettet"),
+      ]);
+      const rader = ok(pv) as { varenr: string; beskrivelse: string; antall: number; enhet: string }[];
+      const info = new Map<string, { nobb_nr: string; fdv_url: string; skjul: boolean; beskrivelse: string }>();
+      for (let i = 0; i < rader.length; i += 200) {
+        const r = ok(await sb.from("varer").select("varenr, nobb_nr, fdv_url, skjul, beskrivelse").in("varenr", rader.slice(i, i + 200).map((x) => x.varenr))) as ({ varenr: string; nobb_nr: string; fdv_url: string; skjul: boolean; beskrivelse: string })[];
+        for (const v of r) info.set(v.varenr, v);
+      }
+      return {
+        varer: rader.map((x) => { const v = info.get(x.varenr); return { ...x, antall: Number(x.antall), nobb_nr: v?.nobb_nr ?? "", fdv_url: v?.fdv_url ?? "", skjul: v?.skjul ?? false }; }),
+        dok: ok(dok) as FdvDok[],
+      };
+    },
+    async lagreVare(varenr, endring) { ok(await sb.from("varer").update(endring).eq("varenr", varenr)); },
+    async lastOppFdv(prosjektId, fil) {
+      if (fil.size > 25 * 1024 * 1024) throw new Error("Filen er større enn 25 MB.");
+      if (!/pdf|jpeg|png/.test(fil.type)) throw new Error("Bare PDF og bilder (JPG/PNG) kan lastes opp.");
+      const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+      const ext = fil.type === "application/pdf" ? "pdf" : fil.type === "image/png" ? "png" : "jpg";
+      const sti = `${bedrift}/p-${prosjektId}/${crypto.randomUUID()}.${ext}`;
+      ok(await sb.storage.from("dokumenter").upload(sti, fil, { contentType: fil.type }));
+      const r = await sb.from("fdv_dok").insert({ prosjekt_id: prosjektId, navn: fil.name, sti, storrelse: fil.size });
+      if (r.error) { await sb.storage.from("dokumenter").remove([sti]); throw r.error; }
+    },
+    async slettFdv(id, sti) {
+      ok(await sb.from("fdv_dok").delete().eq("id", id));
+      await sb.storage.from("dokumenter").remove([sti]);
+    },
+    async dokUrl(sti, lastNed) {
+      return (ok(await sb.storage.from("dokumenter").createSignedUrl(sti, 3600, lastNed ? { download: lastNed } : undefined)) as { signedUrl: string }).signedUrl;
     },
     async vismaStatus() {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);

@@ -1,12 +1,39 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
-import { api } from "../lib/api";
+import { api, nobbLenke, type FdvDok, type FdvVare } from "../lib/api";
 import { langDato } from "../lib/ferie";
 import { t2, type Prosjekt } from "../lib/timer";
 
 /** Sluttdokumentasjon til kunden: utført arbeid, tilleggsarbeid, bilder. Skrives ut eller lagres som PDF fra nettleseren. */
 export function Sluttdok({ p }: { p: Prosjekt }) {
-  const { d, idag } = useApp();
+  const { d, idag, leder, kjor } = useApp();
+  const [fdv, setFdv] = useState<{ varer: FdvVare[]; dok: FdvDok[] } | null>(null);
+  const [medFdv, setMedFdv] = useState(true);
+  const [visSkjulte, setVisSkjulte] = useState(false);
+  const [laster, setLaster] = useState(false);
+  const hentFdv = () => api.fdv(p.id).then(setFdv).catch(() => setFdv({ varer: [], dok: [] }));
+  useEffect(() => { hentFdv(); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fdvVarer = (fdv?.varer ?? []).filter((v) => !v.skjul);
+  const lenke = (v: FdvVare) => v.fdv_url || (v.nobb_nr ? nobbLenke(v.nobb_nr) : "");
+  const lastOpp = async (filer: FileList | null) => {
+    if (!filer?.length) return;
+    setLaster(true);
+    await kjor(async () => { for (const f of Array.from(filer)) await api.lastOppFdv(p.id, f); }, filer.length > 1 ? `${filer.length} dokumenter lastet opp` : "Dokument lastet opp");
+    setLaster(false); hentFdv();
+  };
+  const aapne = async (x: FdvDok, lastNed?: boolean) => {
+    const vindu = window.open("", "_blank");
+    try { const u = await api.dokUrl(x.sti, lastNed ? x.navn : undefined); if (vindu) vindu.location.href = u; else location.href = u; }
+    catch { vindu?.close(); }
+  };
+  const skjul = (v: FdvVare, skjul: boolean) => kjor(() => api.lagreVare(v.varenr, { skjul })).then(hentFdv);
+  const rettNobb = (v: FdvVare) => {
+    const nr = window.prompt(`NOBB-nummer eller lenke til FDV for ${v.beskrivelse}`, v.fdv_url || v.nobb_nr);
+    if (nr == null) return;
+    const t = nr.trim();
+    const endring = /^https?:\/\//i.test(t) ? { fdv_url: t } : { nobb_nr: t.replace(/\D/g, ""), fdv_url: "" };
+    kjor(() => api.lagreVare(v.varenr, endring), "Lagret").then(hentFdv);
+  };
   const [urler, setUrler] = useState<Record<string, string>>({});
   const [medTimer, setMedTimer] = useState(true);
   const [medBilder, setMedBilder] = useState(true);
@@ -36,8 +63,52 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
           <label className="row"><input type="checkbox" checked={medDagbok} onChange={(e) => setMedDagbok(e.target.checked)} /> Utført arbeid (dagbok)</label>
           <label className="row"><input type="checkbox" checked={medTimer} onChange={(e) => setMedTimer(e.target.checked)} /> Timer</label>
           <label className="row"><input type="checkbox" checked={medBilder} onChange={(e) => setMedBilder(e.target.checked)} /> Bilder</label>
+          <label className="row"><input type="checkbox" checked={medFdv} onChange={(e) => setMedFdv(e.target.checked)} /> FDV-dokumentasjon</label>
         </div>
         <div><button className="btn primary" onClick={() => window.print()}>Lagre som PDF / skriv ut</button></div>
+      </section>
+
+      <section className="panel ikke-utskrift">
+        <h3 style={{ margin: 0 }}>FDV-dokumentasjon</h3>
+        <p className="small muted" style={{ margin: 0 }}>Varene hentes fra ordrene på prosjektet i Visma. Hver vare får lenke til NOBB, der FDV, produktdatablad og monteringsanvisning ligger under «Dokumentasjon». Last opp egne FDV-dokumenter (PDF) for det som ikke ligger i NOBB.</p>
+        {!fdv ? <p className="small muted">Henter varer …</p> : (
+          <>
+            {fdv.varer.length === 0 && <p className="small muted" style={{ margin: 0 }}>Ingen varer med NOBB-nummer på ordrene til dette prosjektet ennå.</p>}
+            {fdv.varer.length > 0 && (
+              <div style={{ overflowX: "auto" }}>
+                <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th><th>FDV</th>{leder && <th></th>}</tr></thead><tbody>
+                  {fdv.varer.filter((v) => visSkjulte || !v.skjul).map((v) => (
+                    <tr key={v.varenr} style={v.skjul ? { opacity: 0.5 } : undefined}>
+                      <td style={{ whiteSpace: "normal" }}>{v.beskrivelse}<div className="small muted">NOBB {v.nobb_nr || "–"}</div></td>
+                      <td>{t2(v.antall)} {v.enhet.toLowerCase()}</td>
+                      <td>{lenke(v) ? <a href={lenke(v)} target="_blank" rel="noreferrer">Åpne</a> : <span className="muted">–</span>}</td>
+                      {leder && <td className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
+                        <button className="btn sm" onClick={() => rettNobb(v)}>Rett</button>
+                        <button className="btn sm" onClick={() => skjul(v, !v.skjul)}>{v.skjul ? "Vis" : "Skjul"}</button>
+                      </td>}
+                    </tr>
+                  ))}
+                </tbody></table>
+              </div>
+            )}
+            {fdv.varer.some((v) => v.skjul) && <label className="row small"><input type="checkbox" checked={visSkjulte} onChange={(e) => setVisSkjulte(e.target.checked)} /> Vis skjulte varer ({fdv.varer.filter((v) => v.skjul).length})</label>}
+            <h4 style={{ margin: "8px 0 0" }}>Egne FDV-dokumenter</h4>
+            {fdv.dok.length === 0 && <p className="small muted" style={{ margin: 0 }}>Ingen lastet opp.</p>}
+            {fdv.dok.map((x) => (
+              <div key={x.id} className="row" style={{ justifyContent: "space-between" }}>
+                <span>{x.navn}{x.storrelse ? <span className="small muted"> · {(x.storrelse / 1048576).toFixed(1).replace(".", ",")} MB</span> : null}</span>
+                <span className="row" style={{ gap: 4 }}>
+                  <button className="btn sm" onClick={() => aapne(x)}>Åpne</button>
+                  <button className="btn sm" onClick={() => aapne(x, true)}>Last ned</button>
+                  <button className="btn sm no" onClick={() => kjor(() => api.slettFdv(x.id, x.sti), "Slettet").then(hentFdv)}>Slett</button>
+                </span>
+              </div>
+            ))}
+            <div><label className="btn sm">{laster ? "Laster opp …" : "Last opp FDV (PDF)"}
+              <input type="file" accept="application/pdf,image/jpeg,image/png" multiple hidden disabled={laster} onChange={(e) => { lastOpp(e.target.files); e.target.value = ""; }} /></label></div>
+            <p className="small muted" style={{ margin: 0 }}>Tips: send kunden PDF-en av sluttdokumentasjonen sammen med de opplastede dokumentene. Lenkene til NOBB i PDF-en er klikkbare.</p>
+          </>
+        )}
       </section>
 
       <article className="panel utskrift">
@@ -81,6 +152,30 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
             <div className="utskrift-bilder">
               {bilder.slice().reverse().map((b) => urler[b.sti] ? <figure key={b.id}><img src={urler[b.sti]} alt={b.tekst || "Bilde"} />{b.tekst && <figcaption className="small">{b.tekst}</figcaption>}</figure> : null)}
             </div>
+          </>
+        )}
+        {medFdv && (fdvVarer.length > 0 || (fdv?.dok.length ?? 0) > 0) && (
+          <>
+            <h2>FDV-dokumentasjon</h2>
+            <p className="small" style={{ margin: "0 0 6px" }}>Forvaltning, drift og vedlikehold for produktene som er brukt. Dokumentasjonen for hver vare ligger hos NOBB (fanen «Dokumentasjon» på lenken).</p>
+            {fdvVarer.length > 0 && (
+              <table className="tbl" style={{ breakInside: "auto" }}><thead><tr><th>Produkt</th><th>NOBB-nr</th><th>Antall</th><th>Dokumentasjon</th></tr></thead><tbody>
+                {fdvVarer.map((v) => (
+                  <tr key={v.varenr} style={{ breakInside: "avoid" }}>
+                    <td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td>
+                    <td>{v.nobb_nr}</td>
+                    <td>{t2(v.antall)} {v.enhet.toLowerCase()}</td>
+                    <td style={{ whiteSpace: "normal", wordBreak: "break-all" }}>{lenke(v) && <a href={lenke(v)}>{lenke(v).replace(/^https?:\/\/(www\.)?/, "")}</a>}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            )}
+            {(fdv?.dok.length ?? 0) > 0 && (
+              <>
+                <h3 style={{ marginBottom: 4 }}>Vedlagte dokumenter</h3>
+                <ul style={{ margin: 0 }}>{fdv!.dok.map((x) => <li key={x.id}>{x.navn}</li>)}</ul>
+              </>
+            )}
           </>
         )}
         <p className="small muted" style={{ marginTop: 16 }}>Spørsmål om arbeidet? Kontakt N L Austnes AS på 70 21 01 09.</p>

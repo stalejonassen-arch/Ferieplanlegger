@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v2)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v3: varer til FDV)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -52,6 +52,61 @@ async function alle(tok: string, firma: number, tabell: string, felter: string[]
 
 const s = (v: unknown) => (v == null ? "" : String(v).trim());
 
+/** NOBB-nummer: fra vareens nettside (nobb.no/nobbnr/12345678) eller et varenummer på 7–8 siffer. */
+export function finnNobb(varenr: string, nettside = "") {
+  const m = nettside.match(/nobbnr\/(\d{6,9})/i);
+  if (m) return m[1];
+  return /^\d{7,8}$/.test(varenr) ? varenr : "";
+}
+
+async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number }, klasseNr: number) {
+  const lf = await felt(tok, "OrderLine");
+  const pf = `orgUnit${klasseNr}`;
+  const pFelt = await felt(tok, "Product");
+  const pInfo = velg(pFelt, ["eanItemNo", "webPage"]);
+  const linjeFelt = ["orderNo", "productNo", pf, ...velg(lf, ["description", "totalQuantity", "orderType"])];
+  const ekstra = [lf.has("joinup_Product") && pInfo.length ? `joinup_Product { ${pInfo.join(" ")} }` : "", lf.has("joinup_Unit") ? "joinup_Unit { description }" : ""].filter(Boolean);
+  let linjer: Record<string, unknown>[];
+  try { linjer = await alle(tok, b.visma_firma_nr, "orderLine", [...linjeFelt, ...ekstra], `{ ${pf}: { _gt: 0 } }`); }
+  catch { linjer = await alle(tok, b.visma_firma_nr, "orderLine", linjeFelt, `{ ${pf}: { _gt: 0 } }`); }
+
+  const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
+  const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
+  // Summer per prosjekt, vare og ordretype. Samme vare kan ligge både på innkjøp og salg; da brukes den største summen.
+  const sum = new Map<string, number>();
+  const per = new Map<string, { prosjekt_id: string; varenr: string; beskrivelse: string; antall: number; enhet: string }>();
+  const varer = new Map<string, { varenr: string; beskrivelse: string; nobb_nr: string; ean: string }>();
+  for (const l of linjer) {
+    const vnr = s(l.productNo), p = pid.get(Number(l[pf]));
+    if (!vnr || !p) continue;
+    const pr = (l.joinup_Product ?? {}) as Record<string, unknown>;
+    const nobb = finnNobb(vnr, s(pr.webPage));
+    if (!nobb) continue; // fritekstlinjer (frakt, arbeid o.l.) har ikke FDV
+    const key = `${p}|${vnr}`, tk = `${key}|${s(l.orderType)}`;
+    sum.set(tk, (sum.get(tk) ?? 0) + (Number(l.totalQuantity) || 0));
+    const r = per.get(key) ?? { prosjekt_id: p, varenr: vnr, beskrivelse: s(l.description), antall: 0, enhet: s((l.joinup_Unit as Record<string, unknown> | null)?.description) };
+    r.antall = Math.max(r.antall, sum.get(tk)!);
+    per.set(key, r);
+    if (!varer.has(vnr)) varer.set(vnr, { varenr: vnr, beskrivelse: s(l.description), nobb_nr: nobb, ean: s(pr.eanItemNo) });
+  }
+  const naa = new Date().toISOString();
+  // Varer: ikke overskriv det leder har rettet
+  const { data: manuelle } = await sb.from("varer").select("varenr").eq("bedrift_id", b.id).eq("manuell", true);
+  const låst = new Set((manuelle ?? []).map((x) => x.varenr));
+  const vr = [...varer.values()].filter((v) => !låst.has(v.varenr)).map((v) => ({ ...v, bedrift_id: b.id, oppdatert: naa }));
+  for (let i = 0; i < vr.length; i += 500) {
+    const { error } = await sb.from("varer").upsert(vr.slice(i, i + 500), { onConflict: "bedrift_id,varenr" });
+    if (error) throw error;
+  }
+  const rader = [...per.values()].filter((r) => r.antall > 0).map((r) => ({ ...r, antall: Math.round(r.antall * 1000) / 1000, bedrift_id: b.id, oppdatert: naa }));
+  for (let i = 0; i < rader.length; i += 500) {
+    const { error } = await sb.from("prosjekt_vare").upsert(rader.slice(i, i + 500), { onConflict: "prosjekt_id,varenr" });
+    if (error) throw error;
+  }
+  await sb.from("prosjekt_vare").delete().eq("bedrift_id", b.id).lt("oppdatert", naa);
+  return rader.length;
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   try {
@@ -71,6 +126,12 @@ Deno.serve(async (req) => {
       const itn = items?.type.ofType?.ofType?.name ?? items?.type.ofType?.name ?? items?.type.name;
       const ft = await felt(tok, itn);
       const d = await gql(tok, `{ availableCompanies { items { ${[...ft].join(" ")} } } }`);
+      return Response.json(d);
+    }
+    if (url.searchParams.get("prove")) {
+      // Feilsøking: ?prove=orderLine&felt=productNo,description&filter={...}&n=10
+      const f = url.searchParams.get("filter");
+      const d = await gql(tok, `{ useCompany(no: ${bedrifter?.[0]?.visma_firma_nr}) { ${url.searchParams.get("prove")}(first: ${Number(url.searchParams.get("n")) || 10}${f ? `, filter: ${f}` : ""}) { items { ${(url.searchParams.get("felt") ?? "").split(",").join(" ")} } } } }`);
       return Response.json(d);
     }
     if (url.searchParams.get("type")) {
@@ -160,7 +221,13 @@ Deno.serve(async (req) => {
       } catch (e) {
         ordreAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`;
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      // Varer brukt på prosjektene (ordrelinjer) til FDV. Én gang i timen, eller med ?varer=1.
+      let vareAntall: number | string = "hoppet over";
+      if (url.searchParams.get("varer") || new Date().getUTCMinutes() < 15) {
+        try { vareAntall = await synkVarer(tok, b, pk.nr); }
+        catch (e) { vareAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

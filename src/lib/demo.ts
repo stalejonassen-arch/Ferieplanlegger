@@ -1,6 +1,6 @@
 // Demomodus: samme oppførsel som databasen, men i minnet i nettleseren.
 // Brukes når appen kjøres uten Supabase-nøkler.
-import type { Api } from "./api";
+import type { Api, FdvDok, FdvVare } from "./api";
 import type { Ansatt, Data, Soknad } from "./ferie";
 import { addDays, isoOf } from "./ferie";
 import { mandag, varighet, type Time } from "./timer";
@@ -61,6 +61,15 @@ function startdata(): Data {
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 500 };
 }
+
+const demoVarer: FdvVare[] = [
+  { varenr: "42157742", beskrivelse: "GIPSPL WAB 12,5X900X2400MM", antall: 48, enhet: "STK", nobb_nr: "42157742", fdv_url: "", skjul: false },
+  { varenr: "11293347", beskrivelse: "BYGGFOLIE 0,15MM 2,6X15M ISOLA", antall: 2, enhet: "RL", nobb_nr: "11293347", fdv_url: "", skjul: false },
+  { varenr: "47410886", beskrivelse: "DØR MD MK EI60/25DB 9X21H HV", antall: 2, enhet: "SET", nobb_nr: "47410886", fdv_url: "", skjul: false },
+  { varenr: "60118313", beskrivelse: "AVFALLSEKK KLAR 240L 10STK", antall: 3, enhet: "PAK", nobb_nr: "60118313", fdv_url: "", skjul: true },
+];
+const vareEndring: Record<string, Partial<FdvVare>> = {};
+const demoDok: (FdvDok & { pid: string })[] = [];
 
 export function demoApi(): Api {
   const d = startdata();
@@ -195,6 +204,17 @@ export function demoApi(): Api {
       ] : [];
     },
     async slettTillegg(id) { d.tillegg = d.tillegg.filter((y) => y.id !== id); endret(); },
+    async fdv(pid) {
+      const varer = pid === "p2" ? demoVarer : [];
+      return { varer: varer.map((v) => ({ ...v, ...(vareEndring[v.varenr] ?? {}) })), dok: demoDok.filter((x) => x.pid === pid) };
+    },
+    async lagreVare(varenr, endring) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      vareEndring[varenr] = { ...(vareEndring[varenr] ?? {}), ...endring }; endret();
+    },
+    async lastOppFdv(pid, fil) { demoDok.push({ pid, id: nyId(), navn: fil.name, sti: URL.createObjectURL(fil), storrelse: fil.size, opprettet: new Date().toISOString() }); endret(); },
+    async slettFdv(id) { const i = demoDok.findIndex((x) => x.id === id); if (i >= 0) demoDok.splice(i, 1); endret(); },
+    async dokUrl(sti) { return sti; },
     async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async lagreProsjekt(p, nyKunde) {
