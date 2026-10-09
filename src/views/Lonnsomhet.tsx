@@ -17,7 +17,8 @@ export function Lonnsomhet({ p }: { p: Prosjekt }) {
   const fakt = timer.filter((t) => t.fakturerbar !== false).reduce((n, t) => n + Number(t.timer), 0);
   const salg = (ordrer ?? []).filter((o) => o.transaksjonstype !== 2);
   const s = (f: (o: ProsjektOrdre) => number) => salg.reduce((n, o) => n + f(o), 0);
-  const omsetning = s((o) => o.sum_netto), db = s((o) => o.dekningsbidrag), fakturert = s((o) => o.fakturert);
+  // I Visma er «ordresum» det som gjenstår å fakturere; totalen er fakturert + gjenstår
+  const fakturert = s((o) => o.fakturert), gjenstaar = s((o) => o.sum_netto), omsetning = fakturert + gjenstaar, db = s((o) => o.dekningsbidrag);
 
   return (
     <section className="panel">
@@ -25,25 +26,26 @@ export function Lonnsomhet({ p }: { p: Prosjekt }) {
       <p className="small muted" style={{ margin: 0 }}>Ordrer i Visma på kundeprosjektet, oppdatert hvert kvarter. Bare du som leder ser denne siden.</p>
       {feil && <p className="small" style={{ color: "var(--warn)" }}>{feil}</p>}
       <div className="legend">
-        <div><span className="label">Ordresum eks. mva</span><span className="v">{kr(omsetning)}</span></div>
+        <div><span className="label">Omsetning eks. mva</span><span className="v">{kr(omsetning)}</span></div>
         <div><span className="label">Dekningsbidrag</span><span className="v">{kr(db)}</span></div>
         <div><span className="label">DG</span><span className="v">{omsetning ? `${Math.round((db / omsetning) * 1000) / 10} %` : "–"}</span></div>
         <div><span className="label">Fakturert</span><span className="v">{kr(fakturert)}</span></div>
+        <div><span className="label">Gjenstår å fakturere</span><span className="v" style={gjenstaar > 0 ? { color: "var(--warn)" } : undefined}>{kr(gjenstaar)}</span></div>
         <div><span className="label">Timer brukt</span><span className="v">{t2(sumT)}</span></div>
         <div><span className="label">Fakturerbare timer</span><span className="v">{t2(fakt)}</span></div>
       </div>
       {ordrer === null ? <div className="empty">Henter ordrer …</div> : ordrer.length ? (
         <div className="scroll" style={{ border: 0 }}>
           <table className="tbl">
-            <thead><tr><th>Ordre</th><th>Dato</th><th>Sum</th><th>DB</th><th>Fakturert</th></tr></thead>
+            <thead><tr><th>Ordre</th><th>Dato</th><th>Fakturert</th><th>Gjenstår</th><th>DB</th></tr></thead>
             <tbody>
               {ordrer.map((o) => (
                 <tr key={o.visma_ordrenr}>
-                  <td className="n">{o.visma_ordrenr}{o.transaksjonstype === 2 ? <span className="small muted"> innkjøp</span> : null}</td>
+                  <td className="n">{o.visma_ordrenr}{o.ordretype === 3 ? <span className="small muted"> kreditnota</span> : null}</td>
                   <td>{o.ordredato ? kortDato(o.ordredato) : "–"}</td>
-                  <td className="n">{kr(o.sum_netto)}</td>
-                  <td className="n">{kr(o.dekningsbidrag)}</td>
                   <td className="n">{o.fakturert ? kr(o.fakturert) : "–"}</td>
+                  <td className="n">{o.sum_netto ? kr(o.sum_netto) : "–"}</td>
+                  <td className="n">{kr(o.dekningsbidrag)}</td>
                 </tr>
               ))}
             </tbody>
