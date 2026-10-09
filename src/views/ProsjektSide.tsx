@@ -8,8 +8,10 @@ import { Bilder } from "./Bilder";
 import { Avvik } from "./Avvik";
 import { Sluttdok } from "./Sluttdok";
 import { Lonnsomhet } from "./Lonnsomhet";
+import { HendelseListe } from "./Dagslogg";
+import { dagHendelser, lokalDato } from "../lib/dag";
 
-type Del = "oversikt" | "dagbok" | "tillegg" | "bilder" | "avvik" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "historikk" | "dagbok" | "tillegg" | "bilder" | "avvik" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder } = useApp();
@@ -23,7 +25,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     avvik: d.avvik.filter((x) => x.prosjekt_id === p.id && x.status !== "lukket").length,
   };
   const deler: [Del, string][] = [
-    ["oversikt", "Oversikt"], ["dagbok", `Dagbok${antall.dagbok ? ` (${antall.dagbok})` : ""}`],
+    ["oversikt", "Oversikt"], ["historikk", "Historikk"], ["dagbok", `Dagbok${antall.dagbok ? ` (${antall.dagbok})` : ""}`],
     ["tillegg", `Tillegg${antall.tillegg ? ` (${antall.tillegg})` : ""}`], ["bilder", `Bilder${antall.bilder ? ` (${antall.bilder})` : ""}`],
     ["avvik", `Avvik${antall.avvik ? ` (${antall.avvik})` : ""}`],
     ...(leder ? [["okonomi", "Økonomi"] as [Del, string]] : []), ["sluttdok", "Sluttdokumentasjon"],
@@ -45,12 +47,51 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         {deler.map(([x, t]) => <button key={x} role="tab" aria-selected={del === x} onClick={() => setDel(x)}>{t}</button>)}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
+      {del === "historikk" && <Historikk p={p} />}
       {del === "dagbok" && <DagbokDel p={p} />}
       {del === "tillegg" && <TilleggDel p={p} />}
       {del === "bilder" && <section className="panel"><Bilder bilder={d.bilder.filter((b) => b.prosjekt_id === p.id)} til={{ prosjekt_id: p.id }} tittel="Bilder fra prosjektet" /></section>}
       {del === "avvik" && <Avvik prosjektId={p.id} />}
       {del === "okonomi" && <Lonnsomhet p={p} />}
       {del === "sluttdok" && <Sluttdok p={p} />}
+    </>
+  );
+}
+
+// ------------------------------------------------------------ Historikk per dag
+
+const UKEDAG = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+
+/** Alt som har skjedd på prosjektet, dag for dag: hvem som var der, timer, dagbok, bilder, avvik og tillegg. */
+function Historikk({ p }: { p: Prosjekt }) {
+  const { d } = useApp();
+  const [antall, setAntall] = useState(14);
+  const alle = new Set(d.ansatte.map((a) => a.id));
+  const datoer = [...new Set([
+    ...d.timer.filter((t) => t.prosjekt_id === p.id).map((t) => t.dato),
+    ...d.dagbok.filter((x) => x.prosjekt_id === p.id).map((x) => x.dato),
+    ...d.bilder.filter((b) => b.prosjekt_id === p.id && !b.avvik_id).map((b) => lokalDato(b.opprettet)),
+    ...d.avvik.filter((x) => x.prosjekt_id === p.id).map((x) => lokalDato(x.opprettet)),
+    ...d.tillegg.filter((x) => x.prosjekt_id === p.id).map((x) => lokalDato(x.opprettet)),
+  ])].sort().reverse();
+  if (!datoer.length) return <section className="panel"><p className="muted">Ingenting registrert på prosjektet ennå.</p></section>;
+  return (
+    <>
+      {datoer.slice(0, antall).map((dato) => {
+        const h = dagHendelser(d, dato, alle).filter((x) => x.prosjekt_id === p.id);
+        const folk = [...new Set(h.map((x) => x.ansatt_id))].map((id) => d.ansatte.find((a) => a.id === id)?.navn.split(" ")[0]).filter(Boolean);
+        const timer = h.reduce((n, x) => n + (x.type === "timer" ? Number(x.t.timer) : 0), 0);
+        return (
+          <section key={dato} className="panel">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0 }}>{UKEDAG[new Date(dato + "T00:00:00Z").getUTCDay()]} {langDato(dato)}</h3>
+              <span className="small muted">{folk.join(", ")}{timer ? ` · ${t2(timer)} t` : ""}</span>
+            </div>
+            <HendelseListe h={h} visNavn />
+          </section>
+        );
+      })}
+      {datoer.length > antall && <div><button className="btn" onClick={() => setAntall(antall + 14)}>Vis eldre dager ({datoer.length - antall})</button></div>}
     </>
   );
 }

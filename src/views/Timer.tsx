@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Dagslogg } from "./Dagslogg";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
@@ -17,6 +18,9 @@ export function Timer() {
   const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true });
   const [f, setF] = useState(tom);
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
+  // Dagen som vises i dagsloggen følger datoen i skjemaet, og kan velges fra ukelista
+  const [valgtDag, setValgtDag] = useState(idag);
+  useEffect(() => { if (f.dato) setValgtDag(f.dato); }, [f.dato]);
 
   const aktive = d.prosjekter.filter((p) => p.aktiv || p.id === f.prosjekt_id);
   const kunde = (id: string | null) => d.kunder.find((k) => k.id === id)?.navn;
@@ -117,8 +121,8 @@ export function Timer() {
               if (!rader.length && (new Date(dato).getUTCDay() % 6 === 0 || hd)) return null;
               return (
                 <div key={dato}>
-                  <div className="small" style={{ fontWeight: 600, margin: "4px 0" }}>
-                    {DAG[new Date(dato + "T00:00:00Z").getUTCDay()]} {kortDato(dato)}{hd ? ` · ${hd}` : ""}
+                  <div className="small" style={{ fontWeight: 600, margin: "4px 0", cursor: "pointer" }} onClick={() => setValgtDag(dato)} title="Vis hele dagen">
+                    <span style={dato === valgtDag ? { textDecoration: "underline" } : undefined}>{DAG[new Date(dato + "T00:00:00Z").getUTCDay()]} {kortDato(dato)}</span>{hd ? ` · ${hd}` : ""}
                     {dag && <span className="muted"> · {t2(dag.timer - dag.lunsjtrekk)} t</span>}
                   </div>
                   {dag?.lunsjavvik && <div className="small" style={{ color: "var(--warn)" }}>Lunsj er ikke registrert – {lunsjStd} min trekkes.</div>}
@@ -149,6 +153,7 @@ export function Timer() {
           )}
         </section>
       </div>
+      <Dagslogg dato={valgtDag} setDato={setValgtDag} ansattId={hvem.id} />
     </>
   );
 }
