@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../App";
 import { api, nobbLenke } from "../lib/api";
 import { kortDato, langDato, sorterAnsatte } from "../lib/ferie";
-import { aarsforbruk, andel, gjentak, KATEGORI, kr, STATUS, verdi, type Utstyr as U, type UtstyrKategori, type UtstyrStatus } from "../lib/utstyr";
+import { aarsforbruk, KATEGORI, kr, kvotestatus, nyttMotGammelt, STANDARD_KVOTER, STATUS, verdi, type Utstyr as U, type UtstyrKategori, type UtstyrStatus } from "../lib/utstyr";
 
 type Filter = UtstyrKategori | "alle";
 
@@ -21,7 +21,8 @@ export function Utstyr() {
 
   const egne = alle.filter((x) => x.ansatt_id === hvem.id);
   const sum = aarsforbruk(alle, hvem.id, aar);
-  const igjen = gjentak(alle, hvem.id, g.sammeMnd).filter(([, x]) => x.dato >= `${aar - 1}`);
+  const kvoter = kvotestatus(alle, hvem.id, g.kvoter ?? STANDARD_KVOTER, idag);
+  const bytter = nyttMotGammelt(alle, hvem.id);
   const konto = d.prosjekter.find((p) => p.id === hvem.utstyr_prosjekt_id);
   const antall = (k: UtstyrKategori) => egne.filter((x) => x.kategori === k).length;
   const vist = egne.filter((x) => (filter === "alle" || x.kategori === filter) && (visLevert || filter !== "verktoy" || !["levert", "tapt"].includes(x.status)));
@@ -47,27 +48,47 @@ export function Utstyr() {
 
       <section className="panel">
         <h2 style={{ margin: 0 }}>{hvem.id === meg.id ? "Mitt utstyr" : `Utstyr – ${hvem.navn}`} {aar}</h2>
-        <div className="legend">
-          <Maaler navn="Arbeidstøy" sum={sum.arbeidstoy.sum} grense={g.arbeidstoy} siste={sum.arbeidstoy.siste} uttak={sum.arbeidstoy.uttak} />
-          <Maaler navn="Verktøy" sum={sum.verktoy.sum} grense={g.verktoy} siste={sum.verktoy.siste} uttak={sum.verktoy.uttak} />
-          <Maaler navn="Forbruk" sum={sum.forbruk.sum} grense={null} siste={sum.forbruk.siste} uttak={sum.forbruk.uttak} />
+        <div className="kvoter" aria-label="Kvoter for arbeidstøy og vernesko">
+          {kvoter.map((k) => (
+            <div key={k.type} className={`kvote${k.over ? " over" : k.fullt ? " full" : ""}`}>
+              <span className="label">{k.navn}</span>
+              <span className="v">{k.brukt}<small> / {k.maks}</small></span>
+              <span className="prikker" aria-hidden="true">{Array.from({ length: Math.max(k.maks, k.brukt) }, (_, i) => <i key={i} className={i < k.brukt ? (i >= k.maks ? "o" : "b") : ""} />)}</span>
+              <span className="small muted">{k.aar === 1 ? "siste 12 mnd" : `siste ${k.aar * 12} mnd`}{k.ledigFra ? ` · ny fra ${kortDato(k.ledigFra)}` : ""}</span>
+            </div>
+          ))}
         </div>
-        {igjen.length > 0 && (
-          <p className="small varsel" style={{ margin: 0 }}>
-            <b>Tatt ut igjen innen {g.sammeMnd} måneder:</b> {igjen.map(([f, x]) => `${x.beskrivelse.toLowerCase()} (${kortDato(f.dato)} og ${kortDato(x.dato)})`).join(", ")}
-          </p>
+        {bytter.length > 0 && (
+          <div className="bytte">
+            <b>Nytt mot gammelt</b>
+            {bytter.map(([gml, ny]) => (
+              <div key={ny.id} className="row" style={{ justifyContent: "space-between" }}>
+                <span className="small">Ny <b>{ny.beskrivelse.toLowerCase()}</b> {kortDato(ny.dato)} – har fra før {gml.beskrivelse.toLowerCase()} ({kortDato(gml.dato)}). Er den gamle levert inn?</span>
+                <span className="row" style={{ gap: 6 }}>
+                  <button className="btn sm primary" onClick={() => kjor(async () => { await api.lagreUtstyr({ id: gml.id, status: "levert" }); await api.lagreUtstyr({ id: ny.id, bytte_avklart: true }); }, "Den gamle er merket levert inn")}>Ja, levert inn</button>
+                  <button className="btn sm" onClick={() => kjor(async () => { await api.lagreUtstyr({ id: ny.id, bytte_avklart: true }); }, "Merket: beholder begge")}>Beholder begge</button>
+                </span>
+              </div>
+            ))}
+          </div>
         )}
+        <div className="legend">
+          <Maaler navn={`Arbeidstøy ${aar}`} sum={sum.arbeidstoy.sum} siste={sum.arbeidstoy.siste} uttak={sum.arbeidstoy.uttak} />
+          <Maaler navn="Verneutstyr" sum={sum.verneutstyr.sum} siste={sum.verneutstyr.siste} uttak={sum.verneutstyr.uttak} />
+          <Maaler navn="Verktøy" sum={sum.verktoy.sum} siste={sum.verktoy.siste} uttak={sum.verktoy.uttak} />
+          <Maaler navn="Forbruk" sum={sum.forbruk.sum} siste={sum.forbruk.siste} uttak={sum.forbruk.uttak} />
+        </div>
         <p className="small muted" style={{ margin: 0 }}>
           {konto ? <>Hentes fra utstyrskontoen i Visma: <b>{konto.visma_nr} {konto.navn}</b>. Nye uttak kommer inn innen en time. Beløp er utsalgspris eks. mva.</>
             : <>{hvem.navn.split(" ")[0]} har ingen utstyrskonto i Visma ennå{leder ? " – velg den under Oppsett." : "."}</>}
-          {(g.arbeidstoy || g.verktoy) ? ` Grense per år: ${[g.arbeidstoy && `arbeidstøy ${kr(g.arbeidstoy)}`, g.verktoy && `verktøy ${kr(g.verktoy)}`].filter(Boolean).join(", ")}.` : ""}
+{" "}Verneutstyr (hansker, briller, hørselvern o.l.) gis etter behov – vernesko har kvote.
         </p>
       </section>
 
       <section className="panel">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="hurtig" role="tablist" aria-label="Kategori">
-            {(["verktoy", "arbeidstoy", "forbruk"] as UtstyrKategori[]).map((k) => (
+            {(["verktoy", "arbeidstoy", "verneutstyr", "forbruk"] as UtstyrKategori[]).map((k) => (
               <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{KATEGORI[k]} ({antall(k)})</button>
             ))}
             <button type="button" aria-pressed={filter === "alle"} onClick={() => setFilter("alle")}>Alle ({egne.length})</button>
@@ -81,7 +102,7 @@ export function Utstyr() {
         {vist.length === 0 ? <p className="small muted">Ingenting registrert her.</p> : (
           <div className="list">
             {vist.map((x) => (
-              <div key={x.id} className={`item${x.kategori === "verktoy" ? " godkjent" : x.kategori === "arbeidstoy" ? " venter" : ""}`}>
+              <div key={x.id} className={`item${x.kategori === "verktoy" ? " godkjent" : x.kategori === "arbeidstoy" || x.kategori === "verneutstyr" ? " venter" : ""}`}>
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0 }}>
                   {x.bilde_sti && urler[x.bilde_sti] && <img src={urler[x.bilde_sti]} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 6, flex: "none" }} />}
                   <div style={{ minWidth: 0 }}>
@@ -110,19 +131,12 @@ export function Utstyr() {
   );
 }
 
-function Maaler({ navn, sum, grense, siste, uttak }: { navn: string; sum: number; grense: number | null; siste: string | null; uttak: number }) {
-  const a = andel(sum, grense);
-  const farge = a == null ? undefined : a >= 1 ? "var(--warn)" : a >= 0.8 ? "var(--pending-ink)" : undefined;
+function Maaler({ navn, sum, siste, uttak }: { navn: string; sum: number; siste: string | null; uttak: number }) {
   return (
     <div>
       <span className="label">{navn}</span>
-      <span className="v" style={{ color: farge, fontSize: 20 }}>{kr(sum)}</span>
-      {a != null && (
-        <div className="bar" style={{ height: 8 }} title={`${Math.round(a * 100)} % av ${kr(grense!)}`}>
-          <span style={{ width: `${Math.min(100, a * 100)}%`, background: farge ?? "var(--approved)" }} />
-        </div>
-      )}
-      <span className="small muted">{uttak ? `${uttak} uttak · sist ${kortDato(siste!)}` : "Ingen uttak"}{a != null ? ` · ${Math.round(a * 100)} %` : ""}</span>
+      <span className="v" style={{ fontSize: 20 }}>{kr(sum)}</span>
+      <span className="small muted">{uttak ? `${uttak} uttak · sist ${kortDato(siste!)}` : "Ingen uttak"}</span>
     </div>
   );
 }
@@ -206,7 +220,7 @@ function NyttVerktoy({ ansattId, lukk }: { ansattId: string; lukk: () => void })
           <input type="text" value={f.serienr} onChange={(e) => setF({ ...f, serienr: e.target.value })} /></label>
         <label className="field kort"><span className="label">Kategori</span>
           <select value={f.kategori} onChange={(e) => setF({ ...f, kategori: e.target.value as UtstyrKategori })}>
-            <option value="verktoy">Verktøy</option><option value="arbeidstoy">Arbeidstøy</option>
+            <option value="verktoy">Verktøy</option><option value="arbeidstoy">Arbeidstøy</option><option value="verneutstyr">Verneutstyr</option>
           </select></label>
         <label className="field kort"><span className="label">Fått dato</span>
           <input type="date" value={f.dato} onChange={(e) => setF({ ...f, dato: e.target.value })} /></label>
@@ -220,30 +234,29 @@ function NyttVerktoy({ ansattId, lukk }: { ansattId: string; lukk: () => void })
   );
 }
 
-/** Leder: alle ansatte – forbruk i år mot grensene */
+/** Leder: alle ansatte – forbruk i år, kvoter som er brukt opp og verktøybytter som ikke er avklart */
 function Oversikt({ aar, velg }: { aar: number; velg: (id: string) => void }) {
-  const { d } = useApp();
+  const { d, idag } = useApp();
   const alle = d.utstyr ?? [];
-  const g = d.utstyrGrenser ?? { arbeidstoy: null, verktoy: null, sammeMnd: 6 };
-  const pst = (sum: number, grense: number | null) => { const a = andel(sum, grense); return a == null ? "" : ` (${Math.round(a * 100)} %)`; };
-  const farge = (sum: number, grense: number | null) => { const a = andel(sum, grense); return a != null && a >= 1 ? { color: "var(--warn)", fontWeight: 600 } : undefined; };
+  const kv = d.utstyrGrenser?.kvoter ?? STANDARD_KVOTER;
   return (
     <section className="panel">
       <h2 style={{ margin: 0 }}>Alle ansatte {aar}</h2>
       <div style={{ overflowX: "auto" }}>
-        <table className="tbl"><thead><tr><th>Ansatt</th><th>Arbeidstøy</th><th>Verktøy</th><th>Forbruk</th><th>Sist uttak</th><th>Verktøy i bruk</th></tr></thead><tbody>
+        <table className="tbl"><thead><tr><th>Ansatt</th><th>Arbeidstøy</th><th>Verneutstyr</th><th>Verktøy</th><th>Forbruk</th><th>Kvote brukt opp</th><th>Bytte ikke avklart</th></tr></thead><tbody>
           {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => {
             const s = aarsforbruk(alle, a.id, aar);
-            const sist = [s.arbeidstoy.siste, s.verktoy.siste, s.forbruk.siste].filter(Boolean).sort().pop();
-            const iBruk = alle.filter((x) => x.ansatt_id === a.id && x.kategori === "verktoy" && x.status === "i_bruk").length;
+            const fulle = kvotestatus(alle, a.id, kv, idag).filter((k) => k.fullt);
+            const bytter = nyttMotGammelt(alle, a.id).length;
             return (
               <tr key={a.id} style={{ cursor: "pointer" }} onClick={() => velg(a.id)}>
                 <td><button className="btn sm" style={{ border: 0, background: "none", padding: 0, textDecoration: "underline" }}>{a.navn}</button>{!a.utstyr_prosjekt_id && <span className="small muted"> · ingen konto</span>}</td>
-                <td style={farge(s.arbeidstoy.sum, g.arbeidstoy)}>{s.arbeidstoy.sum ? kr(s.arbeidstoy.sum) + pst(s.arbeidstoy.sum, g.arbeidstoy) : ""}</td>
-                <td style={farge(s.verktoy.sum, g.verktoy)}>{s.verktoy.sum ? kr(s.verktoy.sum) + pst(s.verktoy.sum, g.verktoy) : ""}</td>
+                <td>{s.arbeidstoy.sum ? kr(s.arbeidstoy.sum) : ""}</td>
+                <td>{s.verneutstyr.sum ? kr(s.verneutstyr.sum) : ""}</td>
+                <td>{s.verktoy.sum ? kr(s.verktoy.sum) : ""}</td>
                 <td>{s.forbruk.sum ? kr(s.forbruk.sum) : ""}</td>
-                <td>{sist ? kortDato(sist) : ""}</td>
-                <td>{iBruk || ""}</td>
+                <td>{fulle.map((k) => <span key={k.type} style={k.over ? { color: "var(--warn)", fontWeight: 600 } : undefined}>{k.navn.toLowerCase()} {k.brukt}/{k.maks}{" "}</span>)}</td>
+                <td>{bytter || ""}</td>
               </tr>
             );
           })}

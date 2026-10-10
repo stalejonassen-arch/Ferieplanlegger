@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { sorterAnsatte, type Ansatt } from "../lib/ferie";
-import { kr } from "../lib/utstyr";
+import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
 
 export function Oppsett() {
   const { d, aar, kjor } = useApp();
@@ -129,23 +129,31 @@ export function Oppsett() {
 /** Utstyrskonto per ansatt (prosjektet i Visma der verktøy og arbeidstøy føres) og grenser per år */
 function UtstyrOppsett({ lagre }: { lagre: (a: Ansatt, e: Partial<Ansatt>) => Promise<boolean> }) {
   const { d, kjor } = useApp();
-  const g = d.utstyrGrenser ?? { arbeidstoy: null, verktoy: null, sammeMnd: 6 };
-  const [at, setAt] = useState(String(g.arbeidstoy ?? ""));
-  const [vt, setVt] = useState(String(g.verktoy ?? ""));
-  const [mnd, setMnd] = useState(String(g.sammeMnd));
-  const tall = (s: string) => Math.max(0, Number(s.replace(/\s/g, "").replace(",", ".")) || 0);
+  const [kv, setKv] = useState<Kvoter>(() => structuredClone(d.utstyrGrenser?.kvoter ?? STANDARD_KVOTER));
+  const sett = (type: string, felt: "antall" | "aar", v: number) => setKv((x) => ({ ...x, [type]: { ...(x[type] ?? { antall: 0, aar: 1 }), [felt]: v } }));
   const kontoer = d.prosjekter.filter((p) => /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn) || d.ansatte.some((a) => a.utstyr_prosjekt_id === p.id));
   return (
     <section className="panel">
       <h2>Utstyr: verktøy og arbeidstøy</h2>
-      <p className="small muted">Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy eller forbruk. Grensen gjelder per ansatt per kalenderår (utsalgspris eks. mva). La feltet stå tomt for ingen grense.</p>
-      <form className="row" style={{ alignItems: "flex-end" }} onSubmit={(e) => { e.preventDefault(); kjor(() => api.settUtstyrGrenser(tall(at), tall(vt), Math.round(tall(mnd))), "Grensene er lagret"); }}>
-        <label className="field kort"><span className="label">Arbeidstøy, kr per år</span><input inputMode="numeric" value={at} onChange={(e) => setAt(e.target.value)} placeholder="Ingen grense" /></label>
-        <label className="field kort"><span className="label">Verktøy, kr per år</span><input inputMode="numeric" value={vt} onChange={(e) => setVt(e.target.value)} placeholder="Ingen grense" /></label>
-        <label className="field kort"><span className="label">Varsle samme vare igjen innen (mnd)</span><input inputMode="numeric" value={mnd} onChange={(e) => setMnd(e.target.value)} /></label>
-        <button className="btn">Lagre grenser</button>
+      <p className="small muted">Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy, verneutstyr eller forbruk. Kvotene gjelder per ansatt i en rullerende periode. Øvrig verneutstyr (hansker, briller, hørselvern) gis etter behov og har ingen kvote. Håndverktøy byttes nytt mot gammelt.</p>
+      <form onSubmit={(e) => { e.preventDefault(); kjor(() => api.settUtstyrKvoter(kv), "Kvotene er lagret"); }}>
+        <div className="scroll" style={{ border: 0 }}>
+          <table className="tbl">
+            <thead><tr><th>Plagg</th><th>Antall</th><th>Per</th></tr></thead>
+            <tbody>
+              {PLAGG.map((p) => (
+                <tr key={p.type}>
+                  <td>{p.navn}</td>
+                  <td><input type="number" min={0} max={100} style={{ width: 80 }} aria-label={`Antall ${p.navn}`} value={kv[p.type]?.antall ?? 0} onChange={(e) => sett(p.type, "antall", Math.max(0, Number(e.target.value) || 0))} /></td>
+                  <td><select aria-label={`Periode ${p.navn}`} value={kv[p.type]?.aar ?? 1} onChange={(e) => sett(p.type, "aar", Number(e.target.value))}>
+                    <option value={1}>år</option><option value={2}>annethvert år</option><option value={3}>tredje år</option></select></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="row"><button className="btn">Lagre kvoter</button><span className="small muted">0 = ingen kvote for det plagget.</span></div>
       </form>
-      <p className="small muted" style={{ margin: 0 }}>Nå: arbeidstøy {g.arbeidstoy ? kr(g.arbeidstoy) : "ingen grense"}, verktøy {g.verktoy ? kr(g.verktoy) : "ingen grense"}, varsel ved samme vare innen {g.sammeMnd} måneder.</p>
       <div className="scroll" style={{ border: 0 }}>
         <table className="tbl">
           <thead><tr><th>Ansatt</th><th>Utstyrskonto i Visma</th></tr></thead>

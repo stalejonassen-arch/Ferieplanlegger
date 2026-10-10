@@ -54,6 +54,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0016_fravaer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0017_stempling_samme_prosjekt.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0018_utstyr.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0019_utstyr_kvoter.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -362,7 +363,9 @@ describe("dagbok og tilleggsarbeid", () => {
     expect(await kat("VATER 466 800MM 3 LIBELLER")).toBe("verktoy");
     expect(await kat("BUKSE 6241 HL SORT 56")).toBe("arbeidstoy");
     expect(await kat("Diverse – regnkle")).toBe("arbeidstoy");
-    expect(await kat("HANSKE MONTERING 11 VINTER BLÅ")).toBe("arbeidstoy");
+    expect(await kat("HANSKE MONTERING 11 VINTER BLÅ")).toBe("verneutstyr");
+    expect(await kat("VERNESKO S3 STR 43")).toBe("verneutstyr");
+    expect(await kat("STØVMASKE 8810C FFP2 UTEN VENTIL")).toBe("verneutstyr");
     expect(await kat("KRAFTBITS TX20")).toBe("forbruk");
     expect(await kat("SAGBLAD 160X20 54 T WZ")).toBe("forbruk");
     expect(await kat("HAMMERBOR V-PLUS 24X250MM")).toBe("forbruk");
@@ -401,5 +404,13 @@ describe("dagbok og tilleggsarbeid", () => {
     await expect(as(JIM, "select public.sett_utstyr_grenser(1000, 5000, 6)")).rejects.toThrow(/Bare leder/);
     await as(STALE, "select public.sett_utstyr_grenser(4000, 0, 6)");
     expect((await db.query<any>("select utstyr_grense_arbeidstoy::int a, utstyr_grense_verktoy v from public.bedrifter limit 1")).rows[0]).toEqual({ a: 4000, v: null });
+    // Kvoter på antall: standard ved oppstart, bare leder kan endre, og de må være gyldige
+    expect((await db.query<any>("select utstyr_kvoter->'bukse' b from public.bedrifter limit 1")).rows[0].b).toEqual({ antall: 2, aar: 1 });
+    await expect(as(JIM, `select public.sett_utstyr_kvoter('{"bukse":{"antall":9,"aar":1}}')`)).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, `select public.sett_utstyr_kvoter('{"bukse":{"antall":-1,"aar":1}}')`)).rejects.toThrow(/Ugyldig/);
+    await as(STALE, `select public.sett_utstyr_kvoter('{"bukse":{"antall":3,"aar":1},"vinter":{"antall":2,"aar":2}}')`);
+    expect((await db.query<any>("select utstyr_kvoter->'bukse'->>'antall' n from public.bedrifter limit 1")).rows[0].n).toBe("3");
+    // Ansatt kan merke en ny vare som avklart (nytt mot gammelt)
+    expect(await as(JIM, "update public.utstyr set bytte_avklart=true where linjenr=1 returning id")).toHaveLength(1);
   });
 });

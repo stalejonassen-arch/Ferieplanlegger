@@ -4,7 +4,7 @@ import type { Api, FdvDok, FdvVare } from "./api";
 import type { Ansatt, Data, Soknad } from "./ferie";
 import { addDays, isoOf } from "./ferie";
 import { mandag, varighet, type Time } from "./timer";
-import type { Utstyr } from "./utstyr";
+import { STANDARD_KVOTER, type Utstyr } from "./utstyr";
 
 const y0 = new Date().getFullYear();
 const y = y0 + 1;
@@ -61,7 +61,7 @@ function startdata(): Data {
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
-    utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: 4000, verktoy: 10000, sammeMnd: 6 } };
+    utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) } };
 }
 
 function demoUtstyr(): Utstyr[] {
@@ -74,8 +74,11 @@ function demoUtstyr(): Utstyr[] {
     u("u4", "jim", "03-12", "1000", "Diverse – regnkle", 520, "arbeidstoy"),
     u("u5", "jim", "05-20", "60311111", "BUKSE 6241 HL SORT 56", 1290, "arbeidstoy"),
     u("u6", "jim", "08-28", "60311111", "BUKSE 6241 HL SORT 56", 1290, "arbeidstoy"),
+    u("u9", "jim", "09-16", "60311112", "BUKSE 6230 STRETCH SORT 56", 1390, "arbeidstoy"),
+    u("u10", "jim", "04-02", "60400001", "VERNESKO S3 JALAS 43", 1690, "verneutstyr"),
+    u("u11", "jim", "09-01", "43204999", "HAMMER ERGO 20OZ XLARE RETTKLO", 459, "verktoy"),
     u("u7", "mads", "09-02", "57935499", "SIRKELSAG C1805DA KM HSC", 3990, "verktoy"),
-    u("u8", "mads", "09-02", "60100001", "HANSKE MONTERING 11 VINTER BLÅ", 89, "arbeidstoy", 3),
+    u("u8", "mads", "09-02", "60100001", "HANSKE MONTERING 11 VINTER BLÅ", 89, "verneutstyr", 3),
   ];
 }
 
@@ -268,7 +271,7 @@ export function demoApi(): Api {
       const gammel = x.id ? liste.find((u) => u.id === x.id) : undefined;
       if (gammel) {
         if (!leder() && gammel.ansatt_id !== m.id) throw new Error("Du har ikke tilgang til å gjøre dette.");
-        const tillatt = leder() ? x : { serienr: x.serienr, status: x.status, merknad: x.merknad, ...(gammel.kilde === "manuell" ? { beskrivelse: x.beskrivelse, nobb_nr: x.nobb_nr } : {}) };
+        const tillatt = leder() ? x : { serienr: x.serienr, status: x.status, merknad: x.merknad, bytte_avklart: x.bytte_avklart, ...(gammel.kilde === "manuell" ? { beskrivelse: x.beskrivelse, nobb_nr: x.nobb_nr } : {}) };
         for (const [k, v] of Object.entries(tillatt)) if (v !== undefined && k !== "id") (gammel as any)[k] = v;
         if (leder() && x.kategori && x.kategori !== gammel.kategori) gammel.kategori_manuell = true;
         endret(); return gammel.id;
@@ -280,6 +283,10 @@ export function demoApi(): Api {
     },
     async slettUtstyr(id) { d.utstyr = (d.utstyr ?? []).filter((u) => u.id !== id || u.kilde === "visma"); endret(); },
     async utstyrBilde(id, fil) { const u = d.utstyr?.find((x) => x.id === id); if (u) u.bilde_sti = URL.createObjectURL(fil); endret(); },
+    async settUtstyrKvoter(kvoter) {
+      if (!leder()) throw new Error("Bare leder kan endre kvotene.");
+      d.utstyrGrenser = { ...(d.utstyrGrenser ?? { arbeidstoy: null, verktoy: null, sammeMnd: 6 }), kvoter }; endret();
+    },
     async settUtstyrGrenser(arbeidstoy, verktoy, sammeMnd) {
       if (!leder()) throw new Error("Bare leder kan endre grensene.");
       d.utstyrGrenser = { arbeidstoy: arbeidstoy || null, verktoy: verktoy || null, sammeMnd }; endret();
