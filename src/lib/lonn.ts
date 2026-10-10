@@ -53,9 +53,9 @@ const csv = (rader: (string | number)[][]) => "﻿" + rader.map((r) => r.map(cel
 export function lonnCsv(rader: LonnRad[], aar: number, mnd: number) {
   return csv([
     [`Ferie ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
-    ["Ansatt", "Avdeling", "Feriedager", "Perioder", "Venter godkjenning", "Feriedager hittil i år", "Over 60 (ekstra feriepenger)"],
-    ...rader.map((r) => [r.ansatt.navn, r.avdeling, r.dager, r.perioder.join(", "), r.venter || "", r.hittil, r.ansatt.over60 ? "Ja" : ""]),
-    ["Sum", "", rader.reduce((n, r) => n + r.dager, 0), "", rader.reduce((n, r) => n + r.venter, 0) || "", rader.reduce((n, r) => n + r.hittil, 0), ""],
+    ["Ansattnr", "Ansatt", "Avdeling", "Feriedager", "Perioder", "Venter godkjenning", "Feriedager hittil i år", "Over 60 (ekstra feriepenger)"],
+    ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, r.avdeling, r.dager, r.perioder.join(", "), r.venter || "", r.hittil, r.ansatt.over60 ? "Ja" : ""]),
+    ["", "Sum", "", rader.reduce((n, r) => n + r.dager, 0), "", rader.reduce((n, r) => n + r.venter, 0) || "", rader.reduce((n, r) => n + r.hittil, 0), ""],
   ]);
 }
 
@@ -65,10 +65,10 @@ export function lonnAarCsv(d: Data, aar: number) {
   const ansatte = mnder[0];
   return csv([
     [`Godkjent ferie ${aar} per måned – N L Austnes AS`],
-    ["Ansatt", "Avdeling", ...MND.map((m) => m[0].toUpperCase() + m.slice(1, 3)), "Sum"],
+    ["Ansattnr", "Ansatt", "Avdeling", ...MND.map((m) => m[0].toUpperCase() + m.slice(1, 3)), "Sum"],
     ...ansatte.map((r, i) => {
       const per = mnder.map((m) => m[i].dager);
-      return [r.ansatt.navn, r.avdeling, ...per.map((n) => n || ""), per.reduce((a, b) => a + b, 0)];
+      return [r.ansatt.ansattnr ?? "", r.ansatt.navn, r.avdeling, ...per.map((n) => n || ""), per.reduce((a, b) => a + b, 0)];
     }),
   ]);
 }
@@ -95,7 +95,7 @@ const tall = (n: number) => (n ? String(Math.round(n * 100) / 100).replace(".", 
 export function lonnTimerCsv(rader: LonnTimer[], aar: number, mnd: number) {
   return csv([
     [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
-    ["Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer"],
-    ...rader.map((r) => [r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || ""]),
+    ["Ansattnr", "Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer"],
+    ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || ""]),
   ]);
 }

@@ -1,17 +1,19 @@
-/* Arbeidsverktøy: én kolonne på mobil, saldo først. Kalenderen er en plankestabel med én rad per ansatt. */
+/* Arbeidsverktøy i Byggfag-profil: Byggfag-blå (#0A1EBE fra logoen), hvit, rød og gul. */
 :root {
-  --bg: #EEF0EC; --surface: #FFFFFF; --sunk: #E3E6E0; --fg: #1B2420; --muted: #5E6B64; --line: #CFD5CD;
-  --accent: #1E5A4A; --accent-ink: #FFFFFF; --approved: #2E7A57; --pending: #C88A16; --pending-ink: #1B1300;
-  --warn: #B4442F; --info: #3A6A8C; --hatch: #D7DBD4;
+  --bg: #F1F3F9; --surface: #FFFFFF; --sunk: #E5E9F3; --fg: #10162E; --muted: #535D7A; --line: #CED4E4;
+  --accent: #0A1EBE; --accent-ink: #FFFFFF; --approved: #18804A; --pending: #F2B705; --pending-ink: #1A1400;
+  --warn: #D21F26; --info: #5B6FD6; --hatch: #D9DDEA;
+  --bf-blue: #0A1EBE; --bf-blue-dark: #07158A; --bf-yellow: #FFCD00; --bf-red: #E2231A; --pending-text: #8A5F00;
   --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
-  --f-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131A17; --surface: #1B2420; --sunk: #232D29; --fg: #E6ECE8; --muted: #97A59E; --line: #33403A;
-    --accent: #5DB89A; --accent-ink: #0E1512; --approved: #4FB284; --pending: #E2A93A; --warn: #E5765F; --info: #7FB0D4; --hatch: #2A3530;
+    --bg: #0C1024; --surface: #151B36; --sunk: #1C2342; --fg: #E8EBF7; --muted: #9AA3C4; --line: #2C3560;
+    --accent: #8D9BFF; --accent-ink: #0A0F2A; --approved: #4FC184; --pending: #FFCD00; --warn: #FF6B63; --info: #8D9BFF; --hatch: #262E52;
+    --bf-blue: #0A1EBE; --bf-blue-dark: #07158A; --pending-text: #FFCD00;
     color-scheme: dark;
   }
 }
@@ -31,8 +33,14 @@ a { color: var(--accent); }
 .small { font-size: 13.5px; }
 .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
 
-header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.brand small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+/* Toppen: blått Byggfag-felt med gul stripe under */
+header.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--bf-blue); color: #FFFFFF; border-radius: 10px; padding: 14px 16px; border-bottom: 5px solid var(--bf-yellow); }
+header.top h1 { color: #FFFFFF; text-transform: uppercase; letter-spacing: .03em; }
+header.top .muted { color: #D6DBFF; }
+header.top .btn { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.6); }
+header.top .btn:hover { background: var(--bf-blue-dark); }
+.brand small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--bf-yellow); font-weight: 700; margin-bottom: 4px; }
 .who { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 select, input, textarea, button { font: inherit; color: inherit; }
@@ -44,7 +52,7 @@ textarea { width: 100%; resize: vertical; }
 
 nav.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 2px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 5; }
 nav.tabs button { border: 0; background: none; padding: 10px 12px; font-family: var(--f-display); font-size: 17px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; }
-nav.tabs button[aria-selected=true] { color: var(--fg); border-bottom-color: var(--accent); }
+nav.tabs button[aria-selected=true] { color: var(--accent); border-bottom-color: var(--accent); }
 .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--pending); color: var(--pending-ink); font-family: var(--f-mono); font-size: 11px; line-height: 18px; text-align: center; }
 
 .btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }

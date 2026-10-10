@@ -116,7 +116,7 @@ export function App() {
     <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor }}>
       <div className="wrap">
         <header className="top">
-          <div className="brand"><small>N L Austnes AS</small><h1>ByggLogg</h1></div>
+          <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
           <div className="who">
             <span className="small muted">{meg.navn}{leder ? " · leder" : ""}</span>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
@@ -178,7 +178,7 @@ function Skall({ children, epost }: { children: React.ReactNode; epost?: string 
   return (
     <div className="wrap">
       <header className="top">
-        <div className="brand"><small>N L Austnes AS</small><h1>ByggLogg</h1></div>
+        <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
         {epost && <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>}
       </header>
       {children}

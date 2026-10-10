@@ -45,7 +45,7 @@ export function Lonn() {
               <tbody>
                 {timer.map((r) => (
                   <tr key={r.ansatt.id}>
-                    <td>{r.ansatt.navn}<div className="small muted">{t2(r.ansatt.normaltid_uke ?? 37.5)} t/uke{r.ansatt.lunsjtrekk ? " · lunsjtrekk" : ""}</div></td>
+                    <td>{r.ansatt.ansattnr ? <span className="muted">{r.ansatt.ansattnr} · </span> : null}{r.ansatt.navn}<div className="small muted">{t2(r.ansatt.normaltid_uke ?? 37.5)} t/uke{r.ansatt.lunsjtrekk ? " · lunsjtrekk" : ""}</div></td>
                     <td className="n">{t2(r.normal) || "–"}</td>
                     <td className="n">{t2(r.ot50) || "–"}</td>
                     <td className="n">{t2(r.ot100) || "–"}</td>
@@ -88,7 +88,7 @@ export function Lonn() {
             <tbody>
               {rader.map((r) => (
                 <tr key={r.ansatt.id} style={r.dager ? undefined : { color: "var(--muted)" }}>
-                  <td>{r.ansatt.navn}{r.ansatt.over60 && <span className="small muted"> · over 60</span>}<div className="small muted">{r.avdeling}</div></td>
+                  <td>{r.ansatt.ansattnr ? <span className="muted">{r.ansatt.ansattnr} · </span> : null}{r.ansatt.navn}{r.ansatt.over60 && <span className="small muted"> · over 60</span>}<div className="small muted">{r.avdeling}</div></td>
                   <td className="n">{r.dager || "–"}</td>
                   <td>{r.perioder.join(", ")}</td>
                   <td className="n">{r.hittil}</td>

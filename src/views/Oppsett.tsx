@@ -98,14 +98,16 @@ export function Oppsett() {
       </section>
       <section className="panel">
         <h2>Arbeidstid og lunsj</h2>
-        <p className="small muted">Brukes i lønnsgrunnlaget. Overtid regnes når uka går over normaltiden. Ansatte med lunsjtrekk får lunsj trukket på dager over 5,5 timer der lunsj ikke er registrert. «I timerapport» styrer hvem som telles i oversikten over kundetimer og interntid (snekkere og allround).</p>
+        <p className="small muted">Brukes i lønnsgrunnlaget. Overtid regnes når uka går over normaltiden. Ansatte med lunsjtrekk får lunsj trukket på dager over 5,5 timer der lunsj ikke er registrert. Ansattnr er det samme nummeret som i Svenn og følger med i lønnsfilene. «I timerapport» styrer hvem som telles i oversikten over kundetimer og interntid (snekkere og allround).</p>
         <div className="scroll" style={{ border: 0 }}>
           <table className="tbl">
-            <thead><tr><th>Ansatt</th><th>Normaltid per uke</th><th>Lunsjtrekk</th><th>Lunsj (min)</th><th>I timerapport</th></tr></thead>
+            <thead><tr><th>Ansatt</th><th>Ansattnr (Svenn)</th><th>Normaltid per uke</th><th>Lunsjtrekk</th><th>Lunsj (min)</th><th>I timerapport</th></tr></thead>
             <tbody>
               {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => (
-                <tr key={`${a.id}-${a.normaltid_uke}-${a.lunsjtrekk}-${a.lunsj_min}-${a.i_timerapport}`}>
+                <tr key={`${a.id}-${a.normaltid_uke}-${a.lunsjtrekk}-${a.lunsj_min}-${a.i_timerapport}-${a.ansattnr}`}>
                   <td>{a.navn}</td>
+                  <td><input type="text" inputMode="numeric" aria-label={`Ansattnr ${a.navn}`} style={{ width: 90 }} defaultValue={a.ansattnr ?? ""}
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v !== (a.ansattnr ?? "")) lagre(a, { ansattnr: v || null }); }} /></td>
                   <td><select aria-label={`Normaltid ${a.navn}`} value={String(a.normaltid_uke ?? 37.5)} onChange={(e) => lagre(a, { normaltid_uke: Number(e.target.value) })}>
                     <option value="37.5">37,5 timer</option><option value="40">40 timer</option></select></td>
                   <td><input type="checkbox" aria-label={`Lunsjtrekk ${a.navn}`} checked={!!a.lunsjtrekk} onChange={(e) => lagre(a, { lunsjtrekk: e.target.checked })} /></td>

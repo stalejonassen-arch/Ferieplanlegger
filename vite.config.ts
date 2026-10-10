@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: "ByggLogg",
         description: "Ferieoversikt, feriekalender og søknader for N L Austnes AS",
         lang: "nb",
-        theme_color: "#1E5A4A",
-        background_color: "#EEF0EC",
+        theme_color: "#0A1EBE",
+        background_color: "#F1F3F9",
         display: "standalone",
         start_url: "/",
         icons: [

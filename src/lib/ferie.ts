@@ -16,6 +16,8 @@ export interface Ansatt {
   normaltid_uke?: number;
   /** Trekkes for lunsj */
   lunsjtrekk?: boolean;
+  /** Ansattnummer som i Svenn/lønnssystemet */
+  ansattnr?: string | null;
   /** Telles med i oversikten over kundetimer og interntid */
   i_timerapport?: boolean;
   lunsj_min?: number;

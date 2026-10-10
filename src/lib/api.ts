@@ -79,6 +79,7 @@ export function feiltekst(e: unknown): string {
   if (/overlapper|leder med e-post|godkjent og kan/i.test(m)) return m;
   if (/timer_check|check constraint/i.test(m)) return "Sluttid må være etter starttid, og lunsjen kan ikke være lengre enn arbeidsøkta.";
   if (/timer_prosjekt_id_fkey|foreign key/i.test(m)) return "Prosjektet har registrerte timer og kan ikke slettes.";
+  if (/ansatte_ansattnr_unik/i.test(m)) return "Det ansattnummeret er allerede brukt av en annen ansatt.";
   if (/ansatte_epost_unik|duplicate key/i.test(m)) return "Den e-postadressen er allerede brukt av en annen ansatt.";
   if (/row-level security|permission denied/i.test(m)) return "Du har ikke tilgang til å gjøre dette.";
   if (/Token has expired|invalid/i.test(m)) return "Koden er feil eller utløpt. Be om en ny kode.";

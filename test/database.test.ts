@@ -49,6 +49,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0011_rapporter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0012_timer_synlig.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0013_timerapport.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0014_ansattnr.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';

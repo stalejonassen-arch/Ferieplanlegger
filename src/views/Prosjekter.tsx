@@ -74,7 +74,7 @@ export function Prosjekter() {
                         {sist.get(p.id) && <div className="small muted">Sist aktivitet {kortDato(sist.get(p.id)!)}{mine.has(p.id) ? " · du har ført timer her" : ""}</div>}
                         {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
                           return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>
-                      <td className="n" style={est && b > est ? { color: "var(--warn)" } : est && b >= est * 0.9 ? { color: "var(--pending)" } : undefined}
+                      <td className="n" style={est && b > est ? { color: "var(--warn)" } : est && b >= est * 0.9 ? { color: "var(--pending-text)" } : undefined}
                         title={est ? `${Math.round((b / est) * 100)} % av kalkulerte timer` : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}
                         {est && b >= est * 0.9 && <div className="small">{b > est ? "over kalkyle" : "snart brukt opp"}</div>}</td>
                       {leder && <td><button className="btn sm" onClick={() => kjor(() => api.lagreProsjekt({ id: p.id, navn: p.navn, aktiv: !p.aktiv }), p.aktiv ? "Avsluttet" : "Åpnet igjen")}>{p.aktiv ? "Avslutt" : "Åpne"}</button></td>}
