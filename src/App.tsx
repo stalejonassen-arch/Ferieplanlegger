@@ -13,6 +13,7 @@ import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
 import { Rapporter, lesRapport } from "./views/Rapporter";
 import { Sykdom } from "./views/Sykdom";
+import { Utstyr } from "./views/Utstyr";
 import { uleste } from "./lib/rapport";
 
 export interface Ctx {
@@ -31,6 +32,7 @@ const IKON: Record<string, React.ReactNode> = {
   timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>,
   prosjekter: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
   avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
+  utstyr: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8 6.2 21l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></>,
   rapporter: <><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h7M9 16h7M9 8h3" /></>,
   min: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
   lonn: <><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9v.5M18 15v.5" /></>,
@@ -38,10 +40,10 @@ const IKON: Record<string, React.ReactNode> = {
 };
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "prosjekter" | "avvik" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "prosjekter" | "avvik" | "utstyr" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "prosjekter", "avvik", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "prosjekter", "avvik", "utstyr", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -116,7 +118,7 @@ export function App() {
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
-  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
   const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) ? fane : "timer";
@@ -174,6 +176,7 @@ export function App() {
         {aktiv === "timer" && <Timer />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
+        {aktiv === "utstyr" && <Utstyr />}
         {aktiv === "rapporter" && <Rapporter />}
         {aktiv === "syk" && <Sykdom />}
         {aktiv === "min" && <MinFerie />}

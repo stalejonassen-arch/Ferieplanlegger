@@ -4,6 +4,7 @@ import type { Api, FdvDok, FdvVare } from "./api";
 import type { Ansatt, Data, Soknad } from "./ferie";
 import { addDays, isoOf } from "./ferie";
 import { mandag, varighet, type Time } from "./timer";
+import type { Utstyr } from "./utstyr";
 
 const y0 = new Date().getFullYear();
 const y = y0 + 1;
@@ -59,7 +60,23 @@ function startdata(): Data {
   ];
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
-  ], tillegg: [], maal: 7000, rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 } };
+  ], tillegg: [], maal: 7000, rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
+    utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: 4000, verktoy: 10000, sammeMnd: 6 } };
+}
+
+function demoUtstyr(): Utstyr[] {
+  const u = (id: string, ansatt_id: string, dato: string, varenr: string, beskrivelse: string, pris: number, kategori: Utstyr["kategori"], antall = 1): Utstyr =>
+    ({ id, ansatt_id, kilde: "visma", visma_ordrenr: 6000 + Number(id.slice(1)), dato: `${y0}-${dato}`, varenr, nobb_nr: /^\d{8}$/.test(varenr) ? varenr : "", beskrivelse, antall, enhet: "STK", pris, kategori, kategori_manuell: false, serienr: "", bilde_sti: null, status: "i_bruk", merknad: "" });
+  return [
+    u("u1", "jim", "02-05", "60644557", "KRAFTBITS TX20", 19, "forbruk"),
+    u("u2", "jim", "02-05", "57935432", "SLAGSKRUTREKKER WHP18DA KM", 2490, "verktoy"),
+    u("u3", "jim", "02-05", "43204821", "SNEKKERHAMMER M 16 OZ", 389, "verktoy"),
+    u("u4", "jim", "03-12", "1000", "Diverse – regnkle", 520, "arbeidstoy"),
+    u("u5", "jim", "05-20", "60311111", "BUKSE 6241 HL SORT 56", 1290, "arbeidstoy"),
+    u("u6", "jim", "08-28", "60311111", "BUKSE 6241 HL SORT 56", 1290, "arbeidstoy"),
+    u("u7", "mads", "09-02", "57935499", "SIRKELSAG C1805DA KM HSC", 3990, "verktoy"),
+    u("u8", "mads", "09-02", "60100001", "HANSKE MONTERING 11 VINTER BLÅ", 89, "arbeidstoy", 3),
+  ];
 }
 
 const demoVarer: FdvVare[] = [
@@ -89,7 +106,12 @@ export function demoApi(): Api {
     async sendKode() { await vent(); },
     async bekreftKode(e) { epost = e; authLyttere.forEach((f) => f(epost)); },
     async loggUt() { epost = null; authLyttere.forEach((f) => f(null)); },
-    async hent() { await vent(); return structuredClone(d); },
+    async hent() {
+      await vent();
+      const kopi = structuredClone(d);
+      if (!leder()) kopi.utstyr = (kopi.utstyr ?? []).filter((x) => x.ansatt_id === meg()?.id);
+      return kopi;
+    },
     abonner(cb) { lyttere.add(cb); return () => lyttere.delete(cb); },
     async lagreSoknad(n) {
       const m = meg();
@@ -240,6 +262,28 @@ export function demoApi(): Api {
       d.fravaer = [ny, ...d.fravaer.filter((x) => x.id !== ny.id)]; endret();
     },
     async slettFravaer(id) { d.fravaer = d.fravaer.filter((x) => x.id !== id); endret(); },
+    async lagreUtstyr(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const liste = d.utstyr ?? (d.utstyr = []);
+      const gammel = x.id ? liste.find((u) => u.id === x.id) : undefined;
+      if (gammel) {
+        if (!leder() && gammel.ansatt_id !== m.id) throw new Error("Du har ikke tilgang til å gjøre dette.");
+        const tillatt = leder() ? x : { serienr: x.serienr, status: x.status, merknad: x.merknad, ...(gammel.kilde === "manuell" ? { beskrivelse: x.beskrivelse, nobb_nr: x.nobb_nr } : {}) };
+        for (const [k, v] of Object.entries(tillatt)) if (v !== undefined && k !== "id") (gammel as any)[k] = v;
+        if (leder() && x.kategori && x.kategori !== gammel.kategori) gammel.kategori_manuell = true;
+        endret(); return gammel.id;
+      }
+      const ny: Utstyr = { id: nyId(), ansatt_id: leder() && x.ansatt_id ? x.ansatt_id : m.id, kilde: "manuell", visma_ordrenr: null, dato: x.dato ?? new Date().toISOString().slice(0, 10),
+        varenr: "", nobb_nr: x.nobb_nr ?? "", beskrivelse: x.beskrivelse ?? "", antall: x.antall ?? 1, enhet: "STK", pris: x.pris ?? 0, kategori: x.kategori ?? "verktoy",
+        kategori_manuell: !!x.kategori, serienr: x.serienr ?? "", bilde_sti: null, status: "i_bruk", merknad: x.merknad ?? "" };
+      liste.unshift(ny); endret(); return ny.id;
+    },
+    async slettUtstyr(id) { d.utstyr = (d.utstyr ?? []).filter((u) => u.id !== id || u.kilde === "visma"); endret(); },
+    async utstyrBilde(id, fil) { const u = d.utstyr?.find((x) => x.id === id); if (u) u.bilde_sti = URL.createObjectURL(fil); endret(); },
+    async settUtstyrGrenser(arbeidstoy, verktoy, sammeMnd) {
+      if (!leder()) throw new Error("Bare leder kan endre grensene.");
+      d.utstyrGrenser = { arbeidstoy: arbeidstoy || null, verktoy: verktoy || null, sammeMnd }; endret();
+    },
     async markerLest(id) {
       const m = meg(); if (!m) return;
       if (!d.lest.some((l) => l.rapport_id === id && l.ansatt_id === m.id)) d.lest.push({ rapport_id: id, ansatt_id: m.id, lest: new Date().toISOString() });

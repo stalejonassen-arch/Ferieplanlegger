@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { sorterAnsatte, type Ansatt } from "../lib/ferie";
+import { kr } from "../lib/utstyr";
 
 export function Oppsett() {
   const { d, aar, kjor } = useApp();
@@ -120,6 +121,48 @@ export function Oppsett() {
           </table>
         </div>
       </section>
+      <UtstyrOppsett lagre={lagre} />
     </>
+  );
+}
+
+/** Utstyrskonto per ansatt (prosjektet i Visma der verktøy og arbeidstøy føres) og grenser per år */
+function UtstyrOppsett({ lagre }: { lagre: (a: Ansatt, e: Partial<Ansatt>) => Promise<boolean> }) {
+  const { d, kjor } = useApp();
+  const g = d.utstyrGrenser ?? { arbeidstoy: null, verktoy: null, sammeMnd: 6 };
+  const [at, setAt] = useState(String(g.arbeidstoy ?? ""));
+  const [vt, setVt] = useState(String(g.verktoy ?? ""));
+  const [mnd, setMnd] = useState(String(g.sammeMnd));
+  const tall = (s: string) => Math.max(0, Number(s.replace(/\s/g, "").replace(",", ".")) || 0);
+  const kontoer = d.prosjekter.filter((p) => /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn) || d.ansatte.some((a) => a.utstyr_prosjekt_id === p.id));
+  return (
+    <section className="panel">
+      <h2>Utstyr: verktøy og arbeidstøy</h2>
+      <p className="small muted">Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy eller forbruk. Grensen gjelder per ansatt per kalenderår (utsalgspris eks. mva). La feltet stå tomt for ingen grense.</p>
+      <form className="row" style={{ alignItems: "flex-end" }} onSubmit={(e) => { e.preventDefault(); kjor(() => api.settUtstyrGrenser(tall(at), tall(vt), Math.round(tall(mnd))), "Grensene er lagret"); }}>
+        <label className="field kort"><span className="label">Arbeidstøy, kr per år</span><input inputMode="numeric" value={at} onChange={(e) => setAt(e.target.value)} placeholder="Ingen grense" /></label>
+        <label className="field kort"><span className="label">Verktøy, kr per år</span><input inputMode="numeric" value={vt} onChange={(e) => setVt(e.target.value)} placeholder="Ingen grense" /></label>
+        <label className="field kort"><span className="label">Varsle samme vare igjen innen (mnd)</span><input inputMode="numeric" value={mnd} onChange={(e) => setMnd(e.target.value)} /></label>
+        <button className="btn">Lagre grenser</button>
+      </form>
+      <p className="small muted" style={{ margin: 0 }}>Nå: arbeidstøy {g.arbeidstoy ? kr(g.arbeidstoy) : "ingen grense"}, verktøy {g.verktoy ? kr(g.verktoy) : "ingen grense"}, varsel ved samme vare innen {g.sammeMnd} måneder.</p>
+      <div className="scroll" style={{ border: 0 }}>
+        <table className="tbl">
+          <thead><tr><th>Ansatt</th><th>Utstyrskonto i Visma</th></tr></thead>
+          <tbody>
+            {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => (
+              <tr key={`${a.id}-${a.utstyr_prosjekt_id}`}>
+                <td>{a.navn}</td>
+                <td><select aria-label={`Utstyrskonto ${a.navn}`} value={a.utstyr_prosjekt_id ?? ""} onChange={(e) => lagre(a, { utstyr_prosjekt_id: e.target.value || null })}>
+                  <option value="">Ingen</option>
+                  {kontoer.map((p) => <option key={p.id} value={p.id} disabled={d.ansatte.some((x) => x.id !== a.id && x.utstyr_prosjekt_id === p.id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</option>)}
+                </select></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="small muted" style={{ margin: 0 }}>Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.</p>
+    </section>
   );
 }

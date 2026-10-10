@@ -53,6 +53,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0015_stempling.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0016_fravaer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0017_stempling_samme_prosjekt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0018_utstyr.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -353,5 +354,52 @@ describe("dagbok og tilleggsarbeid", () => {
     expect(await as(MADS, "select * from public.stempling")).toHaveLength(1);
     await db.query("delete from public.stempling"); await db.query("delete from public.timer where ansatt_id in (select id from public.ansatte where epost in ($1, $2))", [JIM, MADS]);
     await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
+  });
+
+  it("utstyr: sorteres automatisk, hentes til riktig ansatt, og den ansatte kan bare legge til bilde, serienr og status", async () => {
+    const kat = async (b: string) => (await db.query<any>("select public.utstyr_kategori($1) k", [b])).rows[0].k;
+    expect(await kat("SLAGSKRUTREKKER WHP18DA KM")).toBe("verktoy");
+    expect(await kat("VATER 466 800MM 3 LIBELLER")).toBe("verktoy");
+    expect(await kat("BUKSE 6241 HL SORT 56")).toBe("arbeidstoy");
+    expect(await kat("Diverse – regnkle")).toBe("arbeidstoy");
+    expect(await kat("HANSKE MONTERING 11 VINTER BLÅ")).toBe("arbeidstoy");
+    expect(await kat("KRAFTBITS TX20")).toBe("forbruk");
+    expect(await kat("SAGBLAD 160X20 54 T WZ")).toBe("forbruk");
+    expect(await kat("HAMMERBOR V-PLUS 24X250MM")).toBe("forbruk");
+
+    const jim = await idOf("Jim Kato");
+    const [konto] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (188, 'Jim Kato - utstyr') returning id");
+    await as(STALE, "update public.ansatte set utstyr_prosjekt_id=$1 where id=$2", [konto.id, jim]);
+    // Hentingen fra Visma (uten innlogget bruker)
+    const system = () => db.exec("select set_config('request.jwt.claims', '', false)");
+    await system();
+    await db.query(`insert into public.utstyr (kilde, visma_ordrenr, linjenr, prosjekt_id, dato, varenr, nobb_nr, beskrivelse, antall, pris)
+      values ('visma', 6001, 1, $1, '2026-10-01', '57935432', '57935432', 'SLAGSKRUTREKKER WHP18DA KM', 1, 2490),
+             ('visma', 6001, 2, $1, '2026-10-01', '1000', '', 'Diverse – regnkle', 1, 520)`, [konto.id]);
+    const rader = await as<any>(JIM, "select beskrivelse, kategori, ansatt_id from public.utstyr order by linjenr");
+    expect(rader.map((r: any) => [r.kategori, r.ansatt_id])).toEqual([["verktoy", jim], ["arbeidstoy", jim]]);
+    await as(STALE, "update public.ansatte set aktiv=true where epost=$1", [MADS]);
+    expect(await as(MADS, "select * from public.utstyr")).toHaveLength(0);
+    await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
+
+    // Jim legger inn serienr og status, men kan ikke endre pris eller kategori
+    await as(JIM, "update public.utstyr set serienr='SN123', status='service', pris=1, kategori='forbruk' where linjenr=1");
+    expect((await db.query<any>("select serienr, status, pris::int, kategori from public.utstyr where linjenr=1")).rows[0]).toEqual({ serienr: "SN123", status: "service", pris: 2490, kategori: "verktoy" });
+    // Leder retter kategorien; den holder seg ved neste henting
+    await as(STALE, "update public.utstyr set kategori='forbruk' where linjenr=2");
+    await system();
+    await db.query("update public.utstyr set beskrivelse='Diverse – regnjakke' where linjenr=2");
+    expect((await db.query<any>("select kategori, kategori_manuell from public.utstyr where linjenr=2")).rows[0]).toEqual({ kategori: "forbruk", kategori_manuell: true });
+
+    // Eget verktøy som ikke er fra Visma: registreres på seg selv, kan slettes. Visma-linjer kan ikke slettes.
+    const [egen] = await as<any>(JIM, "insert into public.utstyr (beskrivelse, nobb_nr, ansatt_id) values ('Laser vater', '12345678', $1) returning id, ansatt_id, kilde, kategori", [await idOf("Ståle Jonassen").catch(() => idOf("Ståle"))]);
+    expect([egen.ansatt_id, egen.kilde, egen.kategori]).toEqual([jim, "manuell", "verktoy"]);
+    expect(await as(JIM, "delete from public.utstyr where kilde='visma' returning id")).toHaveLength(0);
+    expect(await as(JIM, "delete from public.utstyr where id=$1 returning id", [egen.id])).toHaveLength(1);
+
+    // Grenser: bare leder
+    await expect(as(JIM, "select public.sett_utstyr_grenser(1000, 5000, 6)")).rejects.toThrow(/Bare leder/);
+    await as(STALE, "select public.sett_utstyr_grenser(4000, 0, 6)");
+    expect((await db.query<any>("select utstyr_grense_arbeidstoy::int a, utstyr_grense_verktoy v from public.bedrifter limit 1")).rows[0]).toEqual({ a: 4000, v: null });
   });
 });

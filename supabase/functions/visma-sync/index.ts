@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v3: varer til FDV)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v4: utstyr per ansatt)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -104,6 +104,50 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
     if (error) throw error;
   }
   await sb.from("prosjekt_vare").delete().eq("bedrift_id", b.id).lt("oppdatert", naa);
+  return rader.length;
+}
+
+/** Utstyrskontoene (verktøy, arbeidstøy og forbruk per ansatt): alle linjer med dato og pris.
+ *  Fritekstlinjer («T») etter en diverse-linje legges til beskrivelsen, f.eks. «Diverse – regnkle». */
+async function synkUtstyr(tok: string, b: { id: number; visma_firma_nr: number }, klasseNr: number) {
+  const { data: kontoer } = await sb.from("ansatte").select("utstyr_prosjekt_id").eq("bedrift_id", b.id).not("utstyr_prosjekt_id", "is", null);
+  const pids = (kontoer ?? []).map((k) => k.utstyr_prosjekt_id as string);
+  if (!pids.length) return 0;
+  const { data: pr } = await sb.from("prosjekter").select("id, visma_nr").in("id", pids).not("visma_nr", "is", null);
+  const pid = new Map((pr ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
+  if (!pid.size) return 0;
+  const pf = `orgUnit${klasseNr}`;
+  const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
+    ["orderNo", "lineNo", "productNo", "description", "totalQuantity", "priceInCurrency", "createdDate", pf, "joinup_Order { orderDate }", "joinup_Product { webPage }", "joinup_Unit { description }"],
+    `{ ${pf}: { _in: [${[...pid.keys()].join(",")}] } }`);
+  linjer.sort((a, z) => Number(a.orderNo) - Number(z.orderNo) || Number(a.lineNo) - Number(z.lineNo));
+  const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
+  const rader: Record<string, unknown>[] = [];
+  for (const l of linjer) {
+    const vnr = s(l.productNo), antall = Number(l.totalQuantity) || 0, tekst = s(l.description);
+    const forrige = rader[rader.length - 1];
+    // Ren tekstlinje: beskriver linjen over (samme ordre)
+    if (antall === 0) {
+      if (forrige && forrige.visma_ordrenr === Number(l.orderNo) && tekst && !/^\d{7,8}$/.test(String(forrige.varenr))) forrige.beskrivelse = `${forrige.beskrivelse} – ${tekst}`;
+      continue;
+    }
+    const p = pid.get(Number(l[pf]));
+    if (!p || !tekst) continue;
+    rader.push({
+      bedrift_id: b.id, kilde: "visma", visma_ordrenr: Number(l.orderNo), linjenr: Number(l.lineNo), prosjekt_id: p,
+      dato: dato((l.joinup_Order as Record<string, unknown> | null)?.orderDate) ?? dato(l.createdDate) ?? new Date().toISOString().slice(0, 10),
+      varenr: vnr, nobb_nr: finnNobb(vnr, s((l.joinup_Product as Record<string, unknown> | null)?.webPage)), beskrivelse: tekst,
+      antall: Math.round(antall * 1000) / 1000, enhet: s((l.joinup_Unit as Record<string, unknown> | null)?.description),
+      pris: Math.round((Number(l.priceInCurrency) || 0) * 100) / 100,
+    });
+  }
+  const naa = new Date().toISOString();
+  for (let i = 0; i < rader.length; i += 500) {
+    const { error } = await sb.from("utstyr").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,visma_ordrenr,linjenr" });
+    if (error) throw error;
+  }
+  // Linjer som er slettet i Visma fjernes, men ikke hvis noen har lagt inn bilde eller serienummer
+  await sb.from("utstyr").delete().eq("bedrift_id", b.id).eq("kilde", "visma").lt("oppdatert", naa).in("prosjekt_id", [...pid.values()]).eq("serienr", "").is("bilde_sti", null);
   return rader.length;
 }
 
@@ -227,7 +271,12 @@ Deno.serve(async (req) => {
         try { vareAntall = await synkVarer(tok, b, pk.nr); }
         catch (e) { vareAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      let utstyrAntall: number | string = "hoppet over";
+      if (url.searchParams.get("varer") || url.searchParams.get("utstyr") || new Date().getUTCMinutes() < 15) {
+        try { utstyrAntall = await synkUtstyr(tok, b, pk.nr); }
+        catch (e) { utstyrAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

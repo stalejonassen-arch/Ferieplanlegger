@@ -1,6 +1,7 @@
 import type { Lesing, Rapport } from "./rapport";
 import type { Stempling } from "./timer";
 import type { Fravaer } from "./fravaer";
+import type { Utstyr, UtstyrGrenser } from "./utstyr";
 // Ferieregler for N L Austnes AS: datoer, helligdager, saldo og regelsjekk.
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
@@ -23,6 +24,8 @@ export interface Ansatt {
   /** Telles med i oversikten over kundetimer og interntid */
   i_timerapport?: boolean;
   lunsj_min?: number;
+  /** Utstyrskonto i Visma (prosjekt der verktøy og arbeidstøy føres) */
+  utstyr_prosjekt_id?: string | null;
 }
 export interface Ferieaar { ansatt_id: string; aar: number; overfort: number }
 export interface Soknad {
@@ -36,6 +39,9 @@ export interface Data {
   rapporter: Rapport[]; lest: Lesing[];
   stempling: Stempling[];
   fravaer: Fravaer[];
+  /** Verktøy, arbeidstøy og forbruk (egne linjer, leder ser alle) */
+  utstyr?: Utstyr[];
+  utstyrGrenser?: UtstyrGrenser;
   /** Regler for egenmelding (per gang / ganger per 12 måneder) */
   egenmelding?: { maksDager: number; maksGanger: number };
   /** Mål for fakturerte timer i året */

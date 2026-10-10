@@ -6,6 +6,7 @@ import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
 import type { FravaerType } from "./fravaer";
+import type { Utstyr } from "./utstyr";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -71,6 +72,13 @@ export interface Api {
   /** Registrer eller rett sykefravær (egenmelding, sykmelding, sykt barn) */
   lagreFravaer(f: { id?: string; ansatt_id: string; type: FravaerType; fra: string; til: string; grad?: number; merknad?: string }): Promise<void>;
   slettFravaer(id: string): Promise<void>;
+  /** Utstyr: ny (eget verktøy) eller endring (serienr, status, merknad; leder også kategori) */
+  lagreUtstyr(u: Partial<Utstyr> & { id?: string; beskrivelse?: string }): Promise<string>;
+  slettUtstyr(id: string, bilde_sti: string | null): Promise<void>;
+  /** Bilde av verktøyet (erstatter et tidligere bilde) */
+  utstyrBilde(id: string, fil: File, gammel: string | null): Promise<void>;
+  /** Leder: grenser for arbeidstøy og verktøy (kr per ansatt per år, 0 = ingen) og måneder før samme vare igjen */
+  settUtstyrGrenser(arbeidstoy: number, verktoy: number, sammeMnd: number): Promise<void>;
   /** Merk rapporten som lest av meg */
   markerLest(id: string): Promise<void>;
   /** Leder: sett mål for fakturerte timer i året */
@@ -113,7 +121,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, utstyr] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -130,13 +138,17 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").limit(10000),
         sb.from("stempling").select("ansatt_id, prosjekt_id, dato, fra, startet"),
         sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).limit(5000),
+        sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad").order("dato", { ascending: false }).limit(10000),
       ]);
+      const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
         kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
         rapporter: rapporter.error ? [] : rapporter.data, lest: lest.error ? [] : lest.data,
         fravaer: fravaer.error ? [] : fravaer.data,
+        utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
+        utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6) },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
         stempling: stempling.error ? [] : (stempling.data as any[]).map((x) => ({ ...x, fra: String(x.fra).slice(0, 5) })),
         maal: Number((ok(bedrift) as { maal_fakturert_aar: number }[])[0]?.maal_fakturert_aar ?? 6000),
@@ -161,6 +173,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "rapport_lest" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "stempling" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "fravaer" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "utstyr" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -296,6 +309,26 @@ function supabaseApi(sb: SupabaseClient): Api {
       ok(id ? await sb.from("fravaer").update(rad).eq("id", id) : await sb.from("fravaer").insert(rad));
     },
     async slettFravaer(id) { ok(await sb.from("fravaer").delete().eq("id", id)); },
+    async lagreUtstyr(u) {
+      const { id, ...rad } = u;
+      for (const k of ["kilde", "visma_ordrenr", "kategori_manuell", "bilde_sti"] as const) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("utstyr").update(rad).eq("id", id).select("id").single() : await sb.from("utstyr").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettUtstyr(id, bilde_sti) {
+      ok(await sb.from("utstyr").delete().eq("id", id));
+      if (bilde_sti) await sb.storage.from("bilder").remove([bilde_sti]);
+    },
+    async utstyrBilde(id, fil, gammel) {
+      const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+      const sti = `${bedrift}/u-${id}/${crypto.randomUUID()}.jpg`;
+      const data = await komprimer(fil);
+      ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
+      const r = await sb.from("utstyr").update({ bilde_sti: sti }).eq("id", id);
+      if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
+      if (gammel) await sb.storage.from("bilder").remove([gammel]);
+    },
+    async settUtstyrGrenser(arbeidstoy, verktoy, sammeMnd) { ok(await sb.rpc("sett_utstyr_grenser", { arbeidstoy, verktoy, samme_mnd: sammeMnd })); },
     async markerLest(id) { ok(await sb.rpc("marker_lest", { rapport: id })); },
     async settMaal(aar) { ok(await sb.rpc("sett_maal", { aar })); },
     async vismaStatus() {
