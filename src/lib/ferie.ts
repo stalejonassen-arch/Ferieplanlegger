@@ -1,3 +1,4 @@
+import type { FakturertTime } from "./faktura";
 import type { Lesing, Rapport } from "./rapport";
 import type { Stempling } from "./timer";
 import type { Fravaer } from "./fravaer";
@@ -46,6 +47,8 @@ export interface Data {
   egenmelding?: { maksDager: number; maksGanger: number };
   /** Mål for fakturerte timer i året */
   maal?: number;
+  /** Arbeid-linjer fra Visma (bare leder) */
+  fakturerteTimer?: FakturertTime[];
 }
 
 /** «1 feriedag», «2 feriedager» */

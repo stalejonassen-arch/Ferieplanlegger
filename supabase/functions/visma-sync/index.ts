@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v4: utstyr per ansatt)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v5: fakturerte timer)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -151,6 +151,42 @@ async function synkUtstyr(tok: string, b: { id: number; visma_firma_nr: number }
   return rader.length;
 }
 
+/** Fakturerte timer: ordrelinjer med produktet «Arbeid» på salgsordrer (ikke tilbud). */
+async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }, klasseNr: number) {
+  const { data: bf } = await sb.from("bedrifter").select("arbeid_varenr").eq("id", b.id).single();
+  const varenr: string[] = (bf?.arbeid_varenr as string[] | null)?.filter(Boolean) ?? [];
+  if (!varenr.length) return 0;
+  const pf = `orgUnit${klasseNr}`;
+  const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
+    ["orderNo", "lineNo", "productNo", pf, "totalQuantity", "finished", "unrealisedQuantity", "priceInCurrency", "finishDate", "invoiceNo",
+      `joinup_Order { orderDate customerNo transactionType orderType ${pf} }`],
+    `{ productNo: { _in: [${varenr.map((v) => JSON.stringify(v)).join(",")}] } }`);
+  const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
+  const pid = new Map((pmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
+  const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
+  const kid = new Map((kmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
+  const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
+  const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
+  const naa = new Date().toISOString();
+  const rader = linjer.flatMap((l) => {
+    const o = (l.joinup_Order ?? {}) as Record<string, unknown>;
+    // Bare salgsordrer (transaksjonstype 1); tilbud (ordretype 5) telles ikke
+    if (Number(o.transactionType) !== 1 || Number(o.orderType) === 5) return [];
+    return [{
+      bedrift_id: b.id, visma_ordrenr: Number(l.orderNo), linjenr: Number(l.lineNo), ordredato: dato(o.orderDate), fakturadato: dato(l.finishDate),
+      fakturanr: s(l.invoiceNo), kunde_id: kid.get(Number(o.customerNo)) ?? null,
+      prosjekt_id: pid.get(Number(l[pf])) ?? pid.get(Number(o[pf])) ?? null, varenr: s(l.productNo),
+      antall: n(l.totalQuantity), fakturert: n(l.finished), ikke_fakturert: n(l.unrealisedQuantity), pris: n(l.priceInCurrency), oppdatert: naa,
+    }];
+  });
+  for (let i = 0; i < rader.length; i += 500) {
+    const { error } = await sb.from("fakturerte_timer").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,visma_ordrenr,linjenr" });
+    if (error) throw error;
+  }
+  await sb.from("fakturerte_timer").delete().eq("bedrift_id", b.id).lt("oppdatert", naa);
+  return rader.length;
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   try {
@@ -276,7 +312,10 @@ Deno.serve(async (req) => {
         try { utstyrAntall = await synkUtstyr(tok, b, pk.nr); }
         catch (e) { utstyrAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      let arbeidAntall: number | string = 0;
+      try { arbeidAntall = await synkArbeid(tok, b, pk.nr); }
+      catch (e) { arbeidAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, arbeid: arbeidAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

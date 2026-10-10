@@ -6,6 +6,7 @@ import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
 import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
+import { Fakturering } from "./Fakturering";
 
 export function Prosjekter() {
   const { d, meg, leder, kjor } = useApp();
@@ -45,6 +46,7 @@ export function Prosjekter() {
     <>
       {leder && <Maal />}
       {leder && <Fordeling />}
+      {leder && <Fakturering />}
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Prosjekter</h2>
