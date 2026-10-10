@@ -58,3 +58,17 @@ describe("fastprisberegning", () => {
     expect([r.perMnd[2], r.perMnd[4]]).toEqual([601.9, 200.6]);
   });
 });
+
+describe("per prosjekt", () => {
+  it("fordeler Arbeid uten prosjekt på kundens prosjekter og markerer lite fakturert", async () => {
+    const { prosjektFakturering, liteFakturert } = await import("../src/lib/faktura");
+    const d = {
+      kunder: [], prosjekter: [{ id: "p1", kunde_id: "k1" }, { id: "p2", kunde_id: "k1" }, { id: "p3", kunde_id: "k2" }],
+      timer: [{ prosjekt_id: "p1", dato: "2026-03-02", timer: 30 }, { prosjekt_id: "p2", dato: "2026-03-02", timer: 10 }, { prosjekt_id: "p3", dato: "2026-03-02", timer: 50 }],
+      fakturerteTimer: [f({ kunde_id: "k1", fakturadato: "2026-03-05", fakturert: 20, ikke_fakturert: 8 }), f({ prosjekt_id: "p3", kunde_id: "k2", fakturadato: "2026-03-05", fakturert: 10 })],
+    } as unknown as Data;
+    const r = prosjektFakturering(d);
+    expect([r.get("p1")!.fakturert, r.get("p1")!.aapent, r.get("p2")!.fakturert]).toEqual([15, 6, 5]);
+    expect([liteFakturert(r.get("p1")!), liteFakturert(r.get("p3")!)]).toEqual([false, true]);
+  });
+});

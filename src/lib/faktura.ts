@@ -69,18 +69,19 @@ export function timepris(d: Data, aar: number) {
  * Fastprisprosjekter: arbeidsdelen = fakturert kunden − kostpris på materialene på firmaets egne ordrer
  * (N L med kundeprosjekt) − Arbeid som allerede er telt. Delt på timeprisen gir beregnede timer.
  */
-export function fastprisBeregning(d: Data, aar: number) {
-  const pris = timepris(d, aar), eget = d.egetKundenr ?? null;
-  const iAar = (o: ProsjektOrdreKort) => (o.ferdig ?? o.ordredato ?? "").startsWith(`${aar}-`);
+export function fastprisBeregning(d: Data, aar: number | null) {
+  const pris = timepris(d, aar ?? new Date().getFullYear()), eget = d.egetKundenr ?? null;
+  const iAar = (o: ProsjektOrdreKort) => aar == null || (o.ferdig ?? o.ordredato ?? "").startsWith(`${aar}-`);
+  const iAarDato = (x: string | null | undefined) => aar == null ? !!x : !!x?.startsWith(`${aar}-`);
   const mndAv = (o: ProsjektOrdreKort) => Number((o.ferdig ?? o.ordredato ?? "").slice(5, 7)) - 1;
   const reg = new Map<string, number>();
-  for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id && t.dato.startsWith(`${aar}-`)) reg.set(t.prosjekt_id, (reg.get(t.prosjekt_id) ?? 0) + Number(t.timer));
+  for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id && iAarDato(t.dato)) reg.set(t.prosjekt_id, (reg.get(t.prosjekt_id) ?? 0) + Number(t.timer));
   const prosjekter = d.prosjekter.filter((p) => p.fastpris).map((p) => {
     const ordrer = (d.ordrer ?? []).filter((o) => o.prosjekt_id === p.id && o.transaksjonstype === 1 && o.ordretype !== 5 && iAar(o));
     const kunde = ordrer.filter((o) => o.kunde_nr !== eget);
     const salg = kunde.reduce((n, o) => n + o.fakturert, 0);
     const material = ordrer.filter((o) => o.kunde_nr === eget).reduce((n, o) => n + o.kostnad, 0);
-    const arbeidLinjer = (d.fakturerteTimer ?? []).filter((x) => x.prosjekt_id === p.id && x.fakturadato?.startsWith(`${aar}-`)).reduce((n, x) => n + x.fakturert * x.pris, 0);
+    const arbeidLinjer = (d.fakturerteTimer ?? []).filter((x) => x.prosjekt_id === p.id && iAarDato(x.fakturadato)).reduce((n, x) => n + x.fakturert * x.pris, 0);
     const arbeidKr = Math.max(0, salg - material - arbeidLinjer);
     const timer = pris ? arbeidKr / pris : 0;
     // Fordel timene over månedene etter når kunden er fakturert
@@ -92,3 +93,31 @@ export function fastprisBeregning(d: Data, aar: number) {
   for (const x of prosjekter) x.mnd.forEach((v, i) => (perMnd[i] += v));
   return { pris, prosjekter, perMnd: perMnd.map(r1), timer: r1(prosjekter.reduce((n, x) => n + x.timer, 0)) };
 }
+
+/**
+ * Timer per prosjekt (alt som er lastet): registrert fakturerbart mot fakturert «Arbeid», Arbeid på åpne ordrer
+ * og beregnede fastpristimer. Arbeid-linjer uten prosjekt fordeles på kundens prosjekter etter registrerte timer.
+ */
+export function prosjektFakturering(d: Data) {
+  const reg = new Map<string, number>();
+  for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id) reg.set(t.prosjekt_id, (reg.get(t.prosjekt_id) ?? 0) + Number(t.timer));
+  const kundeAv = new Map(d.prosjekter.map((p) => [p.id, p.faktura_kunde_id ?? p.kunde_id]));
+  const perKundeReg = new Map<string, number>();
+  for (const [pid, t] of reg) { const k = kundeAv.get(pid); if (k) perKundeReg.set(k, (perKundeReg.get(k) ?? 0) + t); }
+  const ut = new Map<string, { registrert: number; fakturert: number; aapent: number; fastpris: number }>();
+  const rad = (pid: string) => { if (!ut.has(pid)) ut.set(pid, { registrert: reg.get(pid) ?? 0, fakturert: 0, aapent: 0, fastpris: 0 }); return ut.get(pid)!; };
+  for (const pid of reg.keys()) rad(pid);
+  for (const x of d.fakturerteTimer ?? []) {
+    if (x.prosjekt_id) { const r = rad(x.prosjekt_id); r.fakturert += x.fakturert; r.aapent += Math.max(0, x.ikke_fakturert); continue; }
+    const tot = x.kunde_id ? perKundeReg.get(x.kunde_id) : 0;
+    if (!x.kunde_id || !tot) continue;
+    for (const [pid, t] of reg) if (kundeAv.get(pid) === x.kunde_id) { const r = rad(pid); r.fakturert += (x.fakturert * t) / tot; r.aapent += (Math.max(0, x.ikke_fakturert) * t) / tot; }
+  }
+  for (const f of fastprisBeregning(d, null).prosjekter) rad(f.p.id).fastpris = f.timer;
+  for (const r of ut.values()) { r.registrert = r1(r.registrert); r.fakturert = r1(r.fakturert); r.aapent = r1(r.aapent); }
+  return ut;
+}
+
+/** Mange timer, lite fakturert: minst 20 registrerte timer og under halvparten fakturert, på ordre eller beregnet fastpris */
+export const liteFakturert = (r: { registrert: number; fakturert: number; aapent: number; fastpris: number }) =>
+  r.registrert >= 20 && r.fakturert + r.aapent + r.fastpris < r.registrert * 0.5;

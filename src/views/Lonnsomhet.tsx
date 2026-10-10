@@ -3,6 +3,7 @@ import { useApp } from "../App";
 import { api, feiltekst, type ProsjektOrdre } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { t2, type Prosjekt } from "../lib/timer";
+import { liteFakturert, prosjektFakturering } from "../lib/faktura";
 
 const kr = (n: number) => `kr ${Math.round(n).toLocaleString("nb-NO")}`;
 
@@ -38,6 +39,23 @@ export function Lonnsomhet({ p }: { p: Prosjekt }) {
         <div><span className="label">Timer brukt</span><span className="v">{t2(sumT)}</span></div>
         <div><span className="label">Fakturerbare timer</span><span className="v">{t2(fakt)}</span></div>
       </div>
+      {(() => {
+        const f = prosjektFakturering(d).get(p.id);
+        if (!f || !(d.fakturerteTimer ?? []).length) return null;
+        return (
+          <>
+            <h3 style={{ margin: "4px 0 0" }}>Timer fakturert</h3>
+            <div className="legend">
+              <div><span className="label">Registrert fakturerbart</span><span className="v">{t2(Math.round(f.registrert))}</span></div>
+              <div><span className="label">«Arbeid» fakturert</span><span className="v">{t2(Math.round(f.fakturert))}</span></div>
+              <div><span className="label">På åpne ordrer</span><span className="v" style={f.aapent > 0 ? { color: "var(--pending-text)" } : undefined}>{t2(Math.round(f.aapent))}</span></div>
+              {p.fastpris && <div><span className="label">Fastpris, beregnet</span><span className="v">{t2(Math.round(f.fastpris))}</span></div>}
+              <div><span className="label">Ikke fakturert</span><span className="v" style={liteFakturert(f) ? { color: "var(--warn)" } : undefined}>{t2(Math.max(0, Math.round(f.registrert - f.fakturert - f.aapent - f.fastpris)))}</span></div>
+            </div>
+            <p className="small muted" style={{ margin: 0 }}>«Arbeid» som er fakturert på kunden uten prosjektnummer fordeles på kundens prosjekter etter registrerte timer.</p>
+          </>
+        );
+      })()}
       {ordrer === null ? <div className="empty">Henter ordrer …</div> : ordrer.length ? (
         <div className="scroll" style={{ border: 0 }}>
           <table className="tbl">

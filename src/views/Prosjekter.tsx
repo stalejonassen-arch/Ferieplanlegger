@@ -7,6 +7,7 @@ import { ProsjektSide } from "./ProsjektSide";
 import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
 import { Fakturering } from "./Fakturering";
+import { liteFakturert, prosjektFakturering } from "../lib/faktura";
 
 export function Prosjekter() {
   const { d, meg, leder, kjor } = useApp();
@@ -18,6 +19,7 @@ export function Prosjekter() {
   const [estimat, setEstimat] = useState("");
   const [valgt, setValgt] = useState<string | null>(null);
   const brukt = prosjektTimer(d);
+  const fakt = leder && (d.fakturerteTimer ?? []).length ? prosjektFakturering(d) : null;
   const [visma, setVisma] = useState<{ tid: string; ok: boolean; melding: string } | null>(null);
   useEffect(() => { if (leder) api.vismaStatus().then(setVisma).catch(() => {}); }, [leder, d]);
   const kunde = (id: string | null) => d.kunder.find((k) => k.id === id)?.navn ?? "";
@@ -73,6 +75,9 @@ export function Prosjekter() {
                       <td className="n">{p.visma_nr ?? "–"}</td>
                       <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
+                        {(() => { const f = fakt?.get(p.id); return f && liteFakturert(f) ? (
+                          <div className="small" style={{ color: "var(--warn)" }} title="Registrerte fakturerbare timer mot «Arbeid» fakturert og på ordre i Visma (og beregnet fastpris)">
+                            Lite fakturert: {t2(Math.round(f.fakturert + f.fastpris))} av {t2(Math.round(f.registrert))} t{f.aapent ? `, ${t2(Math.round(f.aapent))} t på åpen ordre` : ""}</div>) : null; })()}
                         {sist.get(p.id) && <div className="small muted">Sist aktivitet {kortDato(sist.get(p.id)!)}{mine.has(p.id) ? " · du har ført timer her" : ""}</div>}
                         {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
                           return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>
