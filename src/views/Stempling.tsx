@@ -5,6 +5,28 @@ import { kortDato } from "../lib/ferie";
 import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 
 const timerSiden = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
+const min = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+const hilsen = (t: number) => (t < 10 ? "God morgen" : t < 17 ? "Hei" : "God kveld");
+
+/** Dagen lagt ut på en tommestokk fra 06 til 18: hver økt er en bit, den pågående vokser mens du er inne. */
+function Dagstokk({ okter, navn }: { okter: { fra: string; til: string; prosjekt_id: string | null; pagar?: boolean }[]; navn: (id: string | null) => string }) {
+  const start = Math.min(6 * 60, ...okter.map((o) => Math.floor(min(o.fra) / 60) * 60));
+  const slutt = Math.max(18 * 60, ...okter.map((o) => Math.ceil(min(o.til) / 60) * 60));
+  const pst = (m: number) => ((m - start) / (slutt - start)) * 100;
+  const prosjekter = [...new Set(okter.map((o) => o.prosjekt_id ?? ""))];
+  const timer = Array.from({ length: (slutt - start) / 60 + 1 }, (_, i) => start / 60 + i);
+  return (
+    <div className="dagstokk" role="img" aria-label={`Dagen: ${okter.map((o) => `${o.fra}–${o.til} ${navn(o.prosjekt_id)}`).join(", ") || "ingen økter ennå"}`}>
+      <div className="stokk">
+        {okter.map((o, i) => (
+          <span key={i} className={`okt farge${prosjekter.indexOf(o.prosjekt_id ?? "") % 4}${o.pagar ? " pagar" : ""}`}
+            style={{ left: `${pst(min(o.fra))}%`, width: `${Math.max(0.8, pst(min(o.til)) - pst(min(o.fra)))}%` }} title={`${o.fra}–${o.til} · ${navn(o.prosjekt_id)}`} />
+        ))}
+      </div>
+      <div className="tall">{timer.map((t) => <span key={t} style={{ left: `${pst(t * 60)}%` }}>{t % 2 === 0 ? String(t).padStart(2, "0") : ""}</span>)}</div>
+    </div>
+  );
+}
 
 /** Logg inn når arbeidet begynner, bytt når du flytter deg, logg ut når prosjektet eller dagen er ferdig. */
 export function Stempling() {
@@ -34,6 +56,13 @@ export function Stempling() {
   const lunsjMin = lunsj ? (meg.lunsj_min ?? 30) : 0;
 
   const gammel = s && s.dato < idag;
+  const naa = new Date();
+  const naaHHMM = `${String(naa.getHours()).padStart(2, "0")}:${String(naa.getMinutes()).padStart(2, "0")}`;
+  const okter = [
+    ...iDag.map((t) => ({ fra: t.fra.slice(0, 5), til: t.til.slice(0, 5), prosjekt_id: t.prosjekt_id })),
+    ...(s && s.dato === idag ? [{ fra: s.fra, til: naaHHMM > s.fra ? naaHHMM : s.fra, prosjekt_id: s.prosjekt_id, pagar: true }] : []),
+  ].sort((a, b) => a.fra.localeCompare(b.fra));
+  const fornavn = meg.navn.split(" ")[0];
   const kjorStempel = async (handling: "inn" | "bytt" | "ut", melding: string) => {
     setVenter(true);
     const ok = await kjor(() => api.stemple(handling, { prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined }), melding);
@@ -62,12 +91,13 @@ export function Stempling() {
     return (
       <section className="stempel" style={{ flexDirection: "column", alignItems: "stretch" }}>
         <div>
-          <h2 style={{ margin: "0 0 4px" }}>Logg inn på jobb</h2>
-          <div className="klokke">{kvarter(new Date())}</div>
-          <div className="small muted" style={{ marginTop: 4 }}>Tida rundes til nærmeste kvarter.</div>
+          <h2 style={{ margin: "0 0 4px" }}>{hilsen(naa.getHours())}, {fornavn}</h2>
+          <div className="klokke">{kvarter(naa)}</div>
+          <div className="small dempet" style={{ marginTop: 4 }}>Logger du inn nå, står du inne fra {kvarter(naa)}.</div>
         </div>
+        {okter.length > 0 && <Dagstokk okter={okter} navn={navn} />}
         {velger}
-        <button className="btn primary stor" disabled={venter} onClick={() => kjorStempel("inn", `Logget inn på ${navn(prosjekt || null)}`)}>
+        <button className="btn gul stor" disabled={venter} onClick={() => kjorStempel("inn", `Logget inn på ${navn(prosjekt || null)}`)}>
           Logg inn nå · {prosjekt ? d.prosjekter.find((p) => p.id === prosjekt)?.navn : "internt"}
         </button>
       </section>
@@ -78,11 +108,12 @@ export function Stempling() {
   return (
     <section className="stempel inne" style={{ flexDirection: "column", alignItems: "stretch" }}>
       <div>
-        <div className="label">Logget inn {gammel ? kortDato(s.dato) + " " : ""}kl. {s.fra}</div>
+        <div className="small dempet">Logget inn {gammel ? kortDato(s.dato) + " " : ""}kl. {s.fra}</div>
         {!gammel && <div className="klokke">{Math.floor(timer)}<small>t</small> {String(Math.floor((timer % 1) * 60)).padStart(2, "0")}<small>min</small></div>}
-        <div style={{ fontSize: 18, fontWeight: 600, marginTop: 6 }}>{navn(s.prosjekt_id)}</div>
-        {gammel && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }}>Du ble ikke logget ut {kortDato(s.dato)}. Skriv inn når du sluttet, så lagres dagen.</p>}
-        {!gammel && timer > 10 && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }}>Du har vært logget inn i over 10 timer. Glemt å logge ut?</p>}
+        <div style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>{navn(s.prosjekt_id)}</div>
+        {!gammel && <Dagstokk okter={okter} navn={navn} />}
+        {gammel && <p className="small varsel" style={{ margin: "8px 0 0" }}>Du ble ikke logget ut {kortDato(s.dato)}. Skriv inn når du sluttet, så lagres dagen.</p>}
+        {!gammel && timer > 10 && <p className="small varsel" style={{ margin: "8px 0 0" }}>Du har vært logget inn i over 10 timer. Glemt å logge ut?</p>}
       </div>
       {gammel && (
         <label className="field kort" style={{ maxWidth: 180 }}><span className="label">Sluttet kl.</span>
@@ -94,13 +125,13 @@ export function Stempling() {
         <label className="row small"><input type="checkbox" checked={lunsj} onChange={(e) => setLunsj(e.target.checked)} /> Hadde lunsj ({meg.lunsj_min ?? 30} min trekkes){lunsjFort ? " – lunsj er alt ført i dag" : ""}</label>
       )}
       <div className="row">
-        <button className="btn primary stor" style={{ flex: 1 }} disabled={venter || (gammel && !til)} onClick={() => kjorStempel("ut", "Logget ut – timene er lagret")}>Logg ut – dagen er ferdig</button>
+        <button className="btn gul stor" style={{ flex: 1 }} disabled={venter || (gammel && !til)} onClick={() => kjorStempel("ut", "Logget ut – timene er lagret")}>Logg ut – dagen er ferdig</button>
       </div>
       <details>
         <summary className="small" style={{ cursor: "pointer", fontWeight: 600 }}>Ferdig her – bytt til et annet prosjekt</summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
           {velger}
-          <button className="btn" disabled={venter || (gammel && !til) || prosjekt === (s.prosjekt_id ?? "")} onClick={() => kjorStempel("bytt", `Byttet til ${navn(prosjekt || null)}`)}>
+          <button className="btn lys" disabled={venter || (gammel && !til) || prosjekt === (s.prosjekt_id ?? "")} onClick={() => kjorStempel("bytt", `Byttet til ${navn(prosjekt || null)}`)}>
             Bytt til {prosjekt ? d.prosjekter.find((p) => p.id === prosjekt)?.navn : "internt"}
           </button>
         </div>

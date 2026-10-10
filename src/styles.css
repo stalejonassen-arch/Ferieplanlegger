@@ -232,3 +232,39 @@ nav.tabs .ikon { display: none; }
   nav.tabs.hoved .badge { position: absolute; top: 2px; left: 50%; margin-left: 6px; }
   .klokke { font-size: 56px; }
 }
+
+/* ---- Innloggingsfeltet: blått når du er ute, grønt når du er inne ---- */
+.stempel { background: var(--bf-blue); color: #FFFFFF; border: 0; border-radius: 14px; padding: 18px 18px 20px; gap: 14px; position: relative; overflow: hidden; }
+.stempel::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: var(--stokk); opacity: .9; }
+.stempel > :first-child { margin-top: 6px; }
+.stempel.inne { background: #0D5B37; box-shadow: none; }
+.stempel h2 { color: #FFFFFF; }
+.stempel .klokke, .stempel.inne .klokke { color: #FFFFFF; font-size: 76px; }
+.stempel .klokke small { color: rgba(255,255,255,.75); }
+.stempel .dempet { color: rgba(255,255,255,.78); }
+.stempel .label, .stempel summary, .stempel label { color: rgba(255,255,255,.88); }
+.stempel input[type=text], .stempel input[type=time], .stempel select { background: #FFFFFF; color: var(--fg); border-color: transparent; }
+.stempel .hurtig button { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.55); }
+.stempel .hurtig button[aria-pressed=true] { background: var(--bf-yellow); color: #1A1400; border-color: var(--bf-yellow); }
+.stempel .varsel { background: #FFF1C2; color: #3A2A00; border-radius: 6px; padding: 6px 10px; }
+.btn.gul { background: var(--bf-yellow); color: #1A1400; border-color: var(--bf-yellow); font-weight: 700; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.btn.gul:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.btn.lys { background: rgba(255,255,255,.12); color: #FFFFFF; border-color: rgba(255,255,255,.55); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Dagstokken: dagens økter lagt på en tommestokk */
+.dagstokk { padding-bottom: 16px; position: relative; }
+.dagstokk .stokk { position: relative; height: 26px; border-radius: 3px; background: var(--stokk); }
+.dagstokk .okt { position: absolute; top: 9px; bottom: 0; border-radius: 2px 2px 0 0; }
+.dagstokk .farge0 { background: #FFFFFF; }
+.dagstokk .farge1 { background: #9FB0FF; }
+.dagstokk .farge2 { background: #FF8A80; }
+.dagstokk .farge3 { background: #7FE0A8; }
+.dagstokk .okt.pagar { background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.18) 0 4px, transparent 4px 8px); animation: vokser 2s ease-in-out infinite alternate; }
+@keyframes vokser { from { opacity: .75; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dagstokk .okt.pagar { animation: none; } }
+.dagstokk .tall { position: relative; height: 14px; margin-top: 3px; font-size: 11px; color: rgba(255,255,255,.8); }
+.dagstokk .tall span { position: absolute; transform: translateX(-50%); }
+.dagstokk .tall span:first-child { transform: none; }
+.dagstokk .tall span:last-child { transform: translateX(-100%); }
+@media (max-width: 640px) { .stempel .klokke, .stempel.inne .klokke { font-size: 64px; } }
