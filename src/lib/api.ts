@@ -119,6 +119,18 @@ export function feiltekst(e: unknown): string {
 
 function supabaseApi(sb: SupabaseClient): Api {
   const ok = <T>(r: { data: T; error: unknown }) => { if (r.error) throw r.error; return r.data; };
+  /** Supabase gir maks 1000 rader per kall: hent side for side til alt er med */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const alle = async (lag: () => any, maks = 50000): Promise<{ data: any[]; error: unknown }> => {
+    const ut: unknown[] = [];
+    for (let fra = 0; fra < maks; fra += 1000) {
+      const r = await lag().range(fra, fra + 999);
+      if (r.error) return { data: [], error: r.error };
+      ut.push(...(r.data ?? []));
+      if (!r.data || r.data.length < 1000) break;
+    }
+    return { data: ut, error: null };
+  };
   return {
     modus: "supabase",
     async epost() { return (await sb.auth.getSession()).data.session?.user.email ?? null; },
@@ -141,18 +153,18 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("ferieaar").select("*"),
         sb.from("soknader").select("*").order("fra"),
         sb.from("kunder").select("*").order("navn"),
-        sb.from("prosjekter").select("*").order("visma_nr", { ascending: false, nullsFirst: true }),
-        sb.from("timer").select("*").gte("dato", fraDato).order("dato").order("fra").limit(20000),
-        sb.from("avvik").select("*").order("opprettet", { ascending: false }).limit(2000),
-        sb.from("bilder").select("*").order("opprettet", { ascending: false }).limit(5000),
-        sb.from("dagbok").select("*").order("dato", { ascending: false }).order("opprettet", { ascending: false }).limit(5000),
+        alle(() => sb.from("prosjekter").select("*").order("visma_nr", { ascending: false, nullsFirst: true }).order("id")),
+        alle(() => sb.from("timer").select("*").gte("dato", fraDato).order("dato").order("fra").order("id")),
+        alle(() => sb.from("avvik").select("*").order("opprettet", { ascending: false }).order("id"), 5000),
+        alle(() => sb.from("bilder").select("*").order("opprettet", { ascending: false }).order("id"), 10000),
+        alle(() => sb.from("dagbok").select("*").order("dato", { ascending: false }).order("opprettet", { ascending: false }).order("id"), 10000),
         sb.from("tillegg").select("*").order("opprettet", { ascending: false }).limit(2000),
         sb.from("bedrifter").select("*").limit(1),
         sb.from("rapporter").select("id, tittel, periode, ingress, lenke, sti, publisert, opprettet").order("periode", { ascending: false }).limit(200),
-        sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").limit(10000),
+        alle(() => sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").order("rapport_id").order("ansatt_id"), 10000),
         sb.from("stempling").select("ansatt_id, prosjekt_id, dato, fra, startet"),
-        sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).limit(5000),
-        sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad, bytte_avklart").order("dato", { ascending: false }).limit(10000),
+        alle(() => sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).order("id"), 10000),
+        alle(() => sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad, bytte_avklart").order("dato", { ascending: false }).order("id"), 20000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -348,8 +360,8 @@ function supabaseApi(sb: SupabaseClient): Api {
     async svennProsjekter(koblinger) { return (ok(await sb.rpc("svenn_prosjekter", { koblinger })) ?? {}) as Record<string, string>; },
     async svennImporterteFiler() {
       const [b, f] = await Promise.all([
-        sb.from("bilder").select("svenn_id").not("svenn_id", "is", null).limit(20000),
-        sb.from("fdv_dok").select("svenn_id").not("svenn_id", "is", null).limit(20000)]);
+        alle(() => sb.from("bilder").select("svenn_id").not("svenn_id", "is", null).order("svenn_id")),
+        alle(() => sb.from("fdv_dok").select("svenn_id").not("svenn_id", "is", null).order("svenn_id"))]);
       return new Set([...(ok(b) as { svenn_id: number }[]), ...(ok(f) as { svenn_id: number }[])].map((x) => Number(x.svenn_id)));
     },
     async importerSvenn(koblinger, rader) { return ok(await sb.rpc("importer_svenn", { koblinger, rader })) as SvennResultat; },

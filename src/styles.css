@@ -1,6 +1,6 @@
 /* Arbeidsverktøy i Byggfag-profil: Byggfag-blå (#0A1EBE fra logoen), hvit, rød og gul. */
 :root {
-  --bg: #F1F3F9; --surface: #FFFFFF; --sunk: #E5E9F3; --fg: #10162E; --muted: #535D7A; --line: #CED4E4;
+  --bg: #EDF0F7; --surface: #FFFFFF; --sunk: #E6EAF4; --fg: #0E1430; --muted: #3F4966; --line: #C9D0E2;
   --accent: #0A1EBE; --accent-ink: #FFFFFF; --approved: #18804A; --pending: #F2B705; --pending-ink: #1A1400;
   --warn: #D21F26; --info: #5B6FD6; --hatch: #D9DDEA;
   --bf-blue: #0A1EBE; --bf-blue-dark: #07158A; --bf-yellow: #FFCD00; --bf-red: #E2231A; --pending-text: #8A5F00;
@@ -15,8 +15,8 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0C1024; --surface: #151B36; --sunk: #1C2342; --fg: #E8EBF7; --muted: #9AA3C4; --line: #2C3560;
-    --accent: #8D9BFF; --accent-ink: #0A0F2A; --approved: #4FC184; --pending: #FFCD00; --warn: #FF6B63; --info: #8D9BFF; --hatch: #262E52;
+    --bg: #0A0E20; --surface: #161D3C; --sunk: #202955; --fg: #F4F6FD; --muted: #C3CAE6; --line: #36417C;
+    --accent: #A3AEFF; --accent-ink: #0A0F2A; --approved: #5ED394; --pending: #FFCD00; --warn: #FF7A72; --info: #A3AEFF; --hatch: #2C3560;
     --bf-blue: #0A1EBE; --bf-blue-dark: #07158A; --pending-text: #FFCD00;
     color-scheme: dark;
   }
@@ -284,3 +284,63 @@ nav.tabs .ikon { display: none; }
 .kvote.full .prikker i.b { background: var(--pending); border-color: var(--pending); }
 .kvote .prikker i.o { background: var(--warn); border-color: var(--warn); }
 .bytte { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-left: 4px solid var(--pending); background: var(--sunk); border-radius: 6px; }
+
+/* ================= Forfrisket design (okt 2026): mer lesbart, roligere flater ================= */
+body { font-size: 16px; line-height: 1.5; }
+.small { font-size: 14.5px; }
+.label { font-size: 14px; }
+p { max-width: 68ch; }
+h2 { font-size: 24px; }
+h3 { font-size: 18px; }
+
+/* Toppen: dypere Byggfag-blå med lett glans */
+header.top { background: linear-gradient(135deg, #0D24D6 0%, var(--bf-blue) 45%, #061190 100%); border-radius: 16px; padding: 16px 20px 28px;
+  box-shadow: 0 10px 30px -12px rgba(10, 30, 190, .55); }
+header.top .muted { color: #E4E8FF; }
+
+/* Flater: rundere hjørner, myk skygge */
+.panel { border-radius: 16px; padding: 20px; gap: 14px; box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px -16px rgba(5, 10, 40, .35); }
+@media (prefers-color-scheme: dark) {
+  .panel { border-color: #2C3670; box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 12px 28px -18px rgba(0,0,0,.8); }
+  body { background: radial-gradient(1200px 500px at 50% -200px, #18215080, transparent), var(--bg); background-attachment: fixed; }
+}
+.item, .kvote, .rule { border-radius: 10px; }
+.scroll { border-radius: 12px; }
+
+/* Faner: tydelig valgt fane som pille */
+nav.tabs:not(.hoved), nav.tabs.hoved { gap: 6px; padding-block: 6px; border-bottom: 1px solid var(--line); }
+nav.tabs button { color: var(--muted); border-radius: 10px; padding: 9px 14px; border-bottom: 0; margin-bottom: 0; }
+nav.tabs button:hover { color: var(--fg); background: var(--sunk); }
+nav.tabs button[aria-selected=true] { color: var(--accent-ink); background: var(--accent); }
+@media (prefers-color-scheme: light) { nav.tabs button[aria-selected=true] { color: #FFFFFF; } }
+
+/* Knapper og felt */
+.btn { border-radius: 10px; padding: 9px 16px; transition: background .15s, border-color .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input[type=email], input[type=number], textarea { border-radius: 10px; background: var(--sunk); }
+
+/* Tabeller: større tekst, lysere overskrifter */
+table.tbl { font-size: 15px; }
+table.tbl th { font-size: 12px; color: var(--muted); }
+table.tbl tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.staff-head { font-size: 12px; }
+
+/* Nøkkeltall og grafer */
+.legend .v { font-size: 28px; }
+.maal-akse { font-size: 12.5px; color: var(--muted); }
+.maal-mnd { gap: 5px; }
+.maal-mnd div { border-radius: 4px 4px 0 0; }
+.chip { font-size: 11.5px; border-radius: 6px; }
+.empty { border-radius: 12px; }
+.toast { border-radius: 12px; }
+
+/* Mobil: menyen nede får samme pille-stil */
+@media (max-width: 640px) {
+  nav.tabs.hoved { padding-block: 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  nav.tabs.hoved button { border-radius: 12px; border-top: 0; color: var(--muted); }
+  nav.tabs.hoved button[aria-selected=true] { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .panel { padding: 16px; border-radius: 14px; }
+}
+.legend .v { white-space: nowrap; }
+@media (max-width: 640px) { .legend .v { font-size: 22px; } .legend { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); } }
