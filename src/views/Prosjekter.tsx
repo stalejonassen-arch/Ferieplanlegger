@@ -77,7 +77,8 @@ export function Prosjekter() {
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
                         {(() => { const f = fakt?.get(p.id); return f && liteFakturert(f) ? (
                           <div className="small" style={{ color: "var(--warn)" }} title="Registrerte fakturerbare timer mot «Arbeid» fakturert og på ordre i Visma (og beregnet fastpris)">
-                            Lite fakturert: {t2(Math.round(f.fakturert + f.fastpris))} av {t2(Math.round(f.registrert))} t{f.aapent ? `, ${t2(Math.round(f.aapent))} t på åpen ordre` : ""}</div>) : null; })()}
+                            Lite fakturert: {t2(Math.round(f.fakturert + f.fastpris))} av {t2(Math.round(f.registrert))} t{f.aapent ? `, ${t2(Math.round(f.aapent))} t på åpen ordre` : ""}
+                            {" "}<button className="btn sm" style={{ marginLeft: 6 }} onClick={() => kjor(() => api.settFakturertFull(p.id, true), `${p.navn} er merket ferdig fakturert`)}>Merk som fakturert</button></div>) : null; })()}
                         {sist.get(p.id) && <div className="small muted">Sist aktivitet {kortDato(sist.get(p.id)!)}{mine.has(p.id) ? " · du har ført timer her" : ""}</div>}
                         {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
                           return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>

@@ -58,13 +58,14 @@ export function Fakturering() {
         </>
       )}
       <details>
-        <summary className="small" style={{ cursor: "pointer" }}>Fastprisprosjekter ({d.prosjekter.filter((p) => p.fastpris).length}) – kryss av jobber som faktureres som fastpris</summary>
-        <p className="small muted" style={{ margin: "6px 0" }}>Timene på fastprisprosjekter holdes utenfor sammenligningen, siden de ikke faktureres som «Arbeid». Lista viser prosjekter med fakturerbare timer i år.</p>
+        <summary className="small" style={{ cursor: "pointer" }}>Ferdig fakturert og fastpris ({d.prosjekter.filter((p) => p.fakturert_full).length} / {d.prosjekter.filter((p) => p.fastpris).length}) – kryss av prosjektene</summary>
+        <p className="small muted" style={{ margin: "6px 0" }}><b>Ferdig fakturert</b>: prosjektet er fakturert, og alle fakturerbare timer teller som fakturert (full pott). <b>Fastpris</b>: timene beregnes fra fakturabeløpet minus materialer. Lista viser prosjekter med fakturerbare timer i år.</p>
         <div className="scroll" style={{ border: 0 }}>
           <table className="tbl">
-            <thead><tr><th>Fastpris</th><th>Prosjekt</th><th className="n">Timer i år</th></tr></thead>
+            <thead><tr><th>Ferdig fakturert</th><th>Fastpris</th><th>Prosjekt</th><th className="n">Timer i år</th></tr></thead>
             <tbody>{prosjektTimerIAar(d, aar).map(({ p, timer }) => (
               <tr key={p.id}>
+                <td><input type="checkbox" aria-label={`Ferdig fakturert ${p.navn}`} checked={!!p.fakturert_full} onChange={(e) => kjor(() => api.settFakturertFull(p.id, e.target.checked), e.target.checked ? `${p.navn} er merket ferdig fakturert` : `${p.navn} er ikke lenger merket fakturert`)} /></td>
                 <td><input type="checkbox" aria-label={`Fastpris ${p.navn}`} checked={!!p.fastpris} onChange={(e) => kjor(() => api.settFastpris(p.id, e.target.checked), e.target.checked ? `${p.navn} er merket som fastpris` : `${p.navn} er ikke lenger fastpris`)} /></td>
                 <td style={{ whiteSpace: "normal" }}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</td>
                 <td className="n">{t2(Math.round(timer))}</td>
@@ -82,5 +83,5 @@ export function Fakturering() {
 function prosjektTimerIAar(d: ReturnType<typeof useApp>["d"], aar: number) {
   const m = new Map<string, number>();
   for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id && t.dato.startsWith(`${aar}-`)) m.set(t.prosjekt_id, (m.get(t.prosjekt_id) ?? 0) + Number(t.timer));
-  return d.prosjekter.filter((p) => m.has(p.id) || p.fastpris).map((p) => ({ p, timer: m.get(p.id) ?? 0 })).sort((a, b) => b.timer - a.timer);
+  return d.prosjekter.filter((p) => m.has(p.id) || p.fastpris || p.fakturert_full).map((p) => ({ p, timer: m.get(p.id) ?? 0 })).sort((a, b) => b.timer - a.timer);
 }

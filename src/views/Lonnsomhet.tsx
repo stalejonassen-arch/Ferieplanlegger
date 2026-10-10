@@ -26,6 +26,10 @@ export function Lonnsomhet({ p }: { p: Prosjekt }) {
       <h2 style={{ margin: 0 }}>Økonomi</h2>
       <p className="small muted" style={{ margin: 0 }}>Ordrer i Visma på kundeprosjektet, oppdatert hvert kvarter. Bare du som leder ser denne siden.</p>
       <label className="row small" style={{ gap: 8 }}>
+        <input type="checkbox" checked={!!p.fakturert_full} onChange={(e) => kjor(() => api.settFakturertFull(p.id, e.target.checked), e.target.checked ? "Merket ferdig fakturert" : "Ikke lenger merket fakturert")} />
+        Ferdig fakturert – alle fakturerbare timer teller som fakturert (full pott)
+      </label>
+      <label className="row small" style={{ gap: 8 }}>
         <input type="checkbox" checked={!!p.fastpris} onChange={(e) => kjor(() => api.settFastpris(p.id, e.target.checked), e.target.checked ? "Merket som fastpris" : "Ikke lenger fastpris")} />
         Fastpris – faktureres uten «Arbeid», så timene holdes utenfor sammenligningen av fakturerte timer
       </label>

@@ -3,7 +3,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { MND } from "../lib/ferie";
 import { fakturertPerMnd, t2 } from "../lib/timer";
-import { fakturertVismaPerMnd, ikkeFakturert, fastprisBeregning } from "../lib/faktura";
+import { arbeidUtenFull, fakturertVismaPerMnd, fastprisBeregning, fullPerMnd, ikkeFakturert } from "../lib/faktura";
 
 /** Fakturerte timer per måned mot målet. Leder setter målet for året; månedsmålet er en tolvdel. */
 export function Maal() {
@@ -21,13 +21,14 @@ export function Maal() {
   const harVisma = (d.fakturerteTimer ?? []).some((x) => x.fakturadato?.startsWith(`${aar}-`));
   const [kilde, setKilde] = useState<"visma" | "registrert">(harVisma ? "visma" : "registrert");
   const visma = kilde === "visma";
-  const arbeid = fakturertVismaPerMnd(d.fakturerteTimer ?? [], aar);
+  const arbeid = fakturertVismaPerMnd(arbeidUtenFull(d), aar);
   const fast = fastprisBeregning(d, aar);
+  const full = fullPerMnd(d, aar);
   const registrert = fakturertPerMnd(d.timer, aar);
   // Fakturert = Arbeid i Visma + beregnede timer på fastprisjobber
-  const per = visma ? arbeid.map((n, i) => Math.round((n + fast.perMnd[i]) * 10) / 10) : registrert;
+  const per = visma ? arbeid.map((n, i) => Math.round((n + fast.perMnd[i] + full[i]) * 10) / 10) : registrert;
   const sumTil = (x: number[]) => x.slice(0, mnd).reduce((a, b) => a + b, 0);
-  const regHittil = sumTil(registrert), faktHittil = sumTil(arbeid) + sumTil(fast.perMnd);
+  const regHittil = sumTil(registrert), faktHittil = sumTil(arbeid) + sumTil(fast.perMnd) + sumTil(full);
   const aapent = ikkeFakturert(d.fakturerteTimer ?? []);
   const hittil = per.slice(0, mnd).reduce((a, b) => a + b, 0);
   const denne = per[mnd - 1];
@@ -61,8 +62,8 @@ export function Maal() {
       <div className="maal-mnd" role="img" aria-label={visma ? "Fakturerte timer per måned" : "Fakturerbare timer per måned"}>
         {per.map((n, i) => (
           <div key={i} className={i < mnd && n < maal ? "under" : ""} style={{ height: `${(n / maks) * 100}%`, opacity: i < mnd ? 1 : 0.35 }}
-            title={visma && fast.perMnd[i] ? `${MND[i]}: ${t2(n)} t (${t2(arbeid[i])} Arbeid + ${t2(fast.perMnd[i])} fastpris)` : `${MND[i]}: ${t2(n)} t`}>
-            {visma && fast.perMnd[i] > 0 && n > 0 && <span className="fastdel" style={{ height: `${(fast.perMnd[i] / n) * 100}%` }} />}
+            title={visma && (fast.perMnd[i] || full[i]) ? `${MND[i]}: ${t2(n)} t (${t2(arbeid[i])} Arbeid, ${t2(full[i])} ferdig fakturert, ${t2(fast.perMnd[i])} fastpris)` : `${MND[i]}: ${t2(n)} t`}>
+            {visma && fast.perMnd[i] + full[i] > 0 && n > 0 && <span className="fastdel" style={{ height: `${((fast.perMnd[i] + full[i]) / n) * 100}%` }} />}
           </div>
         ))}
       </div>
@@ -72,13 +73,15 @@ export function Maal() {
           <div><span className="label">Arbeid fakturert</span><span className="v">{t2(Math.round(sumTil(arbeid)))}</span></div>
           <div><span className="label">Fastpris, beregnet</span><span className="v">{t2(Math.round(sumTil(fast.perMnd)))}</span>
             <span className="small muted">{fast.prosjekter.length ? `${fast.prosjekter.length} prosjekter à ${t2(fast.pris)} kr/t` : "Ingen prosjekter merket fastpris"}</span></div>
+          {sumTil(full) > 0 && <div><span className="label">Ferdig fakturerte prosjekter</span><span className="v">{t2(Math.round(sumTil(full)))}</span>
+            <span className="small muted">{d.prosjekter.filter((p) => p.fakturert_full).length} prosjekter, alle timer teller</span></div>}
           <div><span className="label">Registrert fakturerbart</span><span className="v">{t2(Math.round(regHittil))}</span></div>
           <div><span className="label">Fakturert av registrert</span><span className="v">{Math.round((faktHittil / (regHittil || 1)) * 100)} %</span></div>
           <div><span className="label">På åpne ordrer</span><span className="v">{t2(Math.round(aapent))}</span></div>
         </div>
       )}
       <p className="small muted" style={{ margin: 0 }}>
-        {visma ? "Teller «Arbeid» fakturert i Visma (etter fakturadato), pluss beregnede timer på fastprisjobber: fakturert kunden minus kostpris på materialene på N L-ordrene, delt på timeprisen. Den lyse delen av søylen er fastpris." : "Teller timer ført på prosjekt og merket fakturerbart i ByggLogg."}{" "}
+        {visma ? "Teller «Arbeid» fakturert i Visma (etter fakturadato), pluss alle timer på prosjekter merket ferdig fakturert, og beregnede timer på fastprisjobber: fakturert kunden minus kostpris på materialene på N L-ordrene, delt på timeprisen. Den stripete delen av søylen er ferdig fakturert og fastpris." : "Teller timer ført på prosjekt og merket fakturerbart i ByggLogg."}{" "}
         Grønt = nådd målet på {t2(Math.round(maal))} t, gult = under.</p>
     </section>
   );

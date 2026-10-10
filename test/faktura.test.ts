@@ -72,3 +72,19 @@ describe("per prosjekt", () => {
     expect([liteFakturert(r.get("p1")!), liteFakturert(r.get("p3")!)]).toEqual([false, true]);
   });
 });
+
+describe("ferdig fakturert", () => {
+  it("alle fakturerbare timer teller, og Arbeid på prosjektet/kunden telles ikke dobbelt", async () => {
+    const { prosjektFakturering, perKunde, fullPerMnd, arbeidUtenFull, fastprisBeregning } = await import("../src/lib/faktura");
+    const d = {
+      kunder: [{ id: "k1", navn: "Kyrre" }], prosjekter: [{ id: "p1", kunde_id: "k1", fakturert_full: true, fastpris: true }],
+      timer: [{ prosjekt_id: "p1", dato: "2026-04-02", timer: 166 }],
+      fakturerteTimer: [f({ kunde_id: "k1", fakturadato: "2026-04-10", fakturert: 30 })], ordrer: [],
+    } as unknown as Data;
+    expect(prosjektFakturering(d).get("p1")).toMatchObject({ registrert: 166, fakturert: 166, aapent: 0, fastpris: 0 });
+    expect(perKunde(d, 2026).map((k) => [k.registrert, k.fakturert])).toEqual([[166, 166]]);
+    expect(fullPerMnd(d, 2026)[3]).toBe(166);
+    expect(arbeidUtenFull(d)).toHaveLength(0);
+    expect(fastprisBeregning(d, 2026).prosjekter).toHaveLength(0);
+  });
+});
