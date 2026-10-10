@@ -1,3 +1,4 @@
+import { arbeidsdager } from "./fravaer";
 // Timeføring og lønnsgrunnlag: normaltid, overtid og lunsjtrekk.
 // Rene funksjoner, så reglene kan testes.
 import { addDays, helligdag, ukedag, type Ansatt, type Data } from "./ferie";
@@ -91,9 +92,21 @@ export function lonnsdager(a: Ansatt, timer: Time[], fra: string, til: string): 
   return ut;
 }
 
-export interface LonnTimer { ansatt: Ansatt; normal: number; ot50: number; ot100: number; km: number; reisetid: number; lunsjtrekk: number; avvik: string[]; ikkeGodkjent: number }
+export interface LonnTimer { ansatt: Ansatt; normal: number; ot50: number; ot100: number; km: number; reisetid: number; lunsjtrekk: number; avvik: string[]; ikkeGodkjent: number;
+  /** Arbeidsdager med fravær i perioden */
+  egenmelding: number; sykmelding: number; syktBarn: number }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+function fravaerDager(d: Data, ansattId: string, fra: string, til: string) {
+  const ut = { egenmelding: 0, sykmelding: 0, syktBarn: 0 };
+  for (const x of d.fravaer ?? []) {
+    if (x.ansatt_id !== ansattId || x.til < fra || x.fra > til) continue;
+    const n = arbeidsdager(x.fra, x.til, fra, til);
+    if (x.type === "egenmelding") ut.egenmelding += n; else if (x.type === "sykmelding") ut.sykmelding += n; else ut.syktBarn += n;
+  }
+  return ut;
+}
 
 export function lonnTimer(d: Data, a: Ansatt, fra: string, til: string): LonnTimer {
   const dager = lonnsdager(a, d.timer, fra, til);
@@ -103,6 +116,7 @@ export function lonnTimer(d: Data, a: Ansatt, fra: string, til: string): LonnTim
     km: s((x) => x.km), reisetid: s((x) => x.reisetid), lunsjtrekk: s((x) => x.lunsjtrekk),
     avvik: dager.filter((x) => x.lunsjavvik).map((x) => x.dato),
     ikkeGodkjent: d.timer.filter((t) => t.ansatt_id === a.id && t.dato >= fra && t.dato <= til && t.status !== "godkjent").length,
+    ...fravaerDager(d, a.id, fra, til),
   };
 }
 
@@ -167,9 +181,9 @@ export function kvarter(d: Date) {
 }
 
 /** Hverdager fra mandag til i går uten timer, ferie eller helligdag. */
-export function dagerUtenTimer(ansattId: string, d: Pick<Data, "timer" | "soknader">, fra: string, idag: string, helligdag: (iso: string) => string | undefined) {
+export function dagerUtenTimer(ansattId: string, d: Pick<Data, "timer" | "soknader"> & { fravaer?: Data["fravaer"] }, fra: string, idag: string, helligdag: (iso: string) => string | undefined) {
   const ut: string[] = [];
-  const ferie = d.soknader.filter((s) => s.ansatt_id === ansattId && s.status === "godkjent");
+  const ferie = [...d.soknader.filter((s) => s.ansatt_id === ansattId && s.status === "godkjent"), ...(d.fravaer ?? []).filter((x) => x.ansatt_id === ansattId)];
   const fort = new Set(d.timer.filter((t) => t.ansatt_id === ansattId).map((t) => t.dato));
   for (let i = 0; i < 7; i++) {
     const dt = new Date(fra + "T00:00:00Z"); dt.setUTCDate(dt.getUTCDate() + i);

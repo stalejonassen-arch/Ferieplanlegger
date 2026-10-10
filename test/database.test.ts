@@ -51,6 +51,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0013_timerapport.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0014_ansattnr.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0015_stempling.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0016_fravaer.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -319,5 +320,19 @@ describe("dagbok og tilleggsarbeid", () => {
     const [m] = await as<any>(JIM, "insert into public.timer (ansatt_id, dato, fra, til, kilde) values ($1, '2027-05-03', '07:00', '08:00', 'stempel') returning kilde", [jim]);
     expect(m.kilde).toBe("manuell");
     await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+  });
+
+  it("sykefravær: egen registrering, maks 3 dager egenmelding, bare leder ser andres", async () => {
+    const jim = await idOf("Jim Kato");
+    await as(JIM, "insert into public.fravaer (ansatt_id, type, fra, til) values ($1, 'egenmelding', '2027-01-04', '2027-01-06')", [jim]);
+    await expect(as(JIM, "insert into public.fravaer (ansatt_id, type, fra, til) values ($1, 'egenmelding', '2027-02-01', '2027-02-04')", [jim])).rejects.toThrow(/høyst 3/);
+    await expect(as(JIM, "insert into public.fravaer (ansatt_id, type, fra, til) values ($1, 'sykt_barn', '2027-01-05', '2027-01-05')", [jim])).rejects.toThrow(/overlapper/);
+    await expect(as(JIM, "insert into public.fravaer (ansatt_id, type, fra, til) values ($1, 'egenmelding', '2027-03-01', '2027-03-01')", [await idOf("Ståle Jonassen").catch(() => idOf("Ståle"))])).rejects.toThrow(/deg selv/);
+    await as(STALE, "insert into public.fravaer (ansatt_id, type, fra, til, grad) values ($1, 'sykmelding', '2027-02-01', '2027-02-20', 50)", [jim]);
+    expect(await as(JIM, "select * from public.fravaer")).toHaveLength(2);
+    expect(await as(STALE, "select * from public.fravaer")).toHaveLength(2);
+    await as(STALE, "update public.ansatte set aktiv=true where epost=$1", [MADS]);
+    expect(await as(MADS, "select * from public.fravaer")).toHaveLength(0);
+    await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
   });
 });

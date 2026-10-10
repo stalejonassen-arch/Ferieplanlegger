@@ -12,6 +12,7 @@ import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
 import { Rapporter, lesRapport } from "./views/Rapporter";
+import { Sykdom } from "./views/Sykdom";
 import { uleste } from "./lib/rapport";
 
 export interface Ctx {
@@ -26,10 +27,10 @@ export interface Ctx {
 const AppCtx = createContext<Ctx>(null!);
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "prosjekter" | "avvik" | "rapporter" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "prosjekter" | "avvik" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "prosjekter", "avvik", "rapporter", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "prosjekter", "avvik", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -103,9 +104,9 @@ export function App() {
   const venter = d.soknader.filter((s) => s.status === "venter").length;
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
-  const FERIE: Fane[] = ["min", "kal", "sok", "regler"];
-  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["rapporter", "Rapporter"], ["min", "Ferie"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
-  const ferieFaner: [Fane, string][] = [["min", "Min ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
+  const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
+  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
   const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
@@ -152,9 +153,9 @@ export function App() {
                 </button>
               ))}
             </nav>
-            <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
+            {aktiv !== "syk" && <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
               {[y0 - 1, y0, y0 + 1].map((y) => <option key={y} value={y}>Ferieår {y}</option>)}
-            </select>
+            </select>}
           </div>
         )}
 
@@ -162,6 +163,7 @@ export function App() {
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
         {aktiv === "rapporter" && <Rapporter />}
+        {aktiv === "syk" && <Sykdom />}
         {aktiv === "min" && <MinFerie />}
         {aktiv === "kal" && <Kalender />}
         {aktiv === "sok" && <Soknader />}

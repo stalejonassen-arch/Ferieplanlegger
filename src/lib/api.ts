@@ -5,6 +5,7 @@ import type { Ansatt, Avdeling, Data, Soknad, Status } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
+import type { FravaerType } from "./fravaer";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -67,6 +68,9 @@ export interface Api {
   slettRapport(id: string, sti: string): Promise<void>;
   /** Logg inn/bytt/ut. til = sluttid når man glemte å logge ut en tidligere dag. */
   stemple(handling: "inn" | "bytt" | "ut", o?: { prosjekt?: string | null; beskrivelse?: string; lunsj?: number; til?: string }): Promise<void>;
+  /** Registrer eller rett sykefravær (egenmelding, sykmelding, sykt barn) */
+  lagreFravaer(f: { id?: string; ansatt_id: string; type: FravaerType; fra: string; til: string; grad?: number; merknad?: string }): Promise<void>;
+  slettFravaer(id: string): Promise<void>;
   /** Merk rapporten som lest av meg */
   markerLest(id: string): Promise<void>;
   /** Leder: sett mål for fakturerte timer i året */
@@ -81,7 +85,7 @@ export function feiltekst(e: unknown): string {
   if (/overlapper|leder med e-post|godkjent og kan/i.test(m)) return m;
   if (/timer_check|check constraint/i.test(m)) return "Sluttid må være etter starttid, og lunsjen kan ikke være lengre enn arbeidsøkta.";
   if (/timer_prosjekt_id_fkey|foreign key/i.test(m)) return "Prosjektet har registrerte timer og kan ikke slettes.";
-  if (/allerede logget inn|ikke logget inn|Skriv inn når du sluttet/i.test(m)) return m;
+  if (/allerede logget inn|ikke logget inn|Skriv inn når du sluttet|Egenmelding kan|Fraværet overlapper|for deg selv/i.test(m)) return m;
   if (/ansatte_ansattnr_unik/i.test(m)) return "Det ansattnummeret er allerede brukt av en annen ansatt.";
   if (/ansatte_epost_unik|duplicate key/i.test(m)) return "Den e-postadressen er allerede brukt av en annen ansatt.";
   if (/row-level security|permission denied/i.test(m)) return "Du har ikke tilgang til å gjøre dette.";
@@ -109,7 +113,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -121,16 +125,19 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("bilder").select("*").order("opprettet", { ascending: false }).limit(5000),
         sb.from("dagbok").select("*").order("dato", { ascending: false }).order("opprettet", { ascending: false }).limit(5000),
         sb.from("tillegg").select("*").order("opprettet", { ascending: false }).limit(2000),
-        sb.from("bedrifter").select("maal_fakturert_aar").limit(1),
+        sb.from("bedrifter").select("*").limit(1),
         sb.from("rapporter").select("id, tittel, periode, ingress, lenke, sti, publisert, opprettet").order("periode", { ascending: false }).limit(200),
         sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").limit(10000),
         sb.from("stempling").select("ansatt_id, prosjekt_id, dato, fra, startet"),
+        sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).limit(5000),
       ]);
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
         kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
         rapporter: rapporter.error ? [] : rapporter.data, lest: lest.error ? [] : lest.data,
+        fravaer: fravaer.error ? [] : fravaer.data,
+        egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
         stempling: stempling.error ? [] : (stempling.data as any[]).map((x) => ({ ...x, fra: String(x.fra).slice(0, 5) })),
         maal: Number((ok(bedrift) as { maal_fakturert_aar: number }[])[0]?.maal_fakturert_aar ?? 6000),
         timer: (ok(timer) as any[]).map((t) => ({ ...t, timer: Number(t.timer), km: Number(t.km), reisetid: Number(t.reisetid), fra: t.fra.slice(0, 5), til: t.til.slice(0, 5) })),
@@ -153,6 +160,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "rapporter" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "rapport_lest" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "stempling" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "fravaer" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -283,6 +291,11 @@ function supabaseApi(sb: SupabaseClient): Api {
     async stemple(handling, o = {}) {
       ok(await sb.rpc("stemple", { handling, prosjekt: o.prosjekt || null, beskrivelse: o.beskrivelse ?? "", lunsj: o.lunsj ?? 0, til: o.til || null }));
     },
+    async lagreFravaer(f) {
+      const { id, ...rad } = f;
+      ok(id ? await sb.from("fravaer").update(rad).eq("id", id) : await sb.from("fravaer").insert(rad));
+    },
+    async slettFravaer(id) { ok(await sb.from("fravaer").delete().eq("id", id)); },
     async markerLest(id) { ok(await sb.rpc("marker_lest", { rapport: id })); },
     async settMaal(aar) { ok(await sb.rpc("sett_maal", { aar })); },
     async vismaStatus() {

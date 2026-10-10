@@ -95,7 +95,7 @@ const tall = (n: number) => (n ? String(Math.round(n * 100) / 100).replace(".", 
 export function lonnTimerCsv(rader: LonnTimer[], aar: number, mnd: number) {
   return csv([
     [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
-    ["Ansattnr", "Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer"],
-    ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || ""]),
+    ["Ansattnr", "Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer", "Egenmelding (arbeidsdager)", "Sykmelding (arbeidsdager)", "Sykt barn (arbeidsdager)"],
+    ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || "", r.egenmelding || "", r.sykmelding || "", r.syktBarn || ""]),
   ]);
 }

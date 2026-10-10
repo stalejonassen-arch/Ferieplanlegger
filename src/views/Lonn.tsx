@@ -41,7 +41,7 @@ export function Lonn() {
         {harTimer ? (
           <div className="scroll" style={{ border: 0 }}>
             <table className="tbl">
-              <thead><tr><th>Ansatt</th><th>Normaltid</th><th>Overtid 50 %</th><th>Overtid 100 %</th><th>Km</th><th>Lunsjtrekk</th></tr></thead>
+              <thead><tr><th>Ansatt</th><th>Normaltid</th><th>Overtid 50 %</th><th>Overtid 100 %</th><th>Km</th><th>Syk (dager)</th><th>Lunsjtrekk</th></tr></thead>
               <tbody>
                 {timer.map((r) => (
                   <tr key={r.ansatt.id}>
@@ -50,6 +50,7 @@ export function Lonn() {
                     <td className="n">{t2(r.ot50) || "–"}</td>
                     <td className="n">{t2(r.ot100) || "–"}</td>
                     <td className="n">{t2(r.km) || "–"}</td>
+                    <td className="small" title="Arbeidsdager: egenmelding / sykmelding / sykt barn">{[r.egenmelding && `${r.egenmelding} egenm.`, r.sykmelding && `${r.sykmelding} sykm.`, r.syktBarn && `${r.syktBarn} sykt barn`].filter(Boolean).join(", ") || "–"}</td>
                     <td>{r.avvik.length ? r.avvik.map((x) => (
                       <div key={x} className="small" style={{ whiteSpace: "nowrap" }}>{kortDato(x)} <button className="linkbtn" onClick={() => unntak(r.ansatt.id, x)}>Ikke trekk</button></div>
                     )) : "–"}</td>

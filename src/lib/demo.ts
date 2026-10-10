@@ -59,7 +59,7 @@ function startdata(): Data {
   ];
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
-  ], tillegg: [], maal: 7000, rapporter: [], lest: [], stempling: [] };
+  ], tillegg: [], maal: 7000, rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 } };
 }
 
 const demoVarer: FdvVare[] = [
@@ -231,6 +231,15 @@ export function demoApi(): Api {
       if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
       endret();
     },
+    async lagreFravaer(f) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      if (!leder() && f.ansatt_id !== m.id) throw new Error("Du kan bare registrere fravær for deg selv.");
+      if (!leder() && f.type === "egenmelding" && (Date.parse(f.til) - Date.parse(f.fra)) / 864e5 + 1 > 3) throw new Error("Egenmelding kan gjelde høyst 3 kalenderdager om gangen. Lengre fravær krever sykmelding fra lege.");
+      if (d.fravaer.some((x) => x.id !== f.id && x.ansatt_id === f.ansatt_id && x.fra <= f.til && x.til >= f.fra)) throw new Error("Fraværet overlapper med en annen registrering.");
+      const ny = { id: f.id ?? nyId(), ansatt_id: f.ansatt_id, type: f.type, fra: f.fra, til: f.til, grad: f.grad ?? 100, merknad: f.merknad ?? "", opprettet: new Date().toISOString() };
+      d.fravaer = [ny, ...d.fravaer.filter((x) => x.id !== ny.id)]; endret();
+    },
+    async slettFravaer(id) { d.fravaer = d.fravaer.filter((x) => x.id !== id); endret(); },
     async markerLest(id) {
       const m = meg(); if (!m) return;
       if (!d.lest.some((l) => l.rapport_id === id && l.ansatt_id === m.id)) d.lest.push({ rapport_id: id, ansatt_id: m.id, lest: new Date().toISOString() });

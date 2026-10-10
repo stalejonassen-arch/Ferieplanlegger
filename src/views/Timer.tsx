@@ -70,6 +70,9 @@ export function Timer() {
         </div>
       )}
       {meSelv && <Stempling />}
+      {meSelv && !d.stempling.some((x) => x.ansatt_id === meg.id) && (
+        <div className="small" style={{ textAlign: "right" }}><a href="#syk">Syk i dag? Meld egenmelding →</a></div>
+      )}
       {leder && meSelv && <InneNaa />}
       {mangler.length > 0 && (
         <div className="banner"><span><b>Mangler timer</b> {meSelv ? "" : `for ${hvem.navn} `}denne uka: {mangler.map((x) => DAG[new Date(x + "T00:00:00Z").getUTCDay()].toLowerCase() + " " + kortDato(x)).join(", ").replace(/\.$/, "")}.</span>
