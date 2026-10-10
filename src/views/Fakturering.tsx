@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { api } from "../lib/api";
 import { useApp } from "../App";
 import { perKunde } from "../lib/faktura";
 import { t2 } from "../lib/timer";
 
 /** Fakturering per kunde: registrerte fakturerbare timer mot fakturerte timer i Visma */
 export function Fakturering() {
-  const { d, idag } = useApp();
+  const { d, idag, kjor } = useApp();
   const aar = Number(idag.slice(0, 4));
   const [alle, setAlle] = useState(false);
   if (!(d.fakturerteTimer ?? []).length) return null;
@@ -37,7 +38,30 @@ export function Fakturering() {
           </tbody>
         </table>
       </div>
+      <details>
+        <summary className="small" style={{ cursor: "pointer" }}>Fastprisprosjekter ({d.prosjekter.filter((p) => p.fastpris).length}) – kryss av jobber som faktureres som fastpris</summary>
+        <p className="small muted" style={{ margin: "6px 0" }}>Timene på fastprisprosjekter holdes utenfor sammenligningen, siden de ikke faktureres som «Arbeid». Lista viser prosjekter med fakturerbare timer i år.</p>
+        <div className="scroll" style={{ border: 0 }}>
+          <table className="tbl">
+            <thead><tr><th>Fastpris</th><th>Prosjekt</th><th className="n">Timer i år</th></tr></thead>
+            <tbody>{prosjektTimerIAar(d, aar).map(({ p, timer }) => (
+              <tr key={p.id}>
+                <td><input type="checkbox" aria-label={`Fastpris ${p.navn}`} checked={!!p.fastpris} onChange={(e) => kjor(() => api.settFastpris(p.id, e.target.checked), e.target.checked ? `${p.navn} er merket som fastpris` : `${p.navn} er ikke lenger fastpris`)} /></td>
+                <td style={{ whiteSpace: "normal" }}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</td>
+                <td className="n">{t2(Math.round(timer))}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </details>
       {rader.length > 12 && <button className="linkbtn small" style={{ alignSelf: "flex-start" }} onClick={() => setAlle(!alle)}>{alle ? "Vis færre" : `Vis alle ${rader.length} kunder`}</button>}
     </section>
   );
+}
+
+/** Prosjekter med fakturerbare timer i året, flest timer først */
+function prosjektTimerIAar(d: ReturnType<typeof useApp>["d"], aar: number) {
+  const m = new Map<string, number>();
+  for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id && t.dato.startsWith(`${aar}-`)) m.set(t.prosjekt_id, (m.get(t.prosjekt_id) ?? 0) + Number(t.timer));
+  return d.prosjekter.filter((p) => m.has(p.id) || p.fastpris).map((p) => ({ p, timer: m.get(p.id) ?? 0 })).sort((a, b) => b.timer - a.timer);
 }

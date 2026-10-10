@@ -18,9 +18,24 @@ export function fakturertVismaPerMnd(f: FakturertTime[], aar: number) {
 /** Timer som ligger på åpne ordrer, men ikke er fakturert ennå */
 export const ikkeFakturert = (f: FakturertTime[]) => r1(f.reduce((n, x) => n + Math.max(0, x.ikke_fakturert), 0));
 
-/** Per kunde i året: registrerte fakturerbare timer (ByggLogg), fakturert og ikke fakturert (Visma) */
+/** Fastprisprosjekter (holdes utenfor sammenligningen) */
+export const fastprisIder = (d: Data) => new Set(d.prosjekter.filter((p) => p.fastpris).map((p) => p.id));
+
+/** Registrerte fakturerbare timer i året, uten fastprisprosjekter, og timene på fastpris for seg */
+export function registrertUtenFastpris(d: Data, aar: number, tilMnd = 12) {
+  const fp = fastprisIder(d);
+  let vanlig = 0, fast = 0;
+  for (const t of d.timer) {
+    if (t.fakturerbar === false || !t.prosjekt_id || !t.dato.startsWith(`${aar}-`) || Number(t.dato.slice(5, 7)) > tilMnd) continue;
+    if (fp.has(t.prosjekt_id)) fast += Number(t.timer); else vanlig += Number(t.timer);
+  }
+  return { vanlig: r1(vanlig), fastpris: r1(fast) };
+}
+
+/** Per kunde i året: registrerte fakturerbare timer (ByggLogg), fakturert og ikke fakturert (Visma). Fastpris holdes utenfor. */
 export function perKunde(d: Data, aar: number) {
-  const f = d.fakturerteTimer ?? [];
+  const fp = fastprisIder(d);
+  const f = (d.fakturerteTimer ?? []).filter((x) => !x.prosjekt_id || !fp.has(x.prosjekt_id));
   const kundeAv = new Map(d.prosjekter.map((p) => [p.id, p.faktura_kunde_id ?? p.kunde_id]));
   const m = new Map<string, { kunde_id: string | null; navn: string; registrert: number; fakturert: number; aapent: number; kr: number }>();
   const rad = (kid: string | null) => {
@@ -28,7 +43,7 @@ export function perKunde(d: Data, aar: number) {
     if (!m.has(k)) m.set(k, { kunde_id: kid, navn: d.kunder.find((x) => x.id === kid)?.navn ?? "Uten kunde i Visma", registrert: 0, fakturert: 0, aapent: 0, kr: 0 });
     return m.get(k)!;
   };
-  for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id && t.dato.startsWith(`${aar}-`)) rad(kundeAv.get(t.prosjekt_id) ?? null).registrert += Number(t.timer);
+  for (const t of d.timer) if (t.fakturerbar !== false && t.prosjekt_id && !fp.has(t.prosjekt_id) && t.dato.startsWith(`${aar}-`)) rad(kundeAv.get(t.prosjekt_id) ?? null).registrert += Number(t.timer);
   for (const x of f) {
     const k = rad(x.kunde_id);
     if (x.fakturadato?.startsWith(`${aar}-`)) { k.fakturert += x.fakturert; k.kr += x.fakturert * x.pris; }

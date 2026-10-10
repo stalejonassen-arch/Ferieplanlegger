@@ -3,7 +3,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { MND } from "../lib/ferie";
 import { fakturertPerMnd, t2 } from "../lib/timer";
-import { fakturertVismaPerMnd, ikkeFakturert } from "../lib/faktura";
+import { fakturertVismaPerMnd, ikkeFakturert, registrertUtenFastpris, fastprisIder } from "../lib/faktura";
 
 /** Fakturerte timer per måned mot målet. Leder setter målet for året; månedsmålet er en tolvdel. */
 export function Maal() {
@@ -25,6 +25,9 @@ export function Maal() {
   const andre = visma ? fakturertPerMnd(d.timer, aar) : fakturertVismaPerMnd(d.fakturerteTimer ?? [], aar);
   const andreHittil = andre.slice(0, mnd).reduce((a, b) => a + b, 0);
   const aapent = ikkeFakturert(d.fakturerteTimer ?? []);
+  const reg = registrertUtenFastpris(d, aar, mnd);
+  const fp = fastprisIder(d);
+  const faktUtenFast = fakturertVismaPerMnd((d.fakturerteTimer ?? []).filter((x) => !x.prosjekt_id || !fp.has(x.prosjekt_id)), aar).slice(0, mnd).reduce((a, b) => a + b, 0);
   const hittil = per.slice(0, mnd).reduce((a, b) => a + b, 0);
   const denne = per[mnd - 1];
   const maks = Math.max(maal, ...per);
@@ -61,7 +64,8 @@ export function Maal() {
       {harVisma && (
         <div className="legend">
           <div><span className="label">{visma ? "Registrert fakturerbart hittil" : "Fakturert i Visma hittil"}</span><span className="v">{t2(Math.round(andreHittil))}</span></div>
-          <div><span className="label">Fakturert av registrert</span><span className="v">{Math.round(((visma ? hittil : andreHittil) / ((visma ? andreHittil : hittil) || 1)) * 100)} %</span></div>
+          <div><span className="label">Fakturert av registrert{reg.fastpris ? " (uten fastpris)" : ""}</span><span className="v">{Math.round((faktUtenFast / (reg.vanlig || 1)) * 100)} %</span>
+            {reg.fastpris > 0 && <span className="small muted">{t2(Math.round(reg.fastpris))} t på fastpris holdt utenfor</span>}</div>
           <div><span className="label">På åpne ordrer, ikke fakturert</span><span className="v">{t2(Math.round(aapent))}</span></div>
         </div>
       )}

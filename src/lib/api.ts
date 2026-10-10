@@ -48,6 +48,8 @@ export interface Api {
   /** Leder: godta en dag uten lunsjtrekk */
   lunsjUnntak(id: string, unntak: boolean): Promise<void>;
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
+  /** Leder: merk prosjektet som fastpris (holdes utenfor sammenligning av fakturerte timer) */
+  settFastpris(id: string, fastpris: boolean): Promise<void>;
   lagreAvvik(a: NyttAvvik): Promise<string>;
   slettAvvik(id: string): Promise<void>;
   lastOppBilde(fil: File, til: BildeMaal): Promise<void>;
@@ -374,6 +376,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);
       return r.data?.[0] ?? null;
     },
+    async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },
     async lagreProsjekt(p, nyKunde) {
       let kunde_id = p.kunde_id ?? null;
       if (nyKunde?.trim()) kunde_id = (ok(await sb.from("kunder").insert({ navn: nyKunde.trim() }).select("id").single()) as { id: string }).id;

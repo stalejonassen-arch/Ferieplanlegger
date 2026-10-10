@@ -8,7 +8,7 @@ const kr = (n: number) => `kr ${Math.round(n).toLocaleString("nb-NO")}`;
 
 /** Lønnsomhet: ordrene i Visma på kundeprosjektet, pluss timer fra ByggLogg. */
 export function Lonnsomhet({ p }: { p: Prosjekt }) {
-  const { d } = useApp();
+  const { d, kjor } = useApp();
   const [ordrer, setOrdrer] = useState<ProsjektOrdre[] | null>(null);
   const [feil, setFeil] = useState("");
   useEffect(() => { api.prosjektOrdre(p.id).then(setOrdrer).catch((e) => setFeil(feiltekst(e))); }, [p.id]);
@@ -24,6 +24,10 @@ export function Lonnsomhet({ p }: { p: Prosjekt }) {
     <section className="panel">
       <h2 style={{ margin: 0 }}>Økonomi</h2>
       <p className="small muted" style={{ margin: 0 }}>Ordrer i Visma på kundeprosjektet, oppdatert hvert kvarter. Bare du som leder ser denne siden.</p>
+      <label className="row small" style={{ gap: 8 }}>
+        <input type="checkbox" checked={!!p.fastpris} onChange={(e) => kjor(() => api.settFastpris(p.id, e.target.checked), e.target.checked ? "Merket som fastpris" : "Ikke lenger fastpris")} />
+        Fastpris – faktureres uten «Arbeid», så timene holdes utenfor sammenligningen av fakturerte timer
+      </label>
       {feil && <p className="small" style={{ color: "var(--warn)" }}>{feil}</p>}
       <div className="legend">
         <div><span className="label">Omsetning eks. mva</span><span className="v">{kr(omsetning)}</span></div>

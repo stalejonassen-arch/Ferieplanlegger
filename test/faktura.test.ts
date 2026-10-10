@@ -28,3 +28,16 @@ describe("fakturerte timer", () => {
     expect(perKunde(d, 2026).map((k) => [k.navn, k.registrert, k.fakturert, k.aapent])).toEqual([["Siri", 40, 16, 12], ["Kyrre", 0, 7.5, 0]]);
   });
 });
+
+describe("fastpris", () => {
+  it("holder fastprisprosjekter utenfor registrert og fakturert", async () => {
+    const { perKunde, registrertUtenFastpris } = await import("../src/lib/faktura");
+    const d = {
+      kunder: [{ id: "k1", navn: "Siri" }], prosjekter: [{ id: "p1", kunde_id: "k1", fastpris: true }, { id: "p2", kunde_id: "k1" }],
+      timer: [{ prosjekt_id: "p1", dato: "2026-03-02", timer: 100 }, { prosjekt_id: "p2", dato: "2026-03-02", timer: 10 }],
+      fakturerteTimer: [f({ prosjekt_id: "p1", fakturadato: "2026-03-05", fakturert: 5 }), f({ fakturadato: "2026-03-05", fakturert: 8 })],
+    } as unknown as Data;
+    expect(registrertUtenFastpris(d, 2026)).toEqual({ vanlig: 10, fastpris: 100 });
+    expect(perKunde(d, 2026).map((k) => [k.registrert, k.fakturert])).toEqual([[10, 8]]);
+  });
+});

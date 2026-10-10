@@ -358,6 +358,7 @@ export function demoApi(): Api {
     async dokUrl(sti) { return sti; },
     async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
+    async settFastpris(id, fastpris) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fastpris = fastpris; endret(); },
     async lagreProsjekt(p, nyKunde) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       let kunde_id = p.kunde_id ?? null;
