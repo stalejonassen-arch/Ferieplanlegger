@@ -52,6 +52,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0014_ansattnr.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0015_stempling.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0016_fravaer.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0017_stempling_samme_prosjekt.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -333,6 +334,24 @@ describe("dagbok og tilleggsarbeid", () => {
     expect(await as(STALE, "select * from public.fravaer")).toHaveLength(2);
     await as(STALE, "update public.ansatte set aktiv=true where epost=$1", [MADS]);
     expect(await as(MADS, "select * from public.fravaer")).toHaveLength(0);
+    await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
+  });
+
+  it("stempling: kolleger ser hverandre bare når de er inne på samme prosjekt", async () => {
+    const p = await prosj();
+    const [p2] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Annet prosjekt') returning id");
+    await as(STALE, "update public.ansatte set aktiv=true where epost=$1", [MADS]);
+    await db.query("delete from public.stempling");
+    await as(JIM, "select public.stemple('inn', $1)", [p]);
+    expect(await as(MADS, "select * from public.stempling")).toHaveLength(0); // Mads er ikke inne
+    await as(MADS, "select public.stemple('inn', $1)", [p2.id]);
+    expect(await as(MADS, "select * from public.stempling")).toHaveLength(1); // bare seg selv, annet prosjekt
+    await as(MADS, "select public.stemple('bytt', $1)", [p]);
+    expect(await as(MADS, "select * from public.stempling")).toHaveLength(2); // samme prosjekt: ser Jim
+    expect(await as(JIM, "select * from public.stempling")).toHaveLength(2);
+    await as(MADS, "select public.stemple('bytt', null)"); // internt: ser ikke andre
+    expect(await as(MADS, "select * from public.stempling")).toHaveLength(1);
+    await db.query("delete from public.stempling"); await db.query("delete from public.timer where ansatt_id in (select id from public.ansatte where epost in ($1, $2))", [JIM, MADS]);
     await as(STALE, "update public.ansatte set aktiv=false where epost=$1", [MADS]);
   });
 });

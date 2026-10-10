@@ -105,12 +105,19 @@ export function Stempling() {
   }
 
   const timer = timerSiden(s.startet);
+  // Kolleger på samme prosjekt (databasen viser andre bare når prosjektet er det samme)
+  const kolleger = s.prosjekt_id ? d.stempling.filter((x) => x.ansatt_id !== meg.id && x.prosjekt_id === s.prosjekt_id).sort((a, b) => a.fra.localeCompare(b.fra)) : [];
   return (
     <section className="stempel inne" style={{ flexDirection: "column", alignItems: "stretch" }}>
       <div>
         <div className="small dempet">Logget inn {gammel ? kortDato(s.dato) + " " : ""}kl. {s.fra}</div>
         {!gammel && <div className="klokke">{Math.floor(timer)}<small>t</small> {String(Math.floor((timer % 1) * 60)).padStart(2, "0")}<small>min</small></div>}
         <div style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>{navn(s.prosjekt_id)}</div>
+        {kolleger.length > 0 && (
+          <div className="kolleger">
+            Også inne her: {kolleger.map((k, i) => <span key={k.ansatt_id}>{i > 0 ? ", " : ""}<b>{d.ansatte.find((a) => a.id === k.ansatt_id)?.navn.split(" ")[0] ?? "?"}</b> fra {k.fra}</span>)}
+          </div>
+        )}
         {!gammel && <Dagstokk okter={okter} navn={navn} />}
         {gammel && <p className="small varsel" style={{ margin: "8px 0 0" }}>Du ble ikke logget ut {kortDato(s.dato)}. Skriv inn når du sluttet, så lagres dagen.</p>}
         {!gammel && timer > 10 && <p className="small varsel" style={{ margin: "8px 0 0" }}>Du har vært logget inn i over 10 timer. Glemt å logge ut?</p>}

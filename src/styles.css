@@ -268,3 +268,4 @@ nav.tabs .ikon { display: none; }
 .dagstokk .tall span:first-child { transform: none; }
 .dagstokk .tall span:last-child { transform: translateX(-100%); }
 @media (max-width: 640px) { .stempel .klokke, .stempel.inne .klokke { font-size: 64px; } }
+.stempel .kolleger { margin-top: 6px; font-size: 14px; color: #FFFFFF; background: rgba(255,255,255,.12); border-radius: 6px; padding: 6px 10px; }
