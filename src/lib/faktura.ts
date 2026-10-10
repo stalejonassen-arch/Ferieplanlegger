@@ -21,7 +21,7 @@ export const ikkeFakturert = (f: FakturertTime[]) => r1(f.reduce((n, x) => n + M
 /** Per kunde i året: registrerte fakturerbare timer (ByggLogg), fakturert og ikke fakturert (Visma) */
 export function perKunde(d: Data, aar: number) {
   const f = d.fakturerteTimer ?? [];
-  const kundeAv = new Map(d.prosjekter.map((p) => [p.id, p.kunde_id]));
+  const kundeAv = new Map(d.prosjekter.map((p) => [p.id, p.faktura_kunde_id ?? p.kunde_id]));
   const m = new Map<string, { kunde_id: string | null; navn: string; registrert: number; fakturert: number; aapent: number; kr: number }>();
   const rad = (kid: string | null) => {
     const k = kid ?? "";

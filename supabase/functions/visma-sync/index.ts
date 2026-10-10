@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v5: fakturerte timer)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v6: fakturakunde)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
       try {
         const oFelt = await felt(tok, "Order");
         const pf = `orgUnit${pk.nr}`;
-        const ofelter = ["orderNo", pf, ...velg(oFelt, ["orderDate", "orderType", "transactionType", "name", "orderSumNetDomestic", "incurredCostTotalDomestic", "grossProfitTotalDomestic", "invoicedAmountTotalDomestic", "finishDate"])];
+        const ofelter = ["orderNo", pf, ...velg(oFelt, ["orderDate", "orderType", "transactionType", "name", "customerNo", "orderSumNetDomestic", "incurredCostTotalDomestic", "grossProfitTotalDomestic", "invoicedAmountTotalDomestic", "finishDate"])];
         const ordrer = await alle(tok, b.visma_firma_nr, "order", ofelter, `{ ${pf}: { _gt: 0 } }`);
         const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
         const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
@@ -298,6 +298,19 @@ Deno.serve(async (req) => {
           if (error) throw error;
         }
         ordreAntall = rader2.length;
+        // Kunden som faktisk faktureres: den vanligste kunden på prosjektets salgsordrer (ikke tilbud)
+        const tell = new Map<string, Map<number, number>>();
+        for (const o of ordrer) {
+          const p = pid.get(Number(o[pf])), k = Number(o.customerNo);
+          if (!p || !k || Number(o.transactionType) !== 1 || Number(o.orderType) === 5) continue;
+          const m = tell.get(p) ?? new Map<number, number>(); m.set(k, (m.get(k) ?? 0) + 1); tell.set(p, m);
+        }
+        const { data: uten } = await sb.from("prosjekter").select("id").eq("bedrift_id", b.id).is("faktura_kunde_id", null);
+        for (const { id } of uten ?? []) {
+          const m = tell.get(id);
+          const k = m && [...m.entries()].sort((x, y) => y[1] - x[1])[0][0];
+          if (k && kundeId.get(k)) await sb.from("prosjekter").update({ faktura_kunde_id: kundeId.get(k) }).eq("id", id);
+        }
       } catch (e) {
         ordreAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`;
       }

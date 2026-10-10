@@ -4,7 +4,7 @@ import { arbeidsdager } from "./fravaer";
 import { addDays, helligdag, ukedag, type Ansatt, type Data } from "./ferie";
 
 export interface Kunde { id: string; visma_nr: number | null; navn: string; adresse: string; postnr: string; poststed: string; telefon: string; epost: string; aktiv: boolean }
-export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string; fra_svenn?: boolean }
+export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string; fra_svenn?: boolean; faktura_kunde_id?: string | null }
 export interface Time {
   id: string; ansatt_id: string; prosjekt_id: string | null; dato: string;
   fra: string; til: string; lunsj_min: number; timer: number; lunsj_unntak: boolean;
