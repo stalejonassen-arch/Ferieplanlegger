@@ -25,8 +25,8 @@ export function Maal() {
     <section className="panel maal">
       <h2 style={{ margin: 0 }}>Fakturerbare timer {aar}</h2>
       <div className="legend">
-        <div><span className="label">{MND[mnd - 1]}</span><span className="v" style={denne < maal ? { color: "var(--warn)" } : undefined}>{t2(denne)} / {t2(maal)}</span></div>
-        <div><span className="label">Hittil i år</span><span className="v">{t2(hittil)} / {t2(maal * mnd)}</span></div>
+        <div><span className="label">{MND[mnd - 1]}</span><span className="v" style={denne < maal ? { color: "var(--warn)" } : undefined}>{t2(Math.round(denne))} / {t2(Math.round(maal))}</span></div>
+        <div><span className="label">Hittil i år</span><span className="v">{t2(Math.round(hittil))} / {t2(Math.round(maal * mnd))} <span className="small">({Math.round((hittil / (maal * mnd || 1)) * 100)} %)</span></span></div>
         <div><span className="label">Mål for året</span><span className="v">{t2(aarsmaal)}</span>
           {leder && !endrer && <button className="btn sm" style={{ marginTop: 4 }} onClick={() => { setNytt(String(aarsmaal)); setEndrer(true); }}>Endre mål</button>}</div>
       </div>
@@ -43,7 +43,7 @@ export function Maal() {
         {per.map((n, i) => <div key={i} className={i < mnd && n < maal ? "under" : ""} style={{ height: `${(n / maks) * 100}%`, opacity: i < mnd ? 1 : 0.35 }} title={`${MND[i]}: ${t2(n)} t`} />)}
       </div>
       <div className="maal-akse">{MND.map((m) => <span key={m}>{m.slice(0, 3)}</span>)}</div>
-      <p className="small muted" style={{ margin: 0 }}>Teller timer ført på prosjekt og merket fakturerbart i ByggLogg. Grønt = nådd målet på {t2(maal)} t, gult = under.</p>
+      <p className="small muted" style={{ margin: 0 }}>Teller timer ført på prosjekt og merket fakturerbart i ByggLogg. Grønt = nådd målet på {t2(Math.round(maal))} t, gult = under.</p>
     </section>
   );
 }

@@ -36,7 +36,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-cont
 .who { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 select, input, textarea, button { font: inherit; color: inherit; }
-select, input[type=date], input[type=text], input[type=email], input[type=number], textarea {
+select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input[type=email], input[type=number], textarea {
   background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; font-size: 16px;
 }
 textarea { width: 100%; resize: vertical; }
@@ -175,3 +175,15 @@ table.tbl td.n { text-align: right; font-family: var(--f-mono); font-variant-num
   .utskrift { border: 0 !important; padding: 0 !important; }
   .wrap > div:not(:has(.utskrift)) { display: none !important; }
 }
+
+/* Underfaner (prosjekt, ferie) skal ikke klistre seg over hovedfanene */
+nav.tabs.undertabs { position: static; }
+/* Korte felt (klokkeslett) får plass tre på rad også på mobil */
+.field.kort { flex: 1 1 96px; }
+input[type=time] { width: 100%; }
+/* Stemplingsklokke */
+.stempel { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border: 2px solid var(--accent); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
+.stempel .tid { font-family: var(--f-mono); font-size: 26px; font-variant-numeric: tabular-nums; }
+.hurtig { display: flex; gap: 6px; flex-wrap: wrap; }
+.hurtig button { border: 1px solid var(--line); background: var(--sunk); border-radius: 16px; padding: 4px 10px; font-size: 13px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hurtig button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }

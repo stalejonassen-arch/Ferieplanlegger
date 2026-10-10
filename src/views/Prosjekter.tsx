@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { prosjektTimer, t2 } from "../lib/timer";
+import { prosjektTimer, sistAktiv, t2 } from "../lib/timer";
+import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
+import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
 
 export function Prosjekter() {
-  const { d, leder, kjor } = useApp();
+  const { d, meg, leder, kjor } = useApp();
   const [sok, setSok] = useState("");
   const [visAvsluttet, setVisAvsluttet] = useState(false);
   const [navn, setNavn] = useState("");
@@ -19,9 +21,13 @@ export function Prosjekter() {
   useEffect(() => { if (leder) api.vismaStatus().then(setVisma).catch(() => {}); }, [leder, d]);
   const kunde = (id: string | null) => d.kunder.find((k) => k.id === id)?.navn ?? "";
   const q = sok.trim().toLowerCase();
+  // Prosjekter med aktivitet nylig først, så resten etter prosjektnummer (nyeste først)
+  const sist = sistAktiv(d);
+  const mine = new Set(d.timer.filter((t) => t.ansatt_id === meg.id && t.prosjekt_id).map((t) => t.prosjekt_id as string));
   const liste = d.prosjekter
     .filter((p) => visAvsluttet || p.aktiv)
-    .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q));
+    .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q))
+    .sort((a, b) => (sist.get(b.id) ?? "").localeCompare(sist.get(a.id) ?? "") || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
   const fraVisma = d.prosjekter.some((p) => p.visma_nr);
 
   const leggTil = async (e: React.FormEvent) => {
@@ -38,6 +44,7 @@ export function Prosjekter() {
   return (
     <>
       {leder && <Maal />}
+      {leder && <Fordeling />}
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Prosjekter</h2>
@@ -46,7 +53,7 @@ export function Prosjekter() {
             <label className="row small"><input type="checkbox" checked={visAvsluttet} onChange={(e) => setVisAvsluttet(e.target.checked)} /> Vis avsluttede</label>
           </div>
         </div>
-        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{leder ? "" : " Timene som vises er dine egne."}</p>
+        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{" Prosjekter med aktivitet sist står øverst."}</p>
         {leder && visma && (
           <p className="small" style={{ color: visma.ok ? "var(--muted)" : "var(--warn)" }}>
             Sist hentet fra Visma {new Date(visma.tid).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" })}: {visma.ok ? "OK" : visma.melding.includes("VISMA_CLIENT_SECRET") ? "venter på nøkkel fra Visma Developer Portal" : visma.melding.slice(0, 160)}
@@ -64,9 +71,12 @@ export function Prosjekter() {
                       <td className="n">{p.visma_nr ?? "–"}</td>
                       <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
+                        {sist.get(p.id) && <div className="small muted">Sist aktivitet {kortDato(sist.get(p.id)!)}{mine.has(p.id) ? " · du har ført timer her" : ""}</div>}
                         {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
                           return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>
-                      <td className="n" style={est && b > est ? { color: "var(--warn)" } : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}</td>
+                      <td className="n" style={est && b > est ? { color: "var(--warn)" } : est && b >= est * 0.9 ? { color: "var(--pending)" } : undefined}
+                        title={est ? `${Math.round((b / est) * 100)} % av kalkulerte timer` : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}
+                        {est && b >= est * 0.9 && <div className="small">{b > est ? "over kalkyle" : "snart brukt opp"}</div>}</td>
                       {leder && <td><button className="btn sm" onClick={() => kjor(() => api.lagreProsjekt({ id: p.id, navn: p.navn, aktiv: !p.aktiv }), p.aktiv ? "Avsluttet" : "Åpnet igjen")}>{p.aktiv ? "Avslutt" : "Åpne"}</button></td>}
                     </tr>
                   );

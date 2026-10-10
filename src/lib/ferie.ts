@@ -16,6 +16,8 @@ export interface Ansatt {
   normaltid_uke?: number;
   /** Trekkes for lunsj */
   lunsjtrekk?: boolean;
+  /** Telles med i oversikten over kundetimer og interntid */
+  i_timerapport?: boolean;
   lunsj_min?: number;
 }
 export interface Ferieaar { ansatt_id: string; aar: number; overfort: number }

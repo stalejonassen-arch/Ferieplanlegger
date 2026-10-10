@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dagslogg } from "./Dagslogg";
+import { Fordeling } from "./Fordeling";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
-import { hhmm, lonnsdager, mandag, normaltid, t2, ukenr, varighet, type Time } from "../lib/timer";
+import { addDays, helligdag, isoOf, kortDato, sorterAnsatte } from "../lib/ferie";
+import { dagerUtenTimer, hhmm, kvarter, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
+
+/** Pågående stempling lagres på telefonen, så den overlever at appen lukkes. */
+type Stempel = { ansatt_id: string; prosjekt_id: string; dato: string; fra: string; startet: number };
+const STEMPEL = "bygglogg-stempel";
+const lesStempel = (): Stempel | null => { try { return JSON.parse(localStorage.getItem(STEMPEL) ?? "null"); } catch { return null; } };
+const skrivStempel = (x: Stempel | null) => { try { if (x) localStorage.setItem(STEMPEL, JSON.stringify(x)); else localStorage.removeItem(STEMPEL); } catch { /* privat modus */ } };
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
@@ -18,6 +25,33 @@ export function Timer() {
   const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true });
   const [f, setF] = useState(tom);
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
+  // Stempling: start når du begynner, bytt prosjekt når du flytter deg, stopp når du er ferdig
+  const [stempel, setStempel] = useState<Stempel | null>(() => { const x = lesStempel(); return x && x.ansatt_id === meg.id ? x : null; });
+  const [, tikk] = useState(0);
+  useEffect(() => { if (!stempel) return; const i = setInterval(() => tikk((n) => n + 1), 30000); return () => clearInterval(i); }, [stempel]);
+  const startStempel = (prosjekt_id: string) => {
+    const n = new Date();
+    const x = { ansatt_id: meg.id, prosjekt_id, dato: isoOf(n), fra: kvarter(n), startet: n.getTime() };
+    skrivStempel(x); setStempel(x);
+  };
+  const stoppStempel = async (nyttProsjekt?: string) => {
+    if (!stempel) return;
+    const n = new Date();
+    let til = kvarter(n);
+    if (isoOf(n) !== stempel.dato) til = "23:45"; // glemt å stoppe i går
+    if (til <= stempel.fra) { skrivStempel(null); setStempel(null); if (nyttProsjekt !== undefined) startStempel(nyttProsjekt); return; }
+    const ok = await kjor(() => api.lagreTime({
+      ansatt_id: meg.id, prosjekt_id: stempel.prosjekt_id || null, dato: stempel.dato, fra: stempel.fra, til,
+      lunsj_min: f.lunsj && meg.lunsjtrekk && varighet(stempel.fra, til, 0) > 5.5 ? (meg.lunsj_min ?? 30) : 0,
+      km: 0, reisetid: 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!stempel.prosjekt_id,
+    }), `${stempel.fra}–${til} lagret`);
+    if (!ok) return;
+    skrivStempel(null); setStempel(null); sett({ beskrivelse: "" });
+    if (nyttProsjekt !== undefined) startStempel(nyttProsjekt);
+  };
+  const siste = sisteProsjekter(d.timer, hvem.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
+  const mangler = dagerUtenTimer(hvem.id, d, mandag(idag), idag, helligdag);
+
   // Dagen som vises i dagsloggen følger datoen i skjemaet, og kan velges fra ukelista
   const [valgtDag, setValgtDag] = useState(idag);
   useEffect(() => { if (f.dato) setValgtDag(f.dato); }, [f.dato]);
@@ -61,15 +95,43 @@ export function Timer() {
           </select>
         </div>
       )}
+      {meSelv && (
+        <div className="stempel">
+          {stempel ? (
+            <>
+              <div>
+                <div className="label">Stemplet inn {stempel.fra}{stempel.dato !== idag ? ` (${kortDato(stempel.dato)})` : ""}</div>
+                <div><span className="tid">{t2(Math.max(0, Math.floor((Date.now() - stempel.startet) / 60000) / 60))} t</span> · {prosjektNavn(stempel.prosjekt_id || null)}</div>
+              </div>
+              <div className="row">
+                {f.prosjekt_id !== stempel.prosjekt_id && <button className="btn" onClick={() => stoppStempel(f.prosjekt_id)}>Bytt til {f.prosjekt_id ? d.prosjekter.find((p) => p.id === f.prosjekt_id)?.navn : "internt"}</button>}
+                <button className="btn primary" onClick={() => stoppStempel()}>Stopp og lagre</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div><div className="label">Stempling</div><div className="small">Velg prosjekt under og trykk Start når du begynner. Bytt når du flytter deg.</div></div>
+              <button className="btn primary" onClick={() => startStempel(f.prosjekt_id)}>Start nå{f.prosjekt_id ? ` · ${d.prosjekter.find((p) => p.id === f.prosjekt_id)?.navn ?? ""}` : " · internt"}</button>
+            </>
+          )}
+        </div>
+      )}
+      {mangler.length > 0 && (
+        <div className="banner"><span><b>Mangler timer</b> {meSelv ? "" : `for ${hvem.navn} `}denne uka: {mangler.map((x) => DAG[new Date(x + "T00:00:00Z").getUTCDay()].toLowerCase() + " " + kortDato(x)).join(", ").replace(/\.$/, "")}.</span>
+          <button className="btn sm" onClick={() => sett({ dato: mangler[0] })}>Før for {kortDato(mangler[0])}</button></div>
+      )}
       <div className="grid2">
         <form className="panel" onSubmit={lagre}>
           <h2>{f.id ? "Endre timer" : meSelv ? "Før timer" : `Før timer for ${hvem.navn}`}</h2>
           <div className="row">
             <label className="field"><span className="label">Dato</span>
-              <input type="date" value={f.dato} onChange={(e) => sett({ dato: e.target.value })} required /></label>
-            <label className="field"><span className="label">Fra</span>
+              <input type="date" value={f.dato} onChange={(e) => {
+                const sistTil = d.timer.filter((t) => t.ansatt_id === hvem.id && t.dato === e.target.value).map((t) => hhmm(t.til)).sort().pop();
+                sett(sistTil && !f.id ? { dato: e.target.value, fra: sistTil, til: sistTil < "15:30" ? "15:30" : sistTil } : { dato: e.target.value });
+              }} required /></label>
+            <label className="field kort"><span className="label">Fra</span>
               <input type="time" step={900} value={f.fra} onChange={(e) => sett({ fra: e.target.value })} required /></label>
-            <label className="field"><span className="label">Til</span>
+            <label className="field kort"><span className="label">Til</span>
               <input type="time" step={900} value={f.til} onChange={(e) => sett({ til: e.target.value })} required /></label>
           </div>
           <label className="field"><span className="label">Prosjekt</span>
@@ -77,6 +139,14 @@ export function Timer() {
               <option value="">Internt arbeid (butikk, lager, verksted)</option>
               {aktive.map((p) => <option key={p.id} value={p.id}>{prosjektNavn(p.id)}</option>)}
             </select></label>
+          {siste.length > 0 && (
+            <div className="hurtig" aria-label="Siste prosjekter">
+              {siste.map((id) => { const p = d.prosjekter.find((x) => x.id === id)!; return (
+                <button type="button" key={id} aria-pressed={f.prosjekt_id === id} onClick={() => sett({ prosjekt_id: id })} title={prosjektNavn(id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</button>
+              ); })}
+              <button type="button" aria-pressed={f.prosjekt_id === ""} onClick={() => sett({ prosjekt_id: "" })}>Internt</button>
+            </div>
+          )}
           {f.prosjekt_id && (
             <label className="row small"><input type="checkbox" checked={f.fakturerbar} onChange={(e) => sett({ fakturerbar: e.target.checked })} /> Fakturerbart (faktureres kunden)</label>
           )}
@@ -154,6 +224,7 @@ export function Timer() {
         </section>
       </div>
       <Dagslogg dato={valgtDag} setDato={setValgtDag} ansattId={hvem.id} />
+      {!leder && <Fordeling />}
     </>
   );
 }

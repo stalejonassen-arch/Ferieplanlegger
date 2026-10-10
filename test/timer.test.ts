@@ -53,3 +53,38 @@ describe("timer og lønnsgrunnlag", () => {
     expect(lonnTimer(d, ans(), "2027-03-01", "2027-03-07").lunsjtrekk).toBe(0);
   });
 });
+
+import { andelIntern, fordelingPerAnsatt, fordelingPerMnd } from "../src/lib/timer";
+describe("interntid per måned", () => {
+  const t = (a: string, p: string | null, dato: string, timer: number, fakturerbar = true) => ({ id: dato + a + p, ansatt_id: a, prosjekt_id: p, dato, fra: "07:00", til: "15:00", lunsj_min: 0, timer, lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: "", status: "levert" as const, fakturerbar });
+  const rader = [t("a", "P", "2026-09-01", 6), t("a", null, "2026-09-02", 2), t("b", "P", "2026-09-03", 4, false), t("b", null, "2026-10-01", 7.5), t("a", null, "2025-09-01", 99)];
+  it("fordeler på fakturerbart, ikke fakturerbart og intern", () => {
+    const f = fordelingPerMnd(rader, 2026);
+    expect(f[8]).toEqual({ fakturerbart: 6, ikkeFakturerbart: 4, intern: 2, sum: 12 });
+    expect(f[9].intern).toBe(7.5);
+    expect(andelIntern(f[8])).toBe(17);
+    expect(fordelingPerMnd(rader, 2026, new Set(["b"]))[8].sum).toBe(4);
+  });
+  it("per ansatt for én måned", () => {
+    const p = fordelingPerAnsatt(rader, "2026-09");
+    expect(p.get("a")).toEqual({ fakturerbart: 6, ikkeFakturerbart: 0, intern: 2, sum: 8 });
+    expect(p.get("b")?.ikkeFakturerbart).toBe(4);
+  });
+});
+
+import { dagerUtenTimer, kvarter, sisteProsjekter } from "../src/lib/timer";
+describe("smart timeføring", () => {
+  const t = (dato: string, p: string | null, fra = "07:00") => ({ id: dato + p + fra, ansatt_id: "a", prosjekt_id: p, dato, fra, til: "15:00", lunsj_min: 0, timer: 8, lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: "", status: "levert" as const });
+  it("runder til nærmeste kvarter", () => {
+    expect(kvarter(new Date(2026, 9, 12, 7, 7))).toBe("07:00");
+    expect(kvarter(new Date(2026, 9, 12, 7, 8))).toBe("07:15");
+    expect(kvarter(new Date(2026, 9, 12, 23, 59))).toBe("23:45");
+  });
+  it("finner hverdager uten timer, men ikke ferie, helg eller i dag", () => {
+    const d = { timer: [t("2026-10-05", "P")], soknader: [{ id: "s", ansatt_id: "a", fra: "2026-10-07", til: "2026-10-07", merknad: "", status: "godkjent" as const, kommentar: "", behandlet_av: null, behandlet_tid: null, opprettet: "" }] };
+    expect(dagerUtenTimer("a", d, "2026-10-05", "2026-10-09", () => undefined)).toEqual(["2026-10-06", "2026-10-08"]);
+  });
+  it("siste prosjekter i rekkefølge, uten duplikater", () => {
+    expect(sisteProsjekter([t("2026-10-01", "A"), t("2026-10-02", "B"), t("2026-10-03", "A"), t("2026-10-03", null, "12:00")], "a")).toEqual(["A", "B"]);
+  });
+});

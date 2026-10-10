@@ -102,9 +102,13 @@ export function App() {
   const leder = meg.rolle === "leder";
   const venter = d.soknader.filter((s) => s.status === "venter").length;
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
-  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["rapporter", "Rapporter"], ["min", "Ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string], ["lonn", "Lønn"] as [Fane, string]] : []), ["regler", "Regler"], ...(leder ? [["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
+  const FERIE: Fane[] = ["min", "kal", "sok", "regler"];
+  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["rapporter", "Rapporter"], ["min", "Ferie"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const ferieFaner: [Fane, string][] = [["min", "Min ferie"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
-  const aktiv = faner.some(([f]) => f === fane) ? fane : "timer";
+  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) ? fane : "timer";
+  const iFerie = FERIE.includes(aktiv);
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
 
@@ -115,9 +119,6 @@ export function App() {
           <div className="brand"><small>N L Austnes AS</small><h1>ByggLogg</h1></div>
           <div className="who">
             <span className="small muted">{meg.navn}{leder ? " · leder" : ""}</span>
-            <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
-              {[y0 - 1, y0, y0 + 1].map((y) => <option key={y} value={y}>Ferieår {y}</option>)}
-            </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
         </header>
@@ -133,13 +134,29 @@ export function App() {
 
         <nav className="tabs" role="tablist">
           {faner.map(([f, navn]) => (
-            <button key={f} role="tab" aria-selected={aktiv === f} onClick={() => velg(f)}>
-              {navn}{f === "sok" && venter > 0 && <span className="badge">{venter}</span>}
+            <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie)} onClick={() => velg(f)}
+              ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
+              {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
               {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
             </button>
           ))}
         </nav>
+
+        {iFerie && (
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <nav className="tabs undertabs" role="tablist" style={{ flex: 1 }}>
+              {ferieFaner.map(([f, navn]) => (
+                <button key={f} role="tab" aria-selected={aktiv === f} onClick={() => velg(f)}>
+                  {navn}{f === "sok" && venter > 0 && <span className="badge">{venter}</span>}
+                </button>
+              ))}
+            </nav>
+            <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
+              {[y0 - 1, y0, y0 + 1].map((y) => <option key={y} value={y}>Ferieår {y}</option>)}
+            </select>
+          </div>
+        )}
 
         {aktiv === "timer" && <Timer />}
         {aktiv === "prosjekter" && <Prosjekter />}
