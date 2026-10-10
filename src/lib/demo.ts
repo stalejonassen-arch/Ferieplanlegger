@@ -360,6 +360,7 @@ export function demoApi(): Api {
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async settMittSprak(sprak) { const m = meg(); if (m) m.sprak = sprak; endret(); },
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },
+    async lagreEiendom(id, e) { const p = d.prosjekter.find((x) => x.id === id); if (p) Object.assign(p, e); endret(); },
     async settFastpris(id, fastpris) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fastpris = fastpris; endret(); },
     async lagreProsjekt(p, nyKunde) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
