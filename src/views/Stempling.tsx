@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
-import { LUNSJGRENSE, sisteProsjekter, t2 } from "../lib/timer";
+import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 
 const timerSiden = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
 
@@ -16,7 +16,7 @@ export function Stempling() {
   const [til, setTil] = useState("");
   const [venter, setVenter] = useState(false);
   const [, tikk] = useState(0);
-  useEffect(() => { if (!s) return; const i = setInterval(() => tikk((n) => n + 1), 30000); return () => clearInterval(i); }, [s]);
+  useEffect(() => { const i = setInterval(() => tikk((n) => n + 1), 20000); return () => clearInterval(i); }, []);
 
   const navn = (id: string | null) => {
     if (!id) return "Internt arbeid";
@@ -61,9 +61,10 @@ export function Stempling() {
   if (!s) {
     return (
       <section className="stempel" style={{ flexDirection: "column", alignItems: "stretch" }}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0 }}>Logg inn på jobb</h2>
-          <span className="small muted">Klokka rundes til nærmeste kvarter</span>
+        <div>
+          <h2 style={{ margin: "0 0 4px" }}>Logg inn på jobb</h2>
+          <div className="klokke">{kvarter(new Date())}</div>
+          <div className="small muted" style={{ marginTop: 4 }}>Tida rundes til nærmeste kvarter.</div>
         </div>
         {velger}
         <button className="btn primary stor" disabled={venter} onClick={() => kjorStempel("inn", `Logget inn på ${navn(prosjekt || null)}`)}>
@@ -78,10 +79,8 @@ export function Stempling() {
     <section className="stempel inne" style={{ flexDirection: "column", alignItems: "stretch" }}>
       <div>
         <div className="label">Logget inn {gammel ? kortDato(s.dato) + " " : ""}kl. {s.fra}</div>
-        <div className="row" style={{ alignItems: "baseline" }}>
-          <span className="tid">{gammel ? "–" : `${t2(Math.floor(timer * 4) / 4)} t`}</span>
-          <b>{navn(s.prosjekt_id)}</b>
-        </div>
+        {!gammel && <div className="klokke">{Math.floor(timer)}<small>t</small> {String(Math.floor((timer % 1) * 60)).padStart(2, "0")}<small>min</small></div>}
+        <div style={{ fontSize: 18, fontWeight: 600, marginTop: 6 }}>{navn(s.prosjekt_id)}</div>
         {gammel && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }}>Du ble ikke logget ut {kortDato(s.dato)}. Skriv inn når du sluttet, så lagres dagen.</p>}
         {!gammel && timer > 10 && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }}>Du har vært logget inn i over 10 timer. Glemt å logge ut?</p>}
       </div>

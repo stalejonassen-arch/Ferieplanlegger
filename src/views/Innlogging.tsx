@@ -28,8 +28,11 @@ export function Innlogging() {
 
   return (
     <div className="wrap">
+      <header className="top login-topp">
+        <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
+      </header>
       <div className="login panel">
-        <div className="brand"><small className="label">N L Austnes AS</small><h1>Ferieplanlegger</h1></div>
+        <h2 style={{ margin: 0 }}>Logg inn</h2>
 
         {api.modus === "demo" ? (
           <>

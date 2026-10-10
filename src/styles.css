@@ -6,7 +6,11 @@
   --bf-blue: #0A1EBE; --bf-blue-dark: #07158A; --bf-yellow: #FFCD00; --bf-red: #E2231A; --pending-text: #8A5F00;
   --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --f-mono: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;  /* tall: smal og tabulær */
+  /* Tommestokken: gul med svarte streker hver cm og lengre hver 5. */
+  --stokk: repeating-linear-gradient(90deg, #1A1400 0 2px, transparent 2px 50px) left top / 100% 9px no-repeat,
+           repeating-linear-gradient(90deg, #1A1400 0 1px, transparent 1px 10px) left top / 100% 5px no-repeat,
+           #FFCD00;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -29,18 +33,21 @@ h3 { font-size: 17px; font-weight: 600; }
 p { margin: 0; max-width: 62ch; }
 a { color: var(--accent); }
 .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+body { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .small { font-size: 13.5px; }
-.label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.label { font-size: 13px; color: var(--muted); font-weight: 600; }
 
 /* Toppen: blått Byggfag-felt med gul stripe under */
-header.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
-  background: var(--bf-blue); color: #FFFFFF; border-radius: 10px; padding: 14px 16px; border-bottom: 5px solid var(--bf-yellow); }
-header.top h1 { color: #FFFFFF; text-transform: uppercase; letter-spacing: .03em; }
+header.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; position: relative; overflow: hidden;
+  background: var(--bf-blue); color: #FFFFFF; border-radius: 10px; padding: 14px 16px 26px; }
+/* Tommestokk langs underkanten av toppen */
+header.top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: var(--stokk); }
+header.top h1 { color: #FFFFFF; font-size: 34px; letter-spacing: .01em; }
 header.top .muted { color: #D6DBFF; }
 header.top .btn { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.6); }
 header.top .btn:hover { background: var(--bf-blue-dark); }
-.brand small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--bf-yellow); font-weight: 700; margin-bottom: 4px; }
+.brand small { display: block; font-size: 13px; color: var(--bf-yellow); font-weight: 700; margin-bottom: 2px; }
 .who { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 select, input, textarea, button { font: inherit; color: inherit; }
@@ -71,11 +78,15 @@ nav.tabs button[aria-selected=true] { color: var(--accent); border-bottom-color:
 
 .saldo-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .saldo-top .big { font-family: var(--f-display); font-size: 54px; font-weight: 700; line-height: .9; }
-.bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--sunk); }
+.bar { display: flex; height: 16px; border-radius: 3px; overflow: hidden; background: var(--sunk); position: relative; }
+/* Fremdrift måles med tommestokk-streker */
+.bar::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .35;
+  background: repeating-linear-gradient(90deg, var(--fg) 0 1px, transparent 1px 10%) left top / 100% 7px no-repeat,
+              repeating-linear-gradient(90deg, var(--fg) 0 1px, transparent 1px 2%) left top / 100% 4px no-repeat; }
 .bar span { display: block; height: 100%; }
 .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
 .legend div { display: flex; flex-direction: column; gap: 2px; }
-.legend .v { font-family: var(--f-mono); font-size: 17px; }
+.legend .v { font-family: var(--f-mono); font-size: 24px; font-weight: 600; line-height: 1.1; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
 .stripe { background: repeating-linear-gradient(135deg, var(--pending) 0 4px, transparent 4px 7px); }
 .bg-approved { background: var(--approved); }
@@ -148,7 +159,8 @@ table.tbl td.n { text-align: right; font-family: var(--f-mono); font-variant-num
   .staff-row .lbl::before { content: attr(data-l); display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 }
 
-.login { max-width: 420px; margin: 8vh auto 0; }
+.login { max-width: 420px; width: 100%; margin: 0 auto; }
+.login-topp { max-width: 420px; width: 100%; margin: 6vh auto 0; }
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 600; z-index: 20; max-width: calc(100% - 32px); }
 .toast.feil { background: var(--warn); color: #fff; }
 @media (prefers-reduced-motion: no-preference) { .item, .panel { transition: border-color .2s; } }
@@ -191,7 +203,7 @@ nav.tabs.undertabs { position: static; }
 input[type=time] { width: 100%; }
 /* Stemplingsklokke */
 .stempel { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border: 2px solid var(--accent); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
-.stempel .tid { font-family: var(--f-mono); font-size: 26px; font-variant-numeric: tabular-nums; }
+.stempel .tid { font-family: var(--f-display); font-size: 30px; font-weight: 700; }
 .hurtig { display: flex; gap: 6px; flex-wrap: wrap; }
 .hurtig button { border: 1px solid var(--line); background: var(--sunk); border-radius: 16px; padding: 4px 10px; font-size: 13px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hurtig button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -199,3 +211,24 @@ input[type=time] { width: 100%; }
 .stempel.inne { border-color: var(--approved); box-shadow: inset 6px 0 0 var(--approved); }
 .stempel h2 { font-size: 22px; }
 .stempel .field { flex: none; }
+
+/* Stemplingsklokka: det første man ser på jobb */
+.klokke { font-family: var(--f-display); font-weight: 700; font-size: 64px; line-height: .9; color: var(--accent); letter-spacing: -.01em; }
+.stempel.inne .klokke { color: var(--approved); }
+.klokke small { font-size: 22px; font-weight: 600; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+
+/* Ikoner i hovedmenyen */
+nav.tabs .ikon { display: none; }
+
+/* Mobil: hovedmenyen ligger nede, der tommelen er */
+@media (max-width: 640px) {
+  .wrap { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  nav.tabs.hoved { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 20; gap: 0; justify-content: space-between;
+    background: var(--surface); border-bottom: 0; border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -2px 10px rgba(10, 30, 190, .08); }
+  nav.tabs.hoved button { flex: 1 1 0; min-width: 52px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 4px;
+    font-family: var(--f-body); font-size: 11px; font-weight: 600; border-bottom: 0; border-top: 3px solid transparent; margin: 0; position: relative; }
+  nav.tabs.hoved button[aria-selected=true] { border-top-color: var(--bf-yellow); color: var(--accent); }
+  nav.tabs.hoved .ikon { display: block; width: 24px; height: 24px; }
+  nav.tabs.hoved .badge { position: absolute; top: 2px; left: 50%; margin-left: 6px; }
+  .klokke { font-size: 56px; }
+}

@@ -25,6 +25,17 @@ export interface Ctx {
   kjor: (fn: () => Promise<void>, ok?: string) => Promise<boolean>;
 }
 const AppCtx = createContext<Ctx>(null!);
+
+/** Enkle strekikoner for hovedmenyen (vises i bunnmenyen på mobil) */
+const IKON: Record<string, React.ReactNode> = {
+  timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>,
+  prosjekter: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
+  rapporter: <><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h7M9 16h7M9 8h3" /></>,
+  min: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
+  lonn: <><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9v.5M18 15v.5" /></>,
+  oppsett: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" /></>,
+};
 export const useApp = () => useContext(AppCtx);
 
 type Fane = "timer" | "prosjekter" | "avvik" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
@@ -133,10 +144,11 @@ export function App() {
             <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>
         )}
 
-        <nav className="tabs" role="tablist">
+        <nav className="tabs hoved" role="tablist">
           {faner.map(([f, navn]) => (
             <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie)} onClick={() => velg(f)}
               ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
+              <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{IKON[f]}</svg>
               {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
               {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}

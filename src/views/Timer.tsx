@@ -71,7 +71,7 @@ export function Timer() {
       )}
       {meSelv && <Stempling />}
       {meSelv && !d.stempling.some((x) => x.ansatt_id === meg.id) && (
-        <div className="small" style={{ textAlign: "right" }}><a href="#syk">Syk i dag? Meld egenmelding →</a></div>
+        <div className="small" style={{ textAlign: "right" }}><a href="#syk">Syk i dag? Meld egenmelding</a></div>
       )}
       {leder && meSelv && <InneNaa />}
       {mangler.length > 0 && (
