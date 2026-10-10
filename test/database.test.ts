@@ -55,6 +55,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0017_stempling_samme_prosjekt.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0018_utstyr.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0019_utstyr_kvoter.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0020_svenn_import.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -412,5 +413,34 @@ describe("dagbok og tilleggsarbeid", () => {
     expect((await db.query<any>("select utstyr_kvoter->'bukse'->>'antall' n from public.bedrifter limit 1")).rows[0].n).toBe("3");
     // Ansatt kan merke en ny vare som avklart (nytt mot gammelt)
     expect(await as(JIM, "update public.utstyr set bytte_avklart=true where linjenr=1 returning id")).toHaveLength(1);
+  });
+
+  it("svenn-import: bare leder, nye prosjekter, overlapp tillatt, ny import erstatter, koblinger huskes", async () => {
+    await db.exec(`update public.ansatte set ansattnr='3' where navn='Jim Kato'`);
+    const jim = await idOf("Jim Kato");
+    const rader = JSON.stringify([
+      { d: "2026-03-02", a: "3", f: "08:00", t: "16:30", l: 30, k: "Ny jobb#10900", c: "" },
+      { d: "2026-03-02", a: "3", f: "16:00", t: "17:00", l: 0, k: "Interntid#4", c: "overlapp" },
+      { d: "2026-03-03", a: "99", f: "08:00", t: "12:00", l: 0, k: "Ny jobb#10900", c: "" },
+    ]);
+    const kob = JSON.stringify([
+      { nokkel: "Ny jobb#10900", prosjekt_id: null, ny_navn: "Ny jobb – Kari", fakturerbar: true },
+      { nokkel: "Interntid#4", prosjekt_id: null, ny_navn: null, fakturerbar: true },
+    ]);
+    await expect(as(JIM, "select public.importer_svenn($1::jsonb, $2::jsonb)", [kob, rader])).rejects.toThrow(/Bare leder/);
+    const [{ importer_svenn: r }] = await as<any>(STALE, "select public.importer_svenn($1::jsonb, $2::jsonb)", [kob, rader]);
+    expect([r.importert, Number(r.timer), Number(r.fakturerbart), Number(r.internt), r.nye_prosjekter, r.ukjente_ansattnr]).toEqual([2, 9, 8, 1, 1, ["99"]]);
+    const t = (await db.query<any>("select kilde, status, fakturerbar, p.navn, p.aktiv, p.fra_svenn from public.timer t left join public.prosjekter p on p.id = t.prosjekt_id where t.ansatt_id=$1 and t.kilde='svenn' order by fra", [jim])).rows;
+    expect(t.map((x: any) => [x.kilde, x.status, x.fakturerbar, x.navn, x.aktiv, x.fra_svenn])).toEqual([
+      ["svenn", "godkjent", true, "Ny jobb – Kari", false, true], ["svenn", "godkjent", false, null, null, null]]);
+    // Ny import av samme periode erstatter; samme navn gir ikke nytt prosjekt; koblingen er husket
+    const [{ importer_svenn: r2 }] = await as<any>(STALE, "select public.importer_svenn($1::jsonb, $2::jsonb)", [kob, rader]);
+    expect([r2.importert, r2.nye_prosjekter]).toEqual([2, 0]);
+    expect((await as<any>(STALE, "select count(*)::int n from public.svenn_kobling where prosjekt_id is not null"))[0].n).toBeGreaterThan(0);
+    expect(await as(JIM, "select * from public.svenn_kobling")).toHaveLength(0);
+    // Vanlig føring kan fortsatt ikke overlappe, og appen kan ikke sette kilde «svenn»
+    await expect(as(JIM, "insert into public.timer (ansatt_id, dato, fra, til) values ($1, '2026-03-02', '09:00', '10:00')", [jim])).rejects.toThrow(/overlapper/);
+    const [ny] = await as<any>(JIM, "insert into public.timer (ansatt_id, dato, fra, til, kilde) values ($1, '2026-03-05', '09:00', '10:00', 'svenn') returning kilde", [jim]);
+    expect(ny.kilde).toBe("manuell");
   });
 });

@@ -7,6 +7,7 @@ import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
 import type { FravaerType } from "./fravaer";
 import { STANDARD_KVOTER, type Kvoter, type Utstyr } from "./utstyr";
+import type { Kobling, importRader } from "./svenn";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -18,6 +19,9 @@ export interface FdvDok { id: string; navn: string; sti: string; storrelse: numb
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
 export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
+
+/** Svar fra importen av Svenn-timer */
+export interface SvennResultat { importert: number; timer: number; fakturerbart: number; internt: number; fra: string; til: string; nye_prosjekter: number; ukjente_ansattnr: string[] }
 
 export interface Api {
   modus: "supabase" | "demo";
@@ -81,6 +85,10 @@ export interface Api {
   settUtstyrGrenser(arbeidstoy: number, verktoy: number, sammeMnd: number): Promise<void>;
   /** Leder: kvoter på antall per plaggtype */
   settUtstyrKvoter(kvoter: Kvoter): Promise<void>;
+  /** Leder: lagrede koblinger fra Svenn-prosjekt til prosjekt i ByggLogg */
+  svennKoblinger(): Promise<{ nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }[]>;
+  /** Leder: importer timer fra Svenn. Erstatter tidligere Svenn-import i samme periode. */
+  importerSvenn(koblinger: Kobling[], rader: ReturnType<typeof importRader>): Promise<SvennResultat>;
   /** Merk rapporten som lest av meg */
   markerLest(id: string): Promise<void>;
   /** Leder: sett mål for fakturerte timer i året */
@@ -331,6 +339,8 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (gammel) await sb.storage.from("bilder").remove([gammel]);
     },
     async settUtstyrKvoter(kvoter) { ok(await sb.rpc("sett_utstyr_kvoter", { kvoter })); },
+    async svennKoblinger() { return (ok(await sb.from("svenn_kobling").select("nokkel, prosjekt_id, fakturerbar")) ?? []) as { nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }[]; },
+    async importerSvenn(koblinger, rader) { return ok(await sb.rpc("importer_svenn", { koblinger, rader })) as SvennResultat; },
     async settUtstyrGrenser(arbeidstoy, verktoy, sammeMnd) { ok(await sb.rpc("sett_utstyr_grenser", { arbeidstoy, verktoy, samme_mnd: sammeMnd })); },
     async markerLest(id) { ok(await sb.rpc("marker_lest", { rapport: id })); },
     async settMaal(aar) { ok(await sb.rpc("sett_maal", { aar })); },

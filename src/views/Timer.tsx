@@ -173,6 +173,7 @@ export function Timer() {
                       <div className="acts">
                         {t.kilde === "manuell" && <span className="chip demo" title="Ført i etterkant, ikke logget inn/ut">Ført etterpå</span>}
                         {t.kilde === "endret" && <span className="chip demo" title="Logget inn/ut, men tidene er rettet etterpå">Rettet</span>}
+                        {t.kilde === "svenn" && <span className="chip demo" title="Importert fra Svenn">Fra Svenn</span>}
                         <span className={`chip ${t.status === "godkjent" ? "godkjent" : "venter"}`}>{t.status === "godkjent" ? "Godkjent" : "Levert"}</span>
                         {kanEndre(t) && <button className="btn sm" onClick={() => rediger(t)}>Endre</button>}
                         {kanEndre(t) && <button className="btn sm no" onClick={() => kjor(() => api.slettTime(t.id), "Slettet")}>Slett</button>}

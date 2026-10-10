@@ -93,6 +93,7 @@ const demoDok: (FdvDok & { pid: string })[] = [];
 
 export function demoApi(): Api {
   const d = startdata();
+  const svennKob = new Map<string, { nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }>();
   let epost: string | null = null;
   const lyttere = new Set<() => void>();
   const authLyttere = new Set<(e: string | null) => void>();
@@ -283,6 +284,33 @@ export function demoApi(): Api {
     },
     async slettUtstyr(id) { d.utstyr = (d.utstyr ?? []).filter((u) => u.id !== id || u.kilde === "visma"); endret(); },
     async utstyrBilde(id, fil) { const u = d.utstyr?.find((x) => x.id === id); if (u) u.bilde_sti = URL.createObjectURL(fil); endret(); },
+    async svennKoblinger() { return [...svennKob.values()]; },
+    async importerSvenn(koblinger, rader) {
+      if (!leder()) throw new Error("Bare leder kan importere fra Svenn.");
+      let nye = 0;
+      for (const k of koblinger) {
+        let pid = k.prosjekt_id;
+        if (!pid && k.ny_navn) {
+          pid = d.prosjekter.find((p) => p.navn === k.ny_navn)?.id ?? null;
+          if (!pid) { pid = nyId(); nye++; d.prosjekter.push({ id: pid, visma_nr: null, navn: k.ny_navn, kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: false }); }
+        }
+        svennKob.set(k.nokkel, { nokkel: k.nokkel, prosjekt_id: pid, fakturerbar: k.fakturerbar && !!pid });
+      }
+      const fra = rader.reduce((m, r) => (r.d < m ? r.d : m), rader[0].d), til = rader.reduce((m, r) => (r.d > m ? r.d : m), rader[0].d);
+      d.timer = d.timer.filter((t) => t.kilde !== "svenn" || t.dato < fra || t.dato > til);
+      const ukjente = new Set<string>();
+      for (const r of rader) {
+        const a = d.ansatte.find((x) => x.ansattnr === r.a);
+        if (!a) { ukjente.add(r.a); continue; }
+        const k = svennKob.get(r.k);
+        d.timer.push({ id: nyId(), ansatt_id: a.id, prosjekt_id: k?.prosjekt_id ?? null, dato: r.d, fra: r.f, til: r.t, lunsj_min: r.l, timer: varighet(r.f, r.t, r.l),
+          lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: r.c, status: "godkjent", fakturerbar: !!k?.fakturerbar, kilde: "svenn" });
+      }
+      const s = d.timer.filter((t) => t.kilde === "svenn" && t.dato >= fra && t.dato <= til);
+      const sum = (x: Time[]) => Math.round(x.reduce((n, t) => n + t.timer, 0) * 100) / 100;
+      endret();
+      return { importert: s.length, timer: sum(s), fakturerbart: sum(s.filter((t) => t.fakturerbar)), internt: sum(s.filter((t) => !t.prosjekt_id)), fra, til, nye_prosjekter: nye, ukjente_ansattnr: [...ukjente] };
+    },
     async settUtstyrKvoter(kvoter) {
       if (!leder()) throw new Error("Bare leder kan endre kvotene.");
       d.utstyrGrenser = { ...(d.utstyrGrenser ?? { arbeidstoy: null, verktoy: null, sammeMnd: 6 }), kvoter }; endret();
