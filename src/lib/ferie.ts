@@ -22,6 +22,8 @@ export interface Ansatt {
   lunsjtrekk?: boolean;
   /** Ansattnummer som i Svenn/lønnssystemet */
   ansattnr?: string | null;
+  /** Språk i appen: nb (norsk) eller pl (polsk) */
+  sprak?: "nb" | "pl";
   /** Telles med i oversikten over kundetimer og interntid */
   i_timerapport?: boolean;
   lunsj_min?: number;

@@ -52,6 +52,8 @@ export interface Api {
   settFastpris(id: string, fastpris: boolean): Promise<void>;
   /** Leder: merk prosjektet som ferdig fakturert (alle fakturerbare timer teller som fakturert) */
   settFakturertFull(id: string, full: boolean): Promise<void>;
+  /** Mitt språk i appen */
+  settMittSprak(sprak: "nb" | "pl"): Promise<void>;
   lagreAvvik(a: NyttAvvik): Promise<string>;
   slettAvvik(id: string): Promise<void>;
   lastOppBilde(fil: File, til: BildeMaal): Promise<void>;
@@ -382,6 +384,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);
       return r.data?.[0] ?? null;
     },
+    async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settFakturertFull(id, full) { ok(await sb.from("prosjekter").update({ fakturert_full: full }).eq("id", id)); },
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },
     async lagreProsjekt(p, nyKunde) {

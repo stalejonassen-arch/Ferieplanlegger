@@ -346,3 +346,5 @@ table.tbl tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, t
 @media (max-width: 640px) { .legend .v { font-size: 22px; } .legend { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); } }
 .maal-mnd div { display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
 .maal-mnd .fastdel { display: block; width: 100%; background: repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 3px, rgba(255,255,255,.2) 3px 6px); }
+header.top select.sprakvalg { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.6); padding: 4px 8px; font-size: 14px; }
+header.top select.sprakvalg option { color: #10162E; }

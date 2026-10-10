@@ -2,6 +2,10 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./styles.css";
+import { lagretSprak, settSprak } from "./lib/sprak";
+
+// Språket som sist ble brukt på denne enheten (gjelder også innloggingen)
+settSprak(lagretSprak());
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

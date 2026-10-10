@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, feiltekst } from "./lib/api";
 import { isoOf, type Ansatt, type Data } from "./lib/ferie";
+import { settSprak, type Sprak } from "./lib/sprak";
 import { Innlogging } from "./views/Innlogging";
 import { MinFerie } from "./views/MinFerie";
 import { Kalender } from "./views/Kalender";
@@ -91,6 +92,8 @@ export function App() {
     () => d?.ansatte.find((a) => a.aktiv && a.epost?.toLowerCase() === epost?.toLowerCase()),
     [d, epost],
   );
+  // Den ansattes språk følger med fra databasen
+  useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
     try { await fn(); if (ok) visToast(ok); await last(); return true; }
@@ -132,7 +135,11 @@ export function App() {
         <header className="top">
           <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
           <div className="who">
-            <span className="small muted">{meg.navn}{leder ? " · leder" : ""}</span>
+            <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
+            <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
+              onChange={(e) => { const s = e.target.value as Sprak; kjor(() => api.settMittSprak(s)).then(() => settSprak(s)); }}>
+              <option value="nb">Norsk</option><option value="pl">Polski</option>
+            </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
         </header>
