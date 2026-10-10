@@ -3,29 +3,36 @@ import type { Prosjekt } from "./timer";
 
 type Celle = string | number | null;
 
-/** Pakker ut én fil fra en zip (xlsx er en zip med XML-filer) */
-async function pakkUt(buf: ArrayBuffer, navn: string): Promise<string | null> {
+/** Åpner en zip (xlsx er også en zip). Gir navnene og en funksjon som pakker ut én fil. */
+export function apneZip(buf: ArrayBuffer) {
   const v = new DataView(buf);
   let eocd = -1;
   for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 66000); i--) if (v.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
-  if (eocd < 0) throw new Error("Fila er ikke en Excel-fil (.xlsx).");
+  if (eocd < 0) throw new Error("Fila er ikke en gyldig zip/xlsx.");
   const antall = v.getUint16(eocd + 10, true);
   let p = v.getUint32(eocd + 16, true);
   const dek = new TextDecoder();
+  const oppf = new Map<string, { metode: number; str: number; lokal: number }>();
   for (let n = 0; n < antall; n++) {
     const metode = v.getUint16(p + 10, true), str = v.getUint32(p + 20, true);
     const nl = v.getUint16(p + 28, true), el = v.getUint16(p + 30, true), kl = v.getUint16(p + 32, true);
-    const lokal = v.getUint32(p + 42, true);
-    const filnavn = dek.decode(new Uint8Array(buf, p + 46, nl));
+    oppf.set(dek.decode(new Uint8Array(buf, p + 46, nl)), { metode, str, lokal: v.getUint32(p + 42, true) });
     p += 46 + nl + el + kl;
-    if (filnavn !== navn) continue;
-    const start = lokal + 30 + v.getUint16(lokal + 26, true) + v.getUint16(lokal + 28, true);
-    const data = new Uint8Array(buf, start, str);
-    if (metode === 0) return dek.decode(data);
-    const ds = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-    return await new Response(ds).text();
   }
-  return null;
+  const les = async (navn: string): Promise<Uint8Array | null> => {
+    const o = oppf.get(navn);
+    if (!o) return null;
+    const start = o.lokal + 30 + v.getUint16(o.lokal + 26, true) + v.getUint16(o.lokal + 28, true);
+    const data = new Uint8Array(buf, start, o.str);
+    if (o.metode === 0) return data;
+    const ds = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(ds).arrayBuffer());
+  };
+  return { navn: [...oppf.keys()], les };
+}
+async function pakkUt(buf: ArrayBuffer, navn: string): Promise<string | null> {
+  const b = await apneZip(buf).les(navn);
+  return b ? new TextDecoder().decode(b) : null;
 }
 
 const xmlTekst = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
@@ -143,3 +150,32 @@ export function importRader(rader: SvennRad[]) {
     return { d: r.dato, a: r.ansattnr, f: hhmm(fra), t: hhmm(til), l: lunsj, k: r.nokkel, c: r.kommentar };
   });
 }
+
+/** Dokumentasjonsarkiv fra Svenn (laget fra prosjektfilene i Svenn) */
+export interface SvennFil { fil: string; navn: string; mappe: string; type: "bilde" | "dokument"; svenn_id: number; dato: string; prosjekt: string; forelder: string | null; nr: string; nokkel: string }
+export interface SvennManifest { kilde: "svenn"; filer: SvennFil[] }
+
+export async function lesSvennArkiv(buf: ArrayBuffer) {
+  const zip = apneZip(buf);
+  const m = await zip.les("manifest.json");
+  if (!m) throw new Error("Fant ikke manifest.json. Bruk arkivet «svenn-dokumentasjon.zip».");
+  const manifest = JSON.parse(new TextDecoder().decode(m)) as SvennManifest;
+  if (manifest.kilde !== "svenn" || !Array.isArray(manifest.filer)) throw new Error("Arkivet er ikke fra Svenn.");
+  return { manifest, les: zip.les };
+}
+
+/** Prosjektene i arkivet med antall bilder og dokumenter, størst først */
+export function arkivProsjekter(filer: SvennFil[]) {
+  const m = new Map<string, SvennProsjekt & { bilder: number; dokumenter: number }>();
+  for (const f of filer) {
+    const navn = f.forelder ? `${f.forelder} - ${f.prosjekt}` : f.prosjekt;
+    const p = m.get(f.nokkel) ?? { nokkel: f.nokkel, navn, nr: f.nr, kunde: "", timer: 0, rader: 0, bilder: 0, dokumenter: 0 };
+    p.rader++; if (f.type === "bilde") p.bilder++; else p.dokumenter++;
+    m.set(f.nokkel, p);
+  }
+  return [...m.values()].sort((a, b) => b.rader - a.rader);
+}
+
+/** Tekst under et importert bilde: mappe og dato fra Svenn */
+export const svennBildetekst = (f: SvennFil) =>
+  [f.mappe, `fra Svenn ${f.dato.slice(0, 10).split("-").reverse().join(".")}`].filter(Boolean).join(" · ");

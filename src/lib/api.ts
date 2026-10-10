@@ -17,7 +17,7 @@ export interface FdvVare { varenr: string; beskrivelse: string; antall: number; 
 export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string }
 /** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
-export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string };
+export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string; svenn_id?: number; opprettet?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 /** Svar fra importen av Svenn-timer */
@@ -64,7 +64,7 @@ export interface Api {
   fdv(prosjektId: string): Promise<{ varer: FdvVare[]; dok: FdvDok[] }>;
   /** Leder: rett NOBB-nr, legg inn egen FDV-lenke eller skjul en vare (gjelder alle prosjekter) */
   lagreVare(varenr: string, endring: Partial<Pick<FdvVare, "nobb_nr" | "fdv_url" | "skjul">>): Promise<void>;
-  lastOppFdv(prosjektId: string, fil: File): Promise<void>;
+  lastOppFdv(prosjektId: string, fil: File, svenn?: { svenn_id: number; opprettet: string }): Promise<void>;
   slettFdv(id: string, sti: string): Promise<void>;
   /** Midlertidig lenke til et dokument (gyldig i en time) */
   dokUrl(sti: string, lastNed?: string): Promise<string>;
@@ -89,6 +89,10 @@ export interface Api {
   svennKoblinger(): Promise<{ nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }[]>;
   /** Leder: importer timer fra Svenn. Erstatter tidligere Svenn-import i samme periode. */
   importerSvenn(koblinger: Kobling[], rader: ReturnType<typeof importRader>): Promise<SvennResultat>;
+  /** Leder: koble Svenn-prosjekter til prosjekter (oppretter nye), gir nøkkel -> prosjekt-id */
+  svennProsjekter(koblinger: { nokkel: string; prosjekt_id: string | null; ny_navn: string | null }[]): Promise<Record<string, string>>;
+  /** Svenn-filer som allerede er importert (bilder og dokumenter) */
+  svennImporterteFiler(): Promise<Set<number>>;
   /** Merk rapporten som lest av meg */
   markerLest(id: string): Promise<void>;
   /** Leder: sett mål for fakturerte timer i året */
@@ -228,7 +232,8 @@ function supabaseApi(sb: SupabaseClient): Api {
       const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.jpg`;
       const data = await komprimer(fil);
       ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
-      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "" });
+      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
+        ...(til.svenn_id ? { svenn_id: til.svenn_id, opprettet: til.opprettet } : {}) });
       if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
     },
     async lagreDagbok(x) {
@@ -275,14 +280,14 @@ function supabaseApi(sb: SupabaseClient): Api {
       };
     },
     async lagreVare(varenr, endring) { ok(await sb.from("varer").update(endring).eq("varenr", varenr)); },
-    async lastOppFdv(prosjektId, fil) {
+    async lastOppFdv(prosjektId, fil, svenn) {
       if (fil.size > 25 * 1024 * 1024) throw new Error("Filen er større enn 25 MB.");
       if (!/pdf|jpeg|png/.test(fil.type)) throw new Error("Bare PDF og bilder (JPG/PNG) kan lastes opp.");
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
       const ext = fil.type === "application/pdf" ? "pdf" : fil.type === "image/png" ? "png" : "jpg";
       const sti = `${bedrift}/p-${prosjektId}/${crypto.randomUUID()}.${ext}`;
       ok(await sb.storage.from("dokumenter").upload(sti, fil, { contentType: fil.type }));
-      const r = await sb.from("fdv_dok").insert({ prosjekt_id: prosjektId, navn: fil.name, sti, storrelse: fil.size });
+      const r = await sb.from("fdv_dok").insert({ prosjekt_id: prosjektId, navn: fil.name, sti, storrelse: fil.size, ...(svenn ?? {}) });
       if (r.error) { await sb.storage.from("dokumenter").remove([sti]); throw r.error; }
     },
     async slettFdv(id, sti) {
@@ -340,6 +345,13 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async settUtstyrKvoter(kvoter) { ok(await sb.rpc("sett_utstyr_kvoter", { kvoter })); },
     async svennKoblinger() { return (ok(await sb.from("svenn_kobling").select("nokkel, prosjekt_id, fakturerbar")) ?? []) as { nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }[]; },
+    async svennProsjekter(koblinger) { return (ok(await sb.rpc("svenn_prosjekter", { koblinger })) ?? {}) as Record<string, string>; },
+    async svennImporterteFiler() {
+      const [b, f] = await Promise.all([
+        sb.from("bilder").select("svenn_id").not("svenn_id", "is", null).limit(20000),
+        sb.from("fdv_dok").select("svenn_id").not("svenn_id", "is", null).limit(20000)]);
+      return new Set([...(ok(b) as { svenn_id: number }[]), ...(ok(f) as { svenn_id: number }[])].map((x) => Number(x.svenn_id)));
+    },
     async importerSvenn(koblinger, rader) { return ok(await sb.rpc("importer_svenn", { koblinger, rader })) as SvennResultat; },
     async settUtstyrGrenser(arbeidstoy, verktoy, sammeMnd) { ok(await sb.rpc("sett_utstyr_grenser", { arbeidstoy, verktoy, samme_mnd: sammeMnd })); },
     async markerLest(id) { ok(await sb.rpc("marker_lest", { rapport: id })); },

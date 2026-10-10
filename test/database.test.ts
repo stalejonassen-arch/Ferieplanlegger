@@ -56,6 +56,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0018_utstyr.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0019_utstyr_kvoter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0020_svenn_import.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0021_svenn_dokumentasjon.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -442,5 +443,18 @@ describe("dagbok og tilleggsarbeid", () => {
     await expect(as(JIM, "insert into public.timer (ansatt_id, dato, fra, til) values ($1, '2026-03-02', '09:00', '10:00')", [jim])).rejects.toThrow(/overlapper/);
     const [ny] = await as<any>(JIM, "insert into public.timer (ansatt_id, dato, fra, til, kilde) values ($1, '2026-03-05', '09:00', '10:00', 'svenn') returning kilde", [jim]);
     expect(ny.kilde).toBe("manuell");
+  });
+
+  it("svenn-dokumentasjon: koble prosjekter (bare leder), og samme Svenn-fil kan ikke legges inn to ganger", async () => {
+    const kob = JSON.stringify([{ nokkel: "Runar Helgesen#8", prosjekt_id: null, ny_navn: "Runar Helgesen" }, { nokkel: "Hopp#1", prosjekt_id: null, ny_navn: null }]);
+    await expect(as(JIM, "select public.svenn_prosjekter($1::jsonb)", [kob])).rejects.toThrow(/Bare leder/);
+    const [{ svenn_prosjekter: m }] = await as<any>(STALE, "select public.svenn_prosjekter($1::jsonb)", [kob]);
+    expect(Object.keys(m)).toEqual(["Runar Helgesen#8"]);
+    const [{ svenn_prosjekter: m2 }] = await as<any>(STALE, "select public.svenn_prosjekter($1::jsonb)", [kob]);
+    expect(m2["Runar Helgesen#8"]).toBe(m["Runar Helgesen#8"]);
+    const pid = m["Runar Helgesen#8"];
+    await as(STALE, "insert into public.bilder (sti, prosjekt_id, svenn_id, opprettet) values ('1/p-x/a.jpg', $1, 777, '2026-02-10T10:22:34Z')", [pid]);
+    expect((await db.query<any>("select to_char(opprettet at time zone 'UTC', 'YYYY-MM-DD') d from public.bilder where svenn_id=777")).rows[0].d).toBe("2026-02-10");
+    await expect(as(STALE, "insert into public.bilder (sti, prosjekt_id, svenn_id) values ('1/p-x/b.jpg', $1, 777)", [pid])).rejects.toThrow();
   });
 });

@@ -93,6 +93,7 @@ const demoDok: (FdvDok & { pid: string })[] = [];
 
 export function demoApi(): Api {
   const d = startdata();
+  const svennFiler = new Set<number>();
   const svennKob = new Map<string, { nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }>();
   let epost: string | null = null;
   const lyttere = new Set<() => void>();
@@ -201,7 +202,8 @@ export function demoApi(): Api {
     },
     async lastOppBilde(fil, til) {
       const sti = URL.createObjectURL(fil);
-      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: new Date().toISOString() });
+      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
+      if (til.svenn_id) svennFiler.add(til.svenn_id);
       endret();
     },
     async lagreDagbok(x) {
@@ -285,6 +287,21 @@ export function demoApi(): Api {
     async slettUtstyr(id) { d.utstyr = (d.utstyr ?? []).filter((u) => u.id !== id || u.kilde === "visma"); endret(); },
     async utstyrBilde(id, fil) { const u = d.utstyr?.find((x) => x.id === id); if (u) u.bilde_sti = URL.createObjectURL(fil); endret(); },
     async svennKoblinger() { return [...svennKob.values()]; },
+    async svennProsjekter(koblinger) {
+      if (!leder()) throw new Error("Bare leder kan importere fra Svenn.");
+      const ut: Record<string, string> = {};
+      for (const k of koblinger) {
+        let pid = k.prosjekt_id;
+        if (!pid && k.ny_navn) {
+          pid = d.prosjekter.find((p) => p.navn === k.ny_navn)?.id ?? null;
+          if (!pid) { pid = nyId(); d.prosjekter.push({ id: pid, visma_nr: null, navn: k.ny_navn, kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: false }); }
+        }
+        if (pid) { ut[k.nokkel] = pid; svennKob.set(k.nokkel, { nokkel: k.nokkel, prosjekt_id: pid, fakturerbar: true }); }
+      }
+      endret();
+      return ut;
+    },
+    async svennImporterteFiler() { return new Set(svennFiler); },
     async importerSvenn(koblinger, rader) {
       if (!leder()) throw new Error("Bare leder kan importere fra Svenn.");
       let nye = 0;
@@ -336,7 +353,7 @@ export function demoApi(): Api {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       vareEndring[varenr] = { ...(vareEndring[varenr] ?? {}), ...endring }; endret();
     },
-    async lastOppFdv(pid, fil) { demoDok.push({ pid, id: nyId(), navn: fil.name, sti: URL.createObjectURL(fil), storrelse: fil.size, opprettet: new Date().toISOString() }); endret(); },
+    async lastOppFdv(pid, fil, svenn) { demoDok.push({ pid, id: nyId(), navn: fil.name, sti: URL.createObjectURL(fil), storrelse: fil.size, opprettet: svenn?.opprettet ?? new Date().toISOString() }); if (svenn) svennFiler.add(svenn.svenn_id); endret(); },
     async slettFdv(id) { const i = demoDok.findIndex((x) => x.id === id); if (i >= 0) demoDok.splice(i, 1); endret(); },
     async dokUrl(sti) { return sti; },
     async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },

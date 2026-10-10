@@ -3,7 +3,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { sorterAnsatte, type Ansatt } from "../lib/ferie";
 import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
-import { foreslaKobling, importRader, lesSvenn, lesXlsx, svennProsjekter, type Kobling, type SvennProsjekt, type SvennRad } from "../lib/svenn";
+import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, lesXlsx, svennBildetekst, svennProsjekter, type Kobling, type SvennFil, type SvennProsjekt, type SvennRad } from "../lib/svenn";
 import type { SvennResultat } from "../lib/api";
 
 export function Oppsett() {
@@ -125,6 +125,7 @@ export function Oppsett() {
       </section>
       <UtstyrOppsett lagre={lagre} />
       <SvennImport />
+      <SvennDokumentasjon />
     </>
   );
 }
@@ -276,6 +277,114 @@ function SvennImport() {
           <div className="row">
             <button className="btn primary" disabled={jobber} onClick={importer}>{jobber ? "Importerer …" : `Importer ${t1(totalt)} timer`}</button>
             <button className="btn" onClick={() => setFil(null)}>Avbryt</button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** Import av bilder og PDF-er fra Svenn (arkiv laget fra prosjektfilene i Svenn) */
+function SvennDokumentasjon() {
+  const { d, kjor } = useApp();
+  const [arkiv, setArkiv] = useState<{ navn: string; filer: SvennFil[]; nye: SvennFil[]; les: (n: string) => Promise<Uint8Array | null> } | null>(null);
+  const [valg, setValg] = useState<Record<string, string>>({});
+  const [nyNavn, setNyNavn] = useState<Record<string, string>>({});
+  const [feil, setFeil] = useState("");
+  const [status, setStatus] = useState("");
+  const [jobber, setJobber] = useState(false);
+  const prosjekter = [...d.prosjekter].sort((a, b) => (b.visma_nr ?? 0) - (a.visma_nr ?? 0) || a.navn.localeCompare(b.navn));
+  const grupper = arkiv ? arkivProsjekter(arkiv.nye) : [];
+
+  const velgFil = async (f: File | undefined) => {
+    setFeil(""); setStatus(""); setArkiv(null);
+    if (!f) return;
+    try {
+      const { manifest, les } = await lesSvennArkiv(await f.arrayBuffer());
+      const ferdig = await api.svennImporterteFiler();
+      const nye = manifest.filer.filter((x) => !ferdig.has(Number(x.svenn_id)));
+      const lagret = new Map((await api.svennKoblinger()).map((k) => [k.nokkel, k]));
+      const v: Record<string, string> = {}, n: Record<string, string> = {};
+      for (const p of arkivProsjekter(nye)) {
+        const k = foreslaKobling(p, d.prosjekter, lagret, "N L Austnes AS");
+        v[p.nokkel] = k.prosjekt_id ?? (k.ny_navn != null ? "ny" : "hopp");
+        n[p.nokkel] = k.ny_navn ?? p.navn;
+      }
+      setValg(v); setNyNavn(n);
+      setArkiv({ navn: f.name, filer: manifest.filer, nye, les });
+    } catch (e) { setFeil(e instanceof Error ? e.message : String(e)); }
+  };
+
+  const importer = async () => {
+    if (!arkiv) return;
+    const med = arkiv.nye.filter((f) => valg[f.nokkel] && valg[f.nokkel] !== "hopp");
+    if (!med.length) return;
+    if (!window.confirm(`Legge inn ${med.length} filer fra Svenn på prosjektene?`)) return;
+    setJobber(true);
+    let ok = 0;
+    const feilet: string[] = [];
+    await kjor(async () => {
+      const koblinger = Object.entries(valg).filter(([, v]) => v !== "hopp")
+        .map(([nokkel, v]) => ({ nokkel, prosjekt_id: v === "ny" ? null : v, ny_navn: v === "ny" ? (nyNavn[nokkel] || "").trim() || null : null }));
+      const pid = await api.svennProsjekter(koblinger);
+      for (const f of med) {
+        const prosjekt = pid[f.nokkel];
+        if (!prosjekt) continue;
+        setStatus(`Laster opp ${ok + feilet.length + 1} av ${med.length} …`);
+        try {
+          const data = await arkiv.les(f.fil);
+          if (!data) throw new Error("mangler i arkivet");
+          const type = f.fil.endsWith(".pdf") ? "application/pdf" : f.fil.endsWith(".png") ? "image/png" : "image/jpeg";
+          const navn = f.type === "dokument" ? f.navn : f.navn.replace(/\.\w+$/, "") + (type === "image/png" ? ".png" : ".jpg");
+          const fil = new File([data as BlobPart], navn, { type });
+          const opprettet = f.dato ? `${f.dato.replace(" ", "T")}Z` : undefined;
+          if (f.type === "bilde") await api.lastOppBilde(fil, { prosjekt_id: prosjekt, tekst: svennBildetekst(f), svenn_id: Number(f.svenn_id), opprettet });
+          else await api.lastOppFdv(prosjekt, fil, { svenn_id: Number(f.svenn_id), opprettet: opprettet ?? new Date().toISOString() });
+          ok++;
+        } catch (e) { feilet.push(`${f.navn}: ${e instanceof Error ? e.message : "feil"}`); }
+      }
+    }, undefined);
+    setJobber(false);
+    setStatus(`Ferdig: ${ok} filer lagt inn.${feilet.length ? ` ${feilet.length} feilet: ${feilet.slice(0, 5).join("; ")}${feilet.length > 5 ? " …" : ""}` : ""}`);
+    if (ok) setArkiv(null);
+  };
+
+  return (
+    <section className="panel">
+      <h2>Dokumentasjon fra Svenn</h2>
+      <p className="small muted">Bilder og PDF-er fra prosjektene i Svenn. Last opp arkivet <b>svenn-dokumentasjon.zip</b>, sjekk prosjektene, og importer. Bildene havner under Bilder på prosjektet med mappe og dato fra Svenn, PDF-ene under FDV/dokumenter. Filer som allerede er importert hoppes over, så arkivet kan lastes opp på nytt.</p>
+      <label className="btn">Velg arkiv fra Svenn (zip)
+        <input type="file" accept=".zip,application/zip" hidden onChange={(e) => { velgFil(e.target.files?.[0]); e.target.value = ""; }} />
+      </label>
+      {feil && <p className="small" style={{ color: "var(--no, #b42318)" }}>{feil}</p>}
+      {status && <p className="small">{status}</p>}
+      {arkiv && (
+        <>
+          <p className="small"><b>{arkiv.navn}</b>: {arkiv.filer.length} filer, {arkiv.nye.length} nye{arkiv.filer.length > arkiv.nye.length ? ` (${arkiv.filer.length - arkiv.nye.length} er importert fra før)` : ""}.</p>
+          {grupper.length > 0 && (
+            <div className="scroll" style={{ border: 0 }}>
+              <table className="tbl">
+                <thead><tr><th>Prosjekt i Svenn</th><th>Bilder</th><th>PDF</th><th>Legges på</th></tr></thead>
+                <tbody>{grupper.map((p) => (
+                  <tr key={p.nokkel}>
+                    <td>{p.navn}{p.nr && <span className="muted"> #{p.nr}</span>}</td>
+                    <td>{p.bilder}</td><td>{p.dokumenter}</td>
+                    <td>
+                      <select aria-label={`Prosjekt for ${p.navn}`} value={valg[p.nokkel]} onChange={(e) => setValg((v) => ({ ...v, [p.nokkel]: e.target.value }))}>
+                        <option value="hopp">Hopp over</option>
+                        <option value="ny">Nytt prosjekt …</option>
+                        {prosjekter.map((x) => <option key={x.id} value={x.id}>{x.visma_nr ? `${x.visma_nr} ` : ""}{x.navn}</option>)}
+                      </select>
+                      {valg[p.nokkel] === "ny" && <input aria-label={`Navn nytt prosjekt ${p.navn}`} style={{ display: "block", marginTop: 4 }} value={nyNavn[p.nokkel] ?? ""} onChange={(e) => setNyNavn((n) => ({ ...n, [p.nokkel]: e.target.value }))} />}
+                    </td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+          <div className="row">
+            <button className="btn primary" disabled={jobber || !arkiv.nye.length} onClick={importer}>{jobber ? "Importerer …" : `Importer ${arkiv.nye.filter((f) => valg[f.nokkel] && valg[f.nokkel] !== "hopp").length} filer`}</button>
+            <button className="btn" disabled={jobber} onClick={() => setArkiv(null)}>Avbryt</button>
           </div>
         </>
       )}

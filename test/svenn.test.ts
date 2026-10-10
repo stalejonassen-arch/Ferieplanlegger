@@ -36,3 +36,17 @@ describe("svenn", () => {
     expect(f("Skifte bordkledning#10857", new Map([["Skifte bordkledning#10857", { prosjekt_id: "x", fakturerbar: false }]]))).toMatchObject({ prosjekt_id: "x", fakturerbar: false });
   });
 });
+
+describe("svenn-arkiv", () => {
+  it("leser manifest og filer (lagret og komprimert), og grupperer per prosjekt", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { lesSvennArkiv, arkivProsjekter, svennBildetekst } = await import("../src/lib/svenn");
+    const b = readFileSync("test/fixtures/svenn-arkiv.zip");
+    const { manifest, les } = await lesSvennArkiv(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+    expect(manifest.filer).toHaveLength(2);
+    expect(Array.from((await les("filer/0001.jpg"))!.slice(0, 2))).toEqual([0xff, 0xd8]);
+    expect((await les("filer/0002.pdf"))!.length).toBe(509);
+    expect(arkivProsjekter(manifest.filer).map((p) => [p.navn, p.bilder, p.dokumenter])).toEqual([["Siri Kjerstad Renovering - siri extra", 1, 0], ["Siri Kjerstad Renovering", 0, 1]]);
+    expect(svennBildetekst(manifest.filer[0])).toBe("Div. bilder · fra Svenn 10.02.2026");
+  });
+});
