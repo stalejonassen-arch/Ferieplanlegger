@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useApp } from "../App";
-import { perKunde } from "../lib/faktura";
+import { fastprisBeregning, perKunde } from "../lib/faktura";
 import { t2 } from "../lib/timer";
 
 /** Fakturering per kunde: registrerte fakturerbare timer mot fakturerte timer i Visma */
@@ -11,6 +11,7 @@ export function Fakturering() {
   const [alle, setAlle] = useState(false);
   if (!(d.fakturerteTimer ?? []).length) return null;
   const rader = perKunde(d, aar);
+  const fast = fastprisBeregning(d, aar);
   const vis = alle ? rader : rader.slice(0, 12);
   const sum = (f: (r: (typeof rader)[number]) => number) => rader.reduce((n, r) => n + f(r), 0);
   const kr = (n: number) => `${Math.round(n).toLocaleString("nb-NO")} kr`;
@@ -38,6 +39,24 @@ export function Fakturering() {
           </tbody>
         </table>
       </div>
+      {fast.prosjekter.length > 0 && (
+        <>
+          <h3 style={{ margin: "6px 0 0" }}>Fastprisjobber, beregnet</h3>
+          <p className="small muted">Arbeid = fakturert kunden minus kostpris på materialene på N L-ordrene (og minus «Arbeid» som allerede er telt). Timer = arbeid delt på {t2(fast.pris)} kr/t{d.timepris ? "" : ", som er snittprisen på Arbeid i år"}.</p>
+          <div className="scroll" style={{ border: 0 }}>
+            <table className="tbl">
+              <thead><tr><th>Prosjekt</th><th className="n">Fakturert kunde</th><th className="n">Materialer (kost)</th><th className="n">Arbeid</th><th className="n">Timer beregnet</th><th className="n">Registrert</th></tr></thead>
+              <tbody>{fast.prosjekter.map((x) => (
+                <tr key={x.p.id}>
+                  <td style={{ whiteSpace: "normal" }}>{x.p.visma_nr ? `${x.p.visma_nr} ` : ""}{x.p.navn}</td>
+                  <td className="n">{kr(x.salg)}</td><td className="n">{kr(x.material)}</td><td className="n">{kr(x.arbeidKr)}</td>
+                  <td className="n"><b>{t2(Math.round(x.timer))}</b></td><td className="n">{t2(Math.round(x.registrert))}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </>
+      )}
       <details>
         <summary className="small" style={{ cursor: "pointer" }}>Fastprisprosjekter ({d.prosjekter.filter((p) => p.fastpris).length}) – kryss av jobber som faktureres som fastpris</summary>
         <p className="small muted" style={{ margin: "6px 0" }}>Timene på fastprisprosjekter holdes utenfor sammenligningen, siden de ikke faktureres som «Arbeid». Lista viser prosjekter med fakturerbare timer i år.</p>

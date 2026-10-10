@@ -149,7 +149,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, fakt, utstyr] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -166,6 +166,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").order("rapport_id").order("ansatt_id"), 10000),
         sb.from("stempling").select("ansatt_id, prosjekt_id, dato, fra, startet"),
         alle(() => sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).order("id"), 10000),
+        alle(() => sb.from("prosjekt_ordre").select("visma_ordrenr, prosjekt_id, kunde_nr, transaksjonstype, ordretype, fakturert, kostnad, ordredato, ferdig").order("visma_ordrenr"), 20000),
         alle(() => sb.from("fakturerte_timer").select("visma_ordrenr, linjenr, ordredato, fakturadato, fakturanr, kunde_id, prosjekt_id, antall, fakturert, ikke_fakturert, pris").order("visma_ordrenr").order("linjenr"), 20000),
         alle(() => sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad, bytte_avklart").order("dato", { ascending: false }).order("id"), 20000),
       ]);
@@ -176,6 +177,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
         rapporter: rapporter.error ? [] : rapporter.data, lest: lest.error ? [] : lest.data,
         fravaer: fravaer.error ? [] : fravaer.data,
+        ordrer: ordrer.error ? [] : (ordrer.data as any[]).map((o) => ({ ...o, fakturert: Number(o.fakturert), kostnad: Number(o.kostnad), transaksjonstype: Number(o.transaksjonstype), ordretype: Number(o.ordretype), kunde_nr: o.kunde_nr == null ? null : Number(o.kunde_nr) })),
+        egetKundenr: b0.eget_kundenr == null ? null : Number(b0.eget_kundenr),
+        timepris: b0.timepris == null ? null : Number(b0.timepris),
         fakturerteTimer: fakt.error ? [] : (fakt.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), fakturert: Number(x.fakturert), ikke_fakturert: Number(x.ikke_fakturert), pris: Number(x.pris) })),
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },

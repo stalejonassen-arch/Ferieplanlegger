@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v6: fakturakunde)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v7: kunde på ordre)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -289,7 +289,7 @@ Deno.serve(async (req) => {
         const n = (v: unknown) => Number(v) || 0;
         const rader2 = ordrer.filter((o) => pid.has(Number(o[pf]))).map((o) => ({
           bedrift_id: b.id, visma_ordrenr: n(o.orderNo), prosjekt_id: pid.get(Number(o[pf])), ordredato: dato(o.orderDate),
-          ordretype: n(o.orderType), transaksjonstype: n(o.transactionType), navn: s(o.name),
+          ordretype: n(o.orderType), transaksjonstype: n(o.transactionType), navn: s(o.name), kunde_nr: n(o.customerNo) || null,
           sum_netto: n(o.orderSumNetDomestic), kostnad: n(o.incurredCostTotalDomestic), dekningsbidrag: n(o.grossProfitTotalDomestic),
           fakturert: n(o.invoicedAmountTotalDomestic), ferdig: dato(o.finishDate), oppdatert: new Date().toISOString(),
         }));

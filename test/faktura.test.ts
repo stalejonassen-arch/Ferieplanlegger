@@ -41,3 +41,20 @@ describe("fastpris", () => {
     expect(perKunde(d, 2026).map((k) => [k.registrert, k.fakturert])).toEqual([[10, 8]]);
   });
 });
+
+describe("fastprisberegning", () => {
+  it("arbeid = fakturert kunde − materialkost på egne ordrer − Arbeid alt telt, delt på timepris", async () => {
+    const { fastprisBeregning } = await import("../src/lib/faktura");
+    const o = (x: object) => ({ prosjekt_id: "p1", transaksjonstype: 1, ordretype: 1, fakturert: 0, kostnad: 0, ordredato: "2026-03-01", ferdig: null, kunde_nr: 2, ...x });
+    const d = {
+      kunder: [], prosjekter: [{ id: "p1", navn: "Siri", fastpris: true }], timer: [{ prosjekt_id: "p1", dato: "2026-03-02", timer: 900 }],
+      egetKundenr: 1, timepris: 800,
+      ordrer: [o({ fakturert: 600000, ordredato: "2026-03-10" }), o({ fakturert: 200000, ordredato: "2026-05-10" }), o({ kunde_nr: 1, kostnad: 150000 }), o({ ordretype: 5, fakturert: 999999 }), o({ fakturert: 50000, ordredato: "2025-11-01" })],
+      fakturerteTimer: [f({ prosjekt_id: "p1", fakturadato: "2026-03-05", fakturert: 10, pris: 800 })],
+    } as unknown as Data;
+    const r = fastprisBeregning(d, 2026);
+    // 800 000 − 150 000 − 8 000 = 642 000 kr → 802,5 t, fordelt 3:1 på mars og mai
+    expect([r.prosjekter[0].salg, r.prosjekter[0].material, r.prosjekter[0].arbeidKr, r.timer]).toEqual([800000, 150000, 642000, 802.5]);
+    expect([r.perMnd[2], r.perMnd[4]]).toEqual([601.9, 200.6]);
+  });
+});

@@ -1,4 +1,4 @@
-import type { FakturertTime } from "./faktura";
+import type { FakturertTime, ProsjektOrdreKort } from "./faktura";
 import type { Lesing, Rapport } from "./rapport";
 import type { Stempling } from "./timer";
 import type { Fravaer } from "./fravaer";
@@ -49,6 +49,10 @@ export interface Data {
   maal?: number;
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
+  /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */
+  ordrer?: ProsjektOrdreKort[];
+  egetKundenr?: number | null;
+  timepris?: number | null;
 }
 
 /** «1 feriedag», «2 feriedager» */
