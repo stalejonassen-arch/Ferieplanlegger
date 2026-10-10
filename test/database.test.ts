@@ -50,6 +50,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0012_timer_synlig.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0013_timerapport.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0014_ansattnr.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0015_stempling.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -285,5 +286,38 @@ describe("dagbok og tilleggsarbeid", () => {
     // Publisert kan ikke gjøres om til utkast
     await as(STALE, "update public.rapporter set publisert = null where id=$1", [r.id]);
     expect(await as(JIM, "select id from public.rapporter")).toHaveLength(1);
+  });
+
+  it("stempling: inn, bytt prosjekt og ut gir timer i sanntid; manuell føring merkes", async () => {
+    const p = await prosj();
+    const jim = await idOf("Jim Kato");
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+    // Flytt «nå» tilbake så vi får hele kvarter mellom stemplingene
+    await as(JIM, "select public.stemple('inn', $1)", [p]);
+    await expect(as(JIM, "select public.stemple('inn', $1)", [p])).rejects.toThrow(/allerede/);
+    await db.query("update public.stempling set fra='00:00', dato=(now() at time zone 'Europe/Oslo')::date where ansatt_id=$1", [jim]);
+    expect(await as(MADS, "select * from public.stempling")).toHaveLength(0);
+    expect(await as(STALE, "select * from public.stempling")).toHaveLength(1);
+    await as(JIM, "select public.stemple('ut', null, 'Montert vinduer', 30)");
+    const t = await as<any>(JIM, "select fra, kilde, beskrivelse, lunsj_min, prosjekt_id from public.timer where ansatt_id=$1", [jim]);
+    if (t.length) { // tom hvis testen kjøres rett etter midnatt (ut før 07:00)
+      expect(t[0].kilde).toBe("stempel");
+      expect(t[0].beskrivelse).toBe("Montert vinduer");
+      expect(t[0].prosjekt_id).toBe(p);
+      await as(JIM, "update public.timer set beskrivelse='x', til=til where ansatt_id=$1", [jim]); await as(JIM, "update public.timer set fra='00:15' where ansatt_id=$1", [jim]);
+      expect((await as<any>(JIM, "select kilde from public.timer where ansatt_id=$1", [jim]))[0].kilde).toBe("endret");
+    }
+    expect(await as(JIM, "select * from public.stempling")).toHaveLength(0);
+    // Glemt å stemple ut i går: må oppgi sluttid
+    await as(JIM, "select public.stemple('inn', null)");
+    await db.query("update public.stempling set dato=dato-1, fra='08:00' where ansatt_id=$1", [jim]);
+    await expect(as(JIM, "select public.stemple('ut')")).rejects.toThrow(/sluttet/);
+    await as(JIM, "select public.stemple('ut', null, '', 0, '16:00')");
+    const g = await as<any>(JIM, "select kilde, til from public.timer where ansatt_id=$1 and dato < (now() at time zone 'Europe/Oslo')::date", [jim]);
+    expect(g[0].til.slice(0, 5)).toBe("16:00");
+    // Manuell føring
+    const [m] = await as<any>(JIM, "insert into public.timer (ansatt_id, dato, fra, til, kilde) values ($1, '2027-05-03', '07:00', '08:00', 'stempel') returning kilde", [jim]);
+    expect(m.kilde).toBe("manuell");
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
   });
 });

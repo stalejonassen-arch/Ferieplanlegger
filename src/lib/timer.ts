@@ -8,8 +8,12 @@ export interface Time {
   id: string; ansatt_id: string; prosjekt_id: string | null; dato: string;
   fra: string; til: string; lunsj_min: number; timer: number; lunsj_unntak: boolean;
   km: number; reisetid: number; beskrivelse: string; status: "levert" | "godkjent"; fakturerbar?: boolean;
+  /** stempel = logget inn/ut i sanntid, manuell = ført i etterkant, endret = stempel som er rettet */
+  kilde?: "stempel" | "manuell" | "endret";
 }
-export type NyTime = Omit<Time, "id" | "timer" | "lunsj_unntak" | "status"> & { id?: string };
+/** Pågående innlogging på jobb */
+export interface Stempling { ansatt_id: string; prosjekt_id: string | null; dato: string; fra: string; startet: string }
+export type NyTime = Omit<Time, "id" | "timer" | "lunsj_unntak" | "status" | "kilde"> & { id?: string };
 
 /** Pause etter arbeidsmiljøloven § 10-9: rett på pause når arbeidstiden er over 5,5 timer. */
 export const LUNSJGRENSE = 5.5;

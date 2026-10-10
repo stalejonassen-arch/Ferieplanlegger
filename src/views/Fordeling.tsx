@@ -18,7 +18,8 @@ export function Fordeling() {
   const maks = Math.max(1, ...per.map((m) => m.sum));
   const hittil = per.slice(0, mndNr).reduce((a, m) => ({ f: a.f + m.fakturerbart, i: a.i + m.ikkeFakturerbart, n: a.n + m.intern, s: a.s + m.sum }), { f: 0, i: 0, n: 0, s: 0 });
   const mnd = `${aar}-${String(valgt).padStart(2, "0")}`;
-  const perAnsatt = leder && hvem === "alle" ? [...fordelingPerAnsatt(d.timer.filter((t) => iRapport.has(t.ansatt_id)), mnd)].map(([id, f]) => ({ navn: d.ansatte.find((a) => a.id === id)?.navn ?? "?", f })).sort((a, b) => b.f.intern - a.f.intern) : [];
+  const perAnsatt = leder && hvem === "alle" ? [...fordelingPerAnsatt(d.timer.filter((t) => iRapport.has(t.ansatt_id)), mnd)].map(([id, f]) => ({ navn: d.ansatte.find((a) => a.id === id)?.navn ?? "?", f,
+    etterpa: d.timer.filter((t) => t.ansatt_id === id && t.dato.startsWith(`${mnd}-`) && t.kilde === "manuell").length })).sort((a, b) => b.f.intern - a.f.intern) : [];
   const m = per[valgt - 1];
 
   return (
@@ -53,10 +54,10 @@ export function Fordeling() {
       </p>
       {perAnsatt.length > 0 && (
         <div style={{ overflowX: "auto" }}>
-          <table className="tbl"><thead><tr><th>{MND[valgt - 1]}</th><th>Fakturerbart</th><th>Ikke fakt.</th><th>Interntid</th><th>Andel intern</th></tr></thead><tbody>
-            {perAnsatt.map(({ navn, f }) => (
+          <table className="tbl"><thead><tr><th>{MND[valgt - 1]}</th><th>Fakturerbart</th><th>Ikke fakt.</th><th>Interntid</th><th>Andel intern</th><th title="Føringer som ikke ble logget inn/ut i sanntid">Ført etterpå</th></tr></thead><tbody>
+            {perAnsatt.map(({ navn, f, etterpa }) => (
               <tr key={navn}><td>{navn}</td><td>{t2(f.fakturerbart)}</td><td>{t2(f.ikkeFakturerbart)}</td><td>{t2(f.intern)}</td>
-                <td style={andelIntern(f) >= 50 ? { color: "var(--warn)" } : undefined}>{andelIntern(f)} %</td></tr>
+                <td style={andelIntern(f) >= 50 ? { color: "var(--warn)" } : undefined}>{andelIntern(f)} %</td><td>{etterpa || ""}</td></tr>
             ))}
           </tbody></table>
         </div>

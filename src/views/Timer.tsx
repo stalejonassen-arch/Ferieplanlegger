@@ -3,14 +3,9 @@ import { Dagslogg } from "./Dagslogg";
 import { Fordeling } from "./Fordeling";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { addDays, helligdag, isoOf, kortDato, sorterAnsatte } from "../lib/ferie";
-import { dagerUtenTimer, hhmm, kvarter, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
-
-/** Pågående stempling lagres på telefonen, så den overlever at appen lukkes. */
-type Stempel = { ansatt_id: string; prosjekt_id: string; dato: string; fra: string; startet: number };
-const STEMPEL = "bygglogg-stempel";
-const lesStempel = (): Stempel | null => { try { return JSON.parse(localStorage.getItem(STEMPEL) ?? "null"); } catch { return null; } };
-const skrivStempel = (x: Stempel | null) => { try { if (x) localStorage.setItem(STEMPEL, JSON.stringify(x)); else localStorage.removeItem(STEMPEL); } catch { /* privat modus */ } };
+import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
+import { dagerUtenTimer, hhmm, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
+import { InneNaa, Stempling } from "./Stempling";
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
@@ -25,30 +20,9 @@ export function Timer() {
   const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true });
   const [f, setF] = useState(tom);
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
-  // Stempling: start når du begynner, bytt prosjekt når du flytter deg, stopp når du er ferdig
-  const [stempel, setStempel] = useState<Stempel | null>(() => { const x = lesStempel(); return x && x.ansatt_id === meg.id ? x : null; });
-  const [, tikk] = useState(0);
-  useEffect(() => { if (!stempel) return; const i = setInterval(() => tikk((n) => n + 1), 30000); return () => clearInterval(i); }, [stempel]);
-  const startStempel = (prosjekt_id: string) => {
-    const n = new Date();
-    const x = { ansatt_id: meg.id, prosjekt_id, dato: isoOf(n), fra: kvarter(n), startet: n.getTime() };
-    skrivStempel(x); setStempel(x);
-  };
-  const stoppStempel = async (nyttProsjekt?: string) => {
-    if (!stempel) return;
-    const n = new Date();
-    let til = kvarter(n);
-    if (isoOf(n) !== stempel.dato) til = "23:45"; // glemt å stoppe i går
-    if (til <= stempel.fra) { skrivStempel(null); setStempel(null); if (nyttProsjekt !== undefined) startStempel(nyttProsjekt); return; }
-    const ok = await kjor(() => api.lagreTime({
-      ansatt_id: meg.id, prosjekt_id: stempel.prosjekt_id || null, dato: stempel.dato, fra: stempel.fra, til,
-      lunsj_min: f.lunsj && meg.lunsjtrekk && varighet(stempel.fra, til, 0) > 5.5 ? (meg.lunsj_min ?? 30) : 0,
-      km: 0, reisetid: 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!stempel.prosjekt_id,
-    }), `${stempel.fra}–${til} lagret`);
-    if (!ok) return;
-    skrivStempel(null); setStempel(null); sett({ beskrivelse: "" });
-    if (nyttProsjekt !== undefined) startStempel(nyttProsjekt);
-  };
+  // Manuell føring er for det man glemte å logge; vises når man ber om det, endrer, eller leder fører for andre
+  const [manuell, setManuell] = useState(false);
+  const visSkjema = manuell || !!f.id || !meSelv;
   const siste = sisteProsjekter(d.timer, hvem.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
   const mangler = dagerUtenTimer(hvem.id, d, mandag(idag), idag, helligdag);
 
@@ -95,32 +69,20 @@ export function Timer() {
           </select>
         </div>
       )}
-      {meSelv && (
-        <div className="stempel">
-          {stempel ? (
-            <>
-              <div>
-                <div className="label">Stemplet inn {stempel.fra}{stempel.dato !== idag ? ` (${kortDato(stempel.dato)})` : ""}</div>
-                <div><span className="tid">{t2(Math.max(0, Math.floor((Date.now() - stempel.startet) / 60000) / 60))} t</span> · {prosjektNavn(stempel.prosjekt_id || null)}</div>
-              </div>
-              <div className="row">
-                {f.prosjekt_id !== stempel.prosjekt_id && <button className="btn" onClick={() => stoppStempel(f.prosjekt_id)}>Bytt til {f.prosjekt_id ? d.prosjekter.find((p) => p.id === f.prosjekt_id)?.navn : "internt"}</button>}
-                <button className="btn primary" onClick={() => stoppStempel()}>Stopp og lagre</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div><div className="label">Stempling</div><div className="small">Velg prosjekt under og trykk Start når du begynner. Bytt når du flytter deg.</div></div>
-              <button className="btn primary" onClick={() => startStempel(f.prosjekt_id)}>Start nå{f.prosjekt_id ? ` · ${d.prosjekter.find((p) => p.id === f.prosjekt_id)?.navn ?? ""}` : " · internt"}</button>
-            </>
-          )}
-        </div>
-      )}
+      {meSelv && <Stempling />}
+      {leder && meSelv && <InneNaa />}
       {mangler.length > 0 && (
         <div className="banner"><span><b>Mangler timer</b> {meSelv ? "" : `for ${hvem.navn} `}denne uka: {mangler.map((x) => DAG[new Date(x + "T00:00:00Z").getUTCDay()].toLowerCase() + " " + kortDato(x)).join(", ").replace(/\.$/, "")}.</span>
-          <button className="btn sm" onClick={() => sett({ dato: mangler[0] })}>Før for {kortDato(mangler[0])}</button></div>
+          <button className="btn sm" onClick={() => { setManuell(true); sett({ dato: mangler[0] }); }}>Før for {kortDato(mangler[0])}</button></div>
       )}
       <div className="grid2">
+        {!visSkjema ? (
+          <section className="panel">
+            <h2 style={{ margin: 0 }}>Glemt å logge inn?</h2>
+            <p className="small muted">Timer skal helst logges inn og ut i sanntid. Har du glemt det, kan du føre timene manuelt. De merkes da som «ført etterpå».</p>
+            <div><button className="btn" onClick={() => setManuell(true)}>Før timer manuelt</button></div>
+          </section>
+        ) : (
         <form className="panel" onSubmit={lagre}>
           <h2>{f.id ? "Endre timer" : meSelv ? "Før timer" : `Før timer for ${hvem.navn}`}</h2>
           <div className="row">
@@ -164,9 +126,11 @@ export function Timer() {
           <div className="row">
             <button className="btn primary" disabled={!gyldig}>{f.id ? "Lagre endring" : "Registrer"}{gyldig ? ` · ${t2(lengde)} t` : ""}</button>
             {f.id && <button type="button" className="btn" onClick={() => setF(tom())}>Avbryt</button>}
+            {!f.id && meSelv && manuell && <button type="button" className="btn" onClick={() => setManuell(false)}>Lukk</button>}
           </div>
           {f.fra && f.til && !gyldig && <p className="small" style={{ color: "var(--warn)" }}>Sluttid må være etter starttid.</p>}
         </form>
+        )}
 
         <section className="panel">
           <div className="cal-head">
@@ -204,6 +168,8 @@ export function Timer() {
                         {t.beskrivelse && <div className="s">{t.beskrivelse}</div>}
                       </div>
                       <div className="acts">
+                        {t.kilde === "manuell" && <span className="chip demo" title="Ført i etterkant, ikke logget inn/ut">Ført etterpå</span>}
+                        {t.kilde === "endret" && <span className="chip demo" title="Logget inn/ut, men tidene er rettet etterpå">Rettet</span>}
                         <span className={`chip ${t.status === "godkjent" ? "godkjent" : "venter"}`}>{t.status === "godkjent" ? "Godkjent" : "Levert"}</span>
                         {kanEndre(t) && <button className="btn sm" onClick={() => rediger(t)}>Endre</button>}
                         {kanEndre(t) && <button className="btn sm no" onClick={() => kjor(() => api.slettTime(t.id), "Slettet")}>Slett</button>}

@@ -59,7 +59,7 @@ function startdata(): Data {
   ];
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
-  ], tillegg: [], maal: 7000, rapporter: [], lest: [] };
+  ], tillegg: [], maal: 7000, rapporter: [], lest: [], stempling: [] };
 }
 
 const demoVarer: FdvVare[] = [
@@ -214,6 +214,23 @@ export function demoApi(): Api {
       endret();
     },
     async slettRapport(id) { d.rapporter = d.rapporter.filter((x) => x.id !== id); endret(); },
+    async stemple(handling, o = {}) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const n = new Date(), q = Math.round((n.getHours() * 60 + n.getMinutes()) / 15) * 15;
+      const naa = `${String(Math.floor(q / 60) % 24).padStart(2, "0")}:${String(q % 60).padStart(2, "0")}`, idag = isoOf(n);
+      const s = d.stempling.find((x) => x.ansatt_id === m.id);
+      if (handling === "inn" && s) throw new Error("Du er allerede logget inn. Bytt prosjekt eller logg ut først.");
+      let slutt = naa;
+      if (handling !== "inn") {
+        if (!s) throw new Error("Du er ikke logget inn.");
+        if (s.dato !== idag) { if (!o.til) throw new Error("Du ble ikke logget ut. Skriv inn når du sluttet."); slutt = o.til; }
+        if (slutt > s.fra) d.timer.push({ id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
+          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id, kilde: "stempel" });
+        d.stempling = d.stempling.filter((x) => x.ansatt_id !== m.id);
+      }
+      if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
+      endret();
+    },
     async markerLest(id) {
       const m = meg(); if (!m) return;
       if (!d.lest.some((l) => l.rapport_id === id && l.ansatt_id === m.id)) d.lest.push({ rapport_id: id, ansatt_id: m.id, lest: new Date().toISOString() });

@@ -1,4 +1,5 @@
 import type { Lesing, Rapport } from "./rapport";
+import type { Stempling } from "./timer";
 // Ferieregler for N L Austnes AS: datoer, helligdager, saldo og regelsjekk.
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
@@ -32,6 +33,7 @@ export interface Data {
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
   avvik: Avvik[]; bilder: Bilde[]; dagbok: Dagbok[]; tillegg: Tillegg[];
   rapporter: Rapport[]; lest: Lesing[];
+  stempling: Stempling[];
   /** Mål for fakturerte timer i året */
   maal?: number;
 }
