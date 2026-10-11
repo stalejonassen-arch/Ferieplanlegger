@@ -210,7 +210,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
   const lagret = eiendom(p);
   const endret = JSON.stringify(e) !== JSON.stringify(lagret) || adresse !== (p.adresse || adr);
   const sjekklister = dok.filter((x) => erSjekkliste(x.navn)).length;
-  const klar = klarForBoligmappa(lagret, p.adresse || adr, { dagbok: dagbok.length, bilder: bilder.length, fdv: dok.length - sjekklister + varer.length, sjekklister });
+  const klar = klarForBoligmappa(lagret, p.adresse ?? "", { dagbok: dagbok.length, bilder: bilder.length, fdv: dok.length - sjekklister + varer.length, sjekklister });
   const mangler = klar.filter((x) => x.krav && !x.ok);
   const sett = <K extends keyof Eiendom>(k: K, v: Eiendom[K]) => setE((x) => ({ ...x, [k]: v }));
   const nr = (v: string) => (v.trim() === "" ? null : Number(v.replace(/\D/g, "")) || null);
@@ -278,6 +278,8 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
         <h3 style={{ margin: 0 }}>Boligmappa</h3>
         <span className={`chip ${mangler.length ? "venter" : "godkjent"}`}>{mangler.length ? `Mangler ${mangler.length}` : "Klar"}</span>
       </div>
+      <p className="small" style={{ margin: 0 }}><b>Adressen for utførelse er viktig:</b> dokumentasjonen havner i boligmappa til eiendommen på denne adressen. Bruk adressen der jobben er gjort, ikke kundens postadresse (f.eks. hytta, ikke hjemmet).</p>
+      {!p.adresse && <p className="small" style={{ margin: 0, color: "var(--warn)" }}>{matrikkelTekst(lagret) ? "Eiendommen er hentet fra kundens adresse i Visma. Bekreft at jobben er utført der – åpne «Rediger eiendom» og trykk «Lagre eiendom»." : "Prosjektet mangler adresse for utførelse."}</p>}
       <p className="small muted" style={{ margin: 0 }}>Boligmappa knytter dokumentasjonen til eiendommen (matrikkel og evt. bruksenhet) og merker den med fag. Fyll inn her, så kommer det med i PDF-en og i eksporten.</p>
       <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
         {klar.map((x) => <li key={x.tekst} style={{ color: x.ok ? "var(--ok, #1a7f37)" : x.krav ? "var(--no, #b42318)" : undefined }}>{x.ok ? "✓" : x.krav ? "✗" : "–"} {x.tekst}{!x.krav && !x.ok ? " (anbefalt)" : ""}</li>)}
@@ -286,7 +288,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
       {leder && <div><button className="btn sm" onClick={() => setApen(!apen)}>{apen ? "Skjul eiendom" : "Rediger eiendom"}</button></div>}
       {leder && apen && (
         <>
-          <label className="field"><span className="label">Adresse</span>
+          <label className="field"><span className="label">Adresse for utførelse</span>
             <div className="row" style={{ flexWrap: "nowrap" }}>
               <input value={adresse} onChange={(x) => setAdresse(x.target.value)} placeholder="Gate 1, 6290 Haramsøy" style={{ flex: 1 }} />
               <button className="btn sm" disabled={soker || !adresse.trim()} onClick={sok}>{soker ? "Søker …" : "Hent fra Kartverket"}</button>
@@ -320,7 +322,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
               <select value={e.fag} onChange={(x) => sett("fag", x.target.value)}>{FAG.map((f) => <option key={f}>{f}</option>)}</select></label>
             <label className="field" style={{ width: 170 }}><span className="label">Boligmappenummer (valgfritt)</span><input value={e.boligmappe_nr} onChange={(x) => sett("boligmappe_nr", x.target.value.trim())} /></label>
           </div>
-          <div className="row"><button className="btn primary sm" disabled={!endret} onClick={lagre}>Lagre eiendom</button>
+          <div className="row"><button className="btn primary sm" disabled={!endret && !!p.adresse} onClick={lagre}>{!p.adresse && !endret ? "Bekreft og lagre" : "Lagre eiendom"}</button>
             <a className="small" href="https://seeiendom.kartverket.no/" target="_blank" rel="noreferrer">Sjekk på seeiendom.no</a></div>
         </>
       )}

@@ -39,6 +39,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         <div className="row small" style={{ gap: "4px 14px" }}>
           {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
           {adr && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}`} target="_blank" rel="noreferrer">{adr} ↗</a>}
+          {adr && !p.adresse && <span className="muted">(kundens adresse – ikke bekreftet som adresse for utførelse)</span>}
           {k?.telefon && <a href={`tel:${k.telefon.replace(/\s/g, "")}`}>{k.telefon}</a>}
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
         </div>

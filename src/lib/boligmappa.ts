@@ -51,7 +51,7 @@ export interface Klarpunkt { tekst: string; ok: boolean; krav: boolean }
 /** Hva som er på plass før dokumentasjonen kan legges i Boligmappa */
 export function klarForBoligmappa(e: Eiendom, adr: string, n: { dagbok: number; bilder: number; fdv: number; sjekklister: number }): Klarpunkt[] {
   return [
-    { tekst: "Adresse", ok: !!adr.trim(), krav: true },
+    { tekst: "Adresse for utførelse (der jobben er gjort)", ok: !!adr.trim(), krav: true },
     { tekst: "Matrikkel (kommune, gnr og bnr)", ok: !!matrikkelTekst(e), krav: true },
     { tekst: "Fag", ok: !!e.fag, krav: true },
     { tekst: "Beskrivelse av utført arbeid (dagbok)", ok: n.dagbok > 0, krav: true },
