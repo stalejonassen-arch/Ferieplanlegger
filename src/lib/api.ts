@@ -295,7 +295,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async fdv(prosjektId) {
       const [pv, dok] = await Promise.all([
         sb.from("prosjekt_vare").select("varenr, beskrivelse, antall, enhet").eq("prosjekt_id", prosjektId).order("beskrivelse"),
-        sb.from("fdv_dok").select("id, navn, sti, storrelse, opprettet, kategori, ansatt_id").eq("prosjekt_id", prosjektId).order("opprettet"),
+        sb.from("fdv_dok").select("*").eq("prosjekt_id", prosjektId).order("opprettet"),
       ]);
       const rader = ok(pv) as { varenr: string; beskrivelse: string; antall: number; enhet: string }[];
       const info = new Map<string, { nobb_nr: string; fdv_url: string; skjul: boolean; beskrivelse: string }>();
