@@ -15,6 +15,8 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
   const hentFdv = () => api.fdv(p.id).then(setFdv).catch(() => setFdv({ varer: [], dok: [] }));
   useEffect(() => { hentFdv(); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const fdvVarer = (fdv?.varer ?? []).filter((v) => !v.skjul);
+  /** Dokumenter som hører med til kunden (FDV, sjekklister, tegninger). Tilbud/kontrakt og annet holdes internt. */
+  const kundeDok = (fdv?.dok ?? []).filter((x) => ["fdv", "sjekkliste", "tegning"].includes(x.kategori ?? "fdv"));
   const lenke = (v: FdvVare) => v.fdv_url || (v.nobb_nr ? nobbLenke(v.nobb_nr) : "");
   const lastOpp = async (filer: FileList | null) => {
     if (!filer?.length) return;
@@ -71,7 +73,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
       </section>
 
       <Boligmappa p={p} adr={adr} kunde={k?.navn ?? ""} fra={datoer[0] ?? null} til={datoer[datoer.length - 1] ?? null}
-        dagbok={dagbok.map((x) => `${langDato(x.dato)}: ${x.tekst}`)} bilder={bilder} dok={fdv?.dok ?? []} varer={fdvVarer.map((v) => ({ tittel: v.beskrivelse, lenke: lenke(v) }))} innledning={innledning} />
+        dagbok={dagbok.map((x) => `${langDato(x.dato)}: ${x.tekst}`)} bilder={bilder} dok={kundeDok} varer={fdvVarer.map((v) => ({ tittel: v.beskrivelse, lenke: lenke(v) }))} innledning={innledning} />
 
       <section className="panel ikke-utskrift">
         <h3 style={{ margin: 0 }}>FDV-dokumentasjon</h3>
@@ -98,8 +100,8 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
             )}
             {fdv.varer.some((v) => v.skjul) && <label className="row small"><input type="checkbox" checked={visSkjulte} onChange={(e) => setVisSkjulte(e.target.checked)} /> Vis skjulte varer ({fdv.varer.filter((v) => v.skjul).length})</label>}
             <h4 style={{ margin: "8px 0 0" }}>Egne FDV-dokumenter</h4>
-            {fdv.dok.length === 0 && <p className="small muted" style={{ margin: 0 }}>Ingen lastet opp.</p>}
-            {fdv.dok.map((x) => (
+            {kundeDok.length === 0 && <p className="small muted" style={{ margin: 0 }}>Ingen lastet opp. Alle dokumenter på prosjektet finner du under «Dokumenter».</p>}
+            {kundeDok.map((x) => (
               <div key={x.id} className="row" style={{ justifyContent: "space-between" }}>
                 <span>{x.navn}{x.storrelse ? <span className="small muted"> · {(x.storrelse / 1048576).toFixed(1).replace(".", ",")} MB</span> : null}</span>
                 <span className="row" style={{ gap: 4 }}>
@@ -161,7 +163,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
             </div>
           </>
         )}
-        {medFdv && (fdvVarer.length > 0 || (fdv?.dok.length ?? 0) > 0) && (
+        {medFdv && (fdvVarer.length > 0 || kundeDok.length > 0) && (
           <>
             <h2>FDV-dokumentasjon</h2>
             <p className="small" style={{ margin: "0 0 6px" }}>Forvaltning, drift og vedlikehold for produktene som er brukt. Dokumentasjonen for hver vare ligger hos NOBB (fanen «Dokumentasjon» på lenken).</p>
@@ -177,10 +179,10 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
                 ))}
               </tbody></table>
             )}
-            {(fdv?.dok.length ?? 0) > 0 && (
+            {kundeDok.length > 0 && (
               <>
                 <h3 style={{ marginBottom: 4 }}>Vedlagte dokumenter</h3>
-                <ul style={{ margin: 0 }}>{fdv!.dok.map((x) => <li key={x.id}>{x.navn}</li>)}</ul>
+                <ul style={{ margin: 0 }}>{kundeDok.map((x) => <li key={x.id}>{x.navn}</li>)}</ul>
               </>
             )}
           </>
@@ -209,7 +211,8 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
   useEffect(() => { setE(eiendom(p)); setAdresse(p.adresse || adr); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const lagret = eiendom(p);
   const endret = JSON.stringify(e) !== JSON.stringify(lagret) || adresse !== (p.adresse || adr);
-  const sjekklister = dok.filter((x) => erSjekkliste(x.navn)).length;
+  const erSj = (x: FdvDok) => x.kategori ? x.kategori === "sjekkliste" : erSjekkliste(x.navn);
+  const sjekklister = dok.filter(erSj).length;
   const klar = klarForBoligmappa(lagret, p.adresse ?? "", { dagbok: dagbok.length, bilder: bilder.length, fdv: dok.length - sjekklister + varer.length, sjekklister });
   const mangler = klar.filter((x) => x.krav && !x.ok);
   const sett = <K extends keyof Eiendom>(k: K, v: Eiendom[K]) => setE((x) => ({ ...x, [k]: v }));
@@ -245,7 +248,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
       i = 0;
       for (const x of dok) {
         i++; setEksporterer(`Dokument ${i} av ${dok.length} …`);
-        const type = erSjekkliste(x.navn) ? "sjekkliste" : "fdv";
+        const type = erSj(x) ? "sjekkliste" : "fdv";
         const navn = `${type === "sjekkliste" ? "sjekklister" : "fdv"}/${filnavn(x.navn)}`;
         filer.push({ navn, data: await hent(await api.dokUrl(x.sti)) });
         dokumenter.push({ tittel: x.navn.replace(/\.\w+$/, ""), type, fil: navn, dato: x.opprettet?.slice(0, 10) });

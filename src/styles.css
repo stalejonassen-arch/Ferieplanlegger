@@ -339,3 +339,30 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
   nav.tabs.hoved .ikon { display: block; width: 22px; height: 22px; flex: none; }
   nav.tabs.hoved .badge { position: absolute; top: 2px; left: 50%; margin-left: 6px; }
 }
+
+/* ---------- Prosjektsiden: knapper til hver del ---------- */
+.seksjoner { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.seksjoner button { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line-soft); background: var(--surface); color: var(--fg); font-family: var(--f-display); font-size: 16px; font-weight: 600; text-align: left;
+  transition: background .15s, border-color .15s; }
+.seksjoner button:hover { border-color: var(--accent); }
+.seksjoner button[aria-pressed=true] { background: var(--sel); color: var(--sel-ink); border-color: var(--sel); }
+.seksjoner .n { font-family: var(--f-mono); font-size: 13px; min-width: 20px; padding: 0 6px; border-radius: 999px; text-align: center;
+  background: var(--sunk); color: var(--muted); line-height: 20px; }
+.seksjoner button[aria-pressed=true] .n { background: color-mix(in srgb, var(--sel-ink) 18%, transparent); color: inherit; }
+@media (max-width: 640px) { .seksjoner { grid-template-columns: repeat(3, 1fr); } .seksjoner button { font-size: 15px; padding: 9px 10px; } }
+.item.dok select.sm { padding: 4px 8px; font-size: 13.5px; border-radius: 8px; max-width: 170px; }
+
+/* Statistikk: stolper over tid og liggende stolper per person */
+.stolper { display: grid; gap: 4px; align-items: end; height: 170px; }
+.stolpe { display: grid; grid-template-rows: 16px 1fr 18px; height: 100%; min-width: 0; text-align: center; }
+.stolpe i { display: block; align-self: end; background: var(--approved); border-radius: 4px 4px 0 0; min-height: 2px; }
+.stolpe .n { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); align-self: end; white-space: nowrap; overflow: hidden; }
+.stolpe .e { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.hbar { display: flex; flex-direction: column; gap: 8px; }
+.hbar-rad { display: grid; grid-template-columns: minmax(90px, 180px) 1fr 70px; gap: 10px; align-items: center; }
+.hbar-rad .navn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-rad .spor { height: 14px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.hbar-rad .spor i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.hbar-rad .tall { font-family: var(--f-mono); font-size: 16px; text-align: right; }
+@media (max-width: 520px) { .hbar-rad { grid-template-columns: 1fr 64px; } .hbar-rad .spor { grid-column: 1 / -1; grid-row: 2; } }

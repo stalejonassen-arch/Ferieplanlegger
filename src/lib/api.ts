@@ -14,7 +14,8 @@ export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null
 /** Vare brukt på prosjektet (fra Visma) med FDV-lenke */
 export interface FdvVare { varenr: string; beskrivelse: string; antall: number; enhet: string; nobb_nr: string; fdv_url: string; skjul: boolean }
 /** Eget FDV-dokument lastet opp på prosjektet */
-export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string }
+export type DokKategori = "fdv" | "sjekkliste" | "tegning" | "kontrakt" | "annet";
+export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string; kategori?: DokKategori; ansatt_id?: string }
 /** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
 export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string; svenn_id?: number; opprettet?: string };
@@ -72,7 +73,9 @@ export interface Api {
   fdv(prosjektId: string): Promise<{ varer: FdvVare[]; dok: FdvDok[] }>;
   /** Leder: rett NOBB-nr, legg inn egen FDV-lenke eller skjul en vare (gjelder alle prosjekter) */
   lagreVare(varenr: string, endring: Partial<Pick<FdvVare, "nobb_nr" | "fdv_url" | "skjul">>): Promise<void>;
-  lastOppFdv(prosjektId: string, fil: File, svenn?: { svenn_id: number; opprettet: string }): Promise<void>;
+  lastOppFdv(prosjektId: string, fil: File, svenn?: { svenn_id: number; opprettet: string }, kategori?: DokKategori): Promise<void>;
+  /** Endre kategori på et prosjektdokument */
+  settDokKategori(id: string, kategori: DokKategori): Promise<void>;
   slettFdv(id: string, sti: string): Promise<void>;
   /** Midlertidig lenke til et dokument (gyldig i en time) */
   dokUrl(sti: string, lastNed?: string): Promise<string>;
@@ -292,7 +295,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async fdv(prosjektId) {
       const [pv, dok] = await Promise.all([
         sb.from("prosjekt_vare").select("varenr, beskrivelse, antall, enhet").eq("prosjekt_id", prosjektId).order("beskrivelse"),
-        sb.from("fdv_dok").select("id, navn, sti, storrelse, opprettet").eq("prosjekt_id", prosjektId).order("opprettet"),
+        sb.from("fdv_dok").select("id, navn, sti, storrelse, opprettet, kategori, ansatt_id").eq("prosjekt_id", prosjektId).order("opprettet"),
       ]);
       const rader = ok(pv) as { varenr: string; beskrivelse: string; antall: number; enhet: string }[];
       const info = new Map<string, { nobb_nr: string; fdv_url: string; skjul: boolean; beskrivelse: string }>();
@@ -306,16 +309,21 @@ function supabaseApi(sb: SupabaseClient): Api {
       };
     },
     async lagreVare(varenr, endring) { ok(await sb.from("varer").update(endring).eq("varenr", varenr)); },
-    async lastOppFdv(prosjektId, fil, svenn) {
+    async lastOppFdv(prosjektId, fil, svenn, kategori) {
       if (fil.size > 25 * 1024 * 1024) throw new Error("Filen er større enn 25 MB.");
-      if (!/pdf|jpeg|png/.test(fil.type)) throw new Error("Bare PDF og bilder (JPG/PNG) kan lastes opp.");
+      const ext = (fil.name.match(/\.(\w+)$/)?.[1] ?? "").toLowerCase();
+      const typer: Record<string, string> = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", doc: "application/msword",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xls: "application/vnd.ms-excel" };
+      const type = typer[ext] ?? (Object.values(typer).includes(fil.type) ? fil.type : "");
+      if (!type) throw new Error("Kan bare laste opp PDF, bilder (JPG/PNG), Word og Excel.");
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
-      const ext = fil.type === "application/pdf" ? "pdf" : fil.type === "image/png" ? "png" : "jpg";
-      const sti = `${bedrift}/p-${prosjektId}/${crypto.randomUUID()}.${ext}`;
-      ok(await sb.storage.from("dokumenter").upload(sti, fil, { contentType: fil.type }));
-      const r = await sb.from("fdv_dok").insert({ prosjekt_id: prosjektId, navn: fil.name, sti, storrelse: fil.size, ...(svenn ?? {}) });
+      const sti = `${bedrift}/p-${prosjektId}/${crypto.randomUUID()}.${ext || "pdf"}`;
+      ok(await sb.storage.from("dokumenter").upload(sti, fil, { contentType: type }));
+      const r = await sb.from("fdv_dok").insert({ prosjekt_id: prosjektId, navn: fil.name, sti, storrelse: fil.size, ...(kategori ? { kategori } : {}), ...(svenn ?? {}) });
       if (r.error) { await sb.storage.from("dokumenter").remove([sti]); throw r.error; }
     },
+    async settDokKategori(id, kategori) { ok(await sb.from("fdv_dok").update({ kategori }).eq("id", id)); },
     async slettFdv(id, sti) {
       ok(await sb.from("fdv_dok").delete().eq("id", id));
       await sb.storage.from("dokumenter").remove([sti]);

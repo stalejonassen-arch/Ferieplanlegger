@@ -353,7 +353,8 @@ export function demoApi(): Api {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       vareEndring[varenr] = { ...(vareEndring[varenr] ?? {}), ...endring }; endret();
     },
-    async lastOppFdv(pid, fil, svenn) { demoDok.push({ pid, id: nyId(), navn: fil.name, sti: URL.createObjectURL(fil), storrelse: fil.size, opprettet: svenn?.opprettet ?? new Date().toISOString() }); if (svenn) svennFiler.add(svenn.svenn_id); endret(); },
+    async lastOppFdv(pid, fil, svenn, kategori) { demoDok.push({ pid, id: nyId(), kategori: kategori ?? "fdv", navn: fil.name, sti: URL.createObjectURL(fil), storrelse: fil.size, opprettet: svenn?.opprettet ?? new Date().toISOString() }); if (svenn) svennFiler.add(svenn.svenn_id); endret(); },
+    async settDokKategori(id, kategori) { const x = demoDok.find((y) => y.id === id); if (x) x.kategori = kategori; endret(); },
     async slettFdv(id) { const i = demoDok.findIndex((x) => x.id === id); if (i >= 0) demoDok.splice(i, 1); endret(); },
     async dokUrl(sti) { return sti; },
     async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },

@@ -9,9 +9,10 @@ import { Avvik } from "./Avvik";
 import { Sluttdok } from "./Sluttdok";
 import { Lonnsomhet } from "./Lonnsomhet";
 import { HendelseListe } from "./Dagslogg";
+import { Dokumenter, Statistikk } from "./ProsjektDeler";
 import { dagHendelser, lokalDato } from "../lib/dag";
 
-type Del = "oversikt" | "historikk" | "dagbok" | "tillegg" | "bilder" | "avvik" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder } = useApp();
@@ -24,12 +25,15 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     bilder: d.bilder.filter((x) => x.prosjekt_id === p.id).length,
     avvik: d.avvik.filter((x) => x.prosjekt_id === p.id && x.status !== "lukket").length,
   };
-  const deler: [Del, string][] = [
-    ["oversikt", "Oversikt"], ["historikk", "Historikk"], ["dagbok", `Dagbok${antall.dagbok ? ` (${antall.dagbok})` : ""}`],
-    ["tillegg", `Tillegg${antall.tillegg ? ` (${antall.tillegg})` : ""}`], ["bilder", `Bilder${antall.bilder ? ` (${antall.bilder})` : ""}`],
-    ["avvik", `Avvik${antall.avvik ? ` (${antall.avvik})` : ""}`],
-    ...(leder ? [["okonomi", "Økonomi"] as [Del, string]] : []), ["sluttdok", "Sluttdokumentasjon"],
+  const [antallDok, setAntallDok] = useState<number | null>(null);
+  useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
+  const deler: [Del, string, number | null][] = [
+    ["oversikt", "Oversikt", null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
+    ["tillegg", "Tillegg", antall.tillegg], ["bilder", "Bilder", antall.bilder], ["dokumenter", "Dokumenter", antallDok],
+    ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
+    ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
   ];
+
 
   return (
     <>
@@ -44,15 +48,21 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
         </div>
       </section>
-      <nav className="tabs undertabs" role="tablist">
-        {deler.map(([x, t]) => <button key={x} role="tab" aria-selected={del === x} onClick={() => setDel(x)}>{t}</button>)}
+      <nav className="seksjoner" aria-label="Deler av prosjektet">
+        {deler.map(([x, t, n]) => (
+          <button key={x} aria-pressed={del === x} onClick={() => setDel(x)}>
+            <span>{t}</span>{n ? <span className="n">{n}</span> : null}
+          </button>
+        ))}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
       {del === "historikk" && <Historikk p={p} />}
       {del === "dagbok" && <DagbokDel p={p} />}
       {del === "tillegg" && <TilleggDel p={p} />}
       {del === "bilder" && <section className="panel"><Bilder bilder={d.bilder.filter((b) => b.prosjekt_id === p.id)} til={{ prosjekt_id: p.id }} tittel="Bilder fra prosjektet" /></section>}
+      {del === "dokumenter" && <Dokumenter p={p} onEndret={setAntallDok} />}
       {del === "avvik" && <Avvik prosjektId={p.id} />}
+      {del === "statistikk" && <Statistikk p={p} />}
       {del === "okonomi" && <Lonnsomhet p={p} />}
       {del === "sluttdok" && <Sluttdok p={p} />}
     </>
@@ -135,7 +145,7 @@ function Oversikt({ p }: { p: Prosjekt }) {
   const [f, setF] = useState({ estimert: est != null ? String(est) : "", start: p.planlagt_start ?? "", slutt: p.planlagt_slutt ?? "", notat: p.notat ?? "" });
   useEffect(() => setF({ estimert: est != null ? String(est) : "", start: p.planlagt_start ?? "", slutt: p.planlagt_slutt ?? "", notat: p.notat ?? "" }), [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const lagre = () => kjor(() => api.lagreProsjekt({
-    id: p.id, navn: p.navn, estimert_timer: Number(f.estimert.replace(",", ".")) || null,
+    id: p.id, navn: p.navn, kunde_id: p.kunde_id, estimert_timer: Number(f.estimert.replace(",", ".")) || null,
     planlagt_start: f.start || null, planlagt_slutt: f.slutt || null, notat: f.notat.trim(),
   }), "Planen er lagret");
 
