@@ -39,7 +39,7 @@ export const PL_TEKST: Record<string, string> = {
 "Starter …": "Uruchamianie …",
 "Noe gikk galt": "Coś poszło nie tak",
 "Prøv igjen": "Spróbuj ponownie",
-"Henter ferieplanen …": "Pobieranie danych …",
+"Henter ByggLogg …": "Pobieranie danych …",
 "Du har ikke tilgang ennå": "Nie masz jeszcze dostępu",
 "Du er logget inn som": "Jesteś zalogowany jako",
 ", men den adressen er ikke registrert som ansatt. Be leder legge den inn under Oppsett, og last siden på nytt.": ", ale ten adres nie jest zarejestrowany jako pracownik. Poproś kierownika o dodanie go w Ustawieniach i odśwież stronę.",

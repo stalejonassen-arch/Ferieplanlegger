@@ -251,6 +251,10 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
   background: var(--bf-blue); color: #FFFFFF; border-radius: 16px; padding: 18px 18px 20px; box-shadow: 0 14px 30px -18px rgba(10, 30, 190, .7); }
 .stempel::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: var(--stokk); opacity: .9; }
 .stempel > :first-child { margin-top: 6px; }
+.stempel { min-width: 0; }
+.stempel > * { min-width: 0; max-width: 100%; }
+.stempel select, .stempel input[type=text] { width: 100%; max-width: 100%; }
+.stempel .btn.stor { white-space: normal; }
 .stempel.inne { background: #0D5B37; box-shadow: 0 14px 30px -18px rgba(13, 91, 55, .8); }
 .stempel h2 { color: #FFFFFF; font-size: 22px; }
 .stempel .field { flex: none; }
@@ -327,10 +331,11 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
   nav.tabs.hoved { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 20; gap: 2px; justify-content: space-between;
     background: color-mix(in srgb, var(--surface) 94%, transparent); border-bottom: 0; border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 18px -10px rgba(10, 30, 190, .35); }
-  nav.tabs.hoved button { flex: 1 1 0; min-width: 52px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 4px;
-    font-family: var(--f-body); font-size: 11px; font-weight: 600; border-radius: 12px; color: var(--muted); position: relative; }
+  nav.tabs.hoved button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px;
+    overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em;
+    font-family: var(--f-body); font-size: 10.5px; font-weight: 600; border-radius: 12px; color: var(--muted); position: relative; }
   nav.tabs.hoved button[aria-selected=true] { background: color-mix(in srgb, var(--sel) 22%, transparent); color: var(--fg); }
   nav.tabs.hoved button[aria-selected=true] .ikon { color: var(--accent); }
-  nav.tabs.hoved .ikon { display: block; width: 24px; height: 24px; }
+  nav.tabs.hoved .ikon { display: block; width: 22px; height: 22px; flex: none; }
   nav.tabs.hoved .badge { position: absolute; top: 2px; left: 50%; margin-left: 6px; }
 }

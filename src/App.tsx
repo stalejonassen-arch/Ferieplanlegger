@@ -103,7 +103,7 @@ export function App() {
   if (epost === undefined) return <div className="wrap"><div className="empty">Starter …</div></div>;
   if (!epost) return <Innlogging />;
   if (feil && !d) return <Skall><div className="panel"><h2>Noe gikk galt</h2><p>{feil}</p><div><button className="btn" onClick={last}>Prøv igjen</button></div></div></Skall>;
-  if (!d) return <Skall><div className="empty">Henter ferieplanen …</div></Skall>;
+  if (!d) return <Skall><div className="empty">Henter ByggLogg …</div></Skall>;
   if (!meg) {
     return (
       <Skall epost={epost}>
