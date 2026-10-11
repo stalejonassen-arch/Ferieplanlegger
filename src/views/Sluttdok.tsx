@@ -85,7 +85,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
                   {fdv.varer.filter((v) => visSkjulte || !v.skjul).map((v) => (
                     <tr key={v.varenr} style={v.skjul ? { opacity: 0.5 } : undefined}>
                       <td style={{ whiteSpace: "normal" }}>{v.beskrivelse}<div className="small muted">NOBB {v.nobb_nr || "–"}</div></td>
-                      <td>{t2(v.antall)} {v.enhet.toLowerCase()}</td>
+                      <td>{v.antall ? `${t2(v.antall)} ${v.enhet.toLowerCase()}` : "–"}</td>
                       <td>{lenke(v) ? <a href={lenke(v)} target="_blank" rel="noreferrer">Åpne</a> : <span className="muted">–</span>}</td>
                       {leder && <td className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
                         <button className="btn sm" onClick={() => rettNobb(v)}>Rett</button>
@@ -171,7 +171,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
                   <tr key={v.varenr} style={{ breakInside: "avoid" }}>
                     <td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td>
                     <td>{v.nobb_nr}</td>
-                    <td>{t2(v.antall)} {v.enhet.toLowerCase()}</td>
+                    <td>{v.antall ? `${t2(v.antall)} ${v.enhet.toLowerCase()}` : "–"}</td>
                     <td style={{ whiteSpace: "normal", wordBreak: "break-all" }}>{lenke(v) && <a href={lenke(v)}>{lenke(v).replace(/^https?:\/\/(www\.)?/, "")}</a>}</td>
                   </tr>
                 ))}

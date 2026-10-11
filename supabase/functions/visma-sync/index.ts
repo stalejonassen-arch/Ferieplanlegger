@@ -103,7 +103,7 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
     const { error } = await sb.from("prosjekt_vare").upsert(rader.slice(i, i + 500), { onConflict: "prosjekt_id,varenr" });
     if (error) throw error;
   }
-  await sb.from("prosjekt_vare").delete().eq("bedrift_id", b.id).lt("oppdatert", naa);
+  await sb.from("prosjekt_vare").delete().eq("bedrift_id", b.id).eq("manuell", false).lt("oppdatert", naa);
   return rader.length;
 }
 
