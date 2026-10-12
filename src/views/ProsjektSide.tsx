@@ -38,7 +38,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   return (
     <>
       <div><button className="btn sm" onClick={tilbake}>‹ Alle prosjekter</button></div>
-      <section className="panel">
+      <section className="panel prosjekthode">
         <h2 style={{ margin: 0 }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</h2>
         <div className="row small" style={{ gap: "4px 14px" }}>
           {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
@@ -51,7 +51,8 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
       <nav className="seksjoner" aria-label="Deler av prosjektet">
         {deler.map(([x, t, n]) => (
           <button key={x} aria-pressed={del === x} onClick={() => setDel(x)}>
-            <span>{t}</span>{n ? <span className="n">{n}</span> : null}
+            <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{DEL_IKON[x]}</svg>
+            <span className="t">{t}</span>{n ? <span className="n">{n}</span> : null}
           </button>
         ))}
       </nav>
@@ -68,6 +69,20 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     </>
   );
 }
+
+/** Strekikoner for delene av prosjektet */
+const DEL_IKON: Record<string, React.ReactNode> = {
+  oversikt: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  historikk: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  dagbok: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M8 17h2" /></>,
+  tillegg: <><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" /></>,
+  bilder: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-9 8" /></>,
+  dokumenter: <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>,
+  avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
+  statistikk: <><path d="M4 20V14M9 20V9M14 20v-8M19 20V5" /></>,
+  okonomi: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
+  sluttdok: <><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h7" /></>,
+};
 
 // ------------------------------------------------------------ Materiell (forbruk fra Visma)
 

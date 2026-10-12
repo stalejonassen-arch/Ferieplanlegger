@@ -41,6 +41,20 @@ const IKON: Record<string, React.ReactNode> = {
   lonn: <><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9v.5M18 15v.5" /></>,
   oppsett: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" /></>,
 };
+/** Silhuett av kran og bygg i toppfeltet */
+const SKYLINE = (
+  <g fill="currentColor">
+    <path d="M300 160V70h40v90zM345 160V95h30v65zM230 160v-50h55v50zM385 160V60h50v100zM440 160v-40h40v40z" opacity=".55" />
+    <g fill="none" stroke="currentColor" strokeWidth="2.2">
+      <path d="M408 160V18M418 160V18M408 30l10-10M408 50l10-10M408 70l10-10M408 90l10-10M408 110l10-10M408 130l10-10M408 150l10-10" />
+      <path d="M300 18h210M300 28h210M330 18l-10 10M360 18l-10 10M390 18l-10 10M440 18l-10 10M470 18l-10 10M500 18l-10 10" />
+      <path d="M413 4 300 18M413 4l97 14M413 4v14" />
+      <path d="M330 28v34" /><path d="M324 62h12v8h-12z" />
+    </g>
+    <path d="M493 28h14v14h-14z" />
+    <g opacity=".35"><path d="M306 80h6v6h-6zM318 80h6v6h-6zM306 96h6v6h-6zM318 96h6v6h-6zM393 72h7v7h-7zM407 72h7v7h-7zM393 88h7v7h-7zM421 88h7v7h-7z" fill="#FFCD00" /></g>
+  </g>
+);
 export const useApp = () => useContext(AppCtx);
 
 type Fane = "timer" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
@@ -143,8 +157,11 @@ export function App() {
   return (
     <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor }}>
       <div className="wrap">
+        <div className="toppfelt">
+        <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
         <header className="top">
-          <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
+          <div className="brand"><small>Byggfag · N L Austnes AS</small>
+            <h1><svg className="hjelm" viewBox="0 0 48 40" aria-hidden="true"><path d="M6 30a18 18 0 0 1 36 0" /><path d="M20 13v-3h8v3M24 10v12" /><path d="M2 30h44v4H2z" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
           <div className="who">
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
             <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
@@ -158,16 +175,6 @@ export function App() {
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
         </header>
-
-        {api.modus === "demo" && (
-          <div className="banner"><span><span className="chip demo">Demo</span> Eksempeldata som bare ligger i denne nettleseren. Koble til Supabase for ekte bruk.</span></div>
-        )}
-
-        {nyeRapporter[0] && aktiv !== "rapporter" && (
-          <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
-            <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>
-        )}
-
         <nav className="tabs hoved" role="tablist">
           {faner.map(([f, navn]) => (
             <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr)} onClick={() => velg(f)}
@@ -180,6 +187,17 @@ export function App() {
             </button>
           ))}
         </nav>
+        </div>
+
+        {api.modus === "demo" && (
+          <div className="banner"><span><span className="chip demo">Demo</span> Eksempeldata som bare ligger i denne nettleseren. Koble til Supabase for ekte bruk.</span></div>
+        )}
+
+        {nyeRapporter[0] && aktiv !== "rapporter" && (
+          <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
+            <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>
+        )}
+
 
         {iFerie && (
           <div className="row" style={{ justifyContent: "space-between" }}>

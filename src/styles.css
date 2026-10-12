@@ -407,6 +407,67 @@ table.kursmatrise td.k-utlopt { background: color-mix(in srgb, var(--warn) 28%, 
 td.timecelle.snart { color: var(--pending-text); }
 td.timecelle.over { color: var(--warn); }
 
+/* ---------- Nytt utseende: mørkeblått toppfelt med kran-silhuett, faner i toppen ---------- */
+:root { --navy: #0B1F5C; --navy-2: #13308F; --navy-ink: #FFFFFF; }
+body {
+  background:
+    linear-gradient(115deg, transparent 0 38%, rgba(10, 30, 190, .045) 38% 52%, transparent 52%) fixed,
+    linear-gradient(65deg, transparent 0 60%, rgba(10, 30, 190, .04) 60% 74%, transparent 74%) fixed,
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--bg)) 0%, var(--bg) 420px) fixed;
+}
+.toppfelt { position: relative; overflow: hidden; border-radius: 18px; color: #FFFFFF;
+  background: radial-gradient(700px 260px at 85% 0%, rgba(255, 205, 0, .22), transparent 60%),
+    linear-gradient(135deg, var(--navy-2) 0%, var(--navy) 55%, #071443 100%);
+  box-shadow: 0 16px 34px -18px rgba(7, 20, 67, .75); }
+.toppfelt::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: var(--stokk); opacity: .9; }
+.toppfelt .skyline { position: absolute; right: 12px; bottom: 10px; height: 96%; width: auto; max-width: 62%; color: rgba(255, 255, 255, .2); pointer-events: none; }
+.toppfelt header.top { background: none; box-shadow: none; border-radius: 0; overflow: visible; padding: 18px 22px 6px; }
+.toppfelt header.top::after { display: none; }
+header.top h1 { display: flex; align-items: center; gap: 10px; font-size: 44px; font-weight: 800; font-style: italic; letter-spacing: -.01em; line-height: .95; }
+header.top h1 .ord span { color: var(--bf-yellow); }
+header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: var(--bf-yellow); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.brand small { font-style: italic; letter-spacing: .02em; }
+.toppfelt header.top .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+
+@media (min-width: 641px) {
+  .toppfelt nav.tabs.hoved { position: relative; z-index: 1; background: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+    border: 0; padding: 4px 18px 22px; gap: 4px; }
+  .toppfelt nav.tabs.hoved button { color: rgba(255, 255, 255, .86); font-size: 19px; font-weight: 700; font-style: italic; padding: 8px 16px; border-radius: 12px; }
+  .toppfelt nav.tabs.hoved button:hover { background: rgba(255, 255, 255, .1); color: #FFFFFF; }
+  .toppfelt nav.tabs.hoved button[aria-selected=true] { background: var(--bf-yellow); color: #1A1400; box-shadow: 0 4px 0 rgba(0, 0, 0, .25); }
+}
+@media (max-width: 640px) {
+  .toppfelt { border-radius: 14px; }
+  .toppfelt header.top { padding: 14px 16px 22px; }
+  header.top h1 { font-size: 36px; }
+  header.top .hjelm { width: 36px; height: 30px; }
+  .toppfelt .skyline { height: 70%; max-width: 70%; }
+}
+
+/* Prosjekthodet: gul kant og stor tittel */
+.panel.prosjekthode { border-left: 6px solid var(--bf-yellow); }
+.panel.prosjekthode h2 { font-size: 32px; font-weight: 800; font-style: italic; line-height: 1.05; }
+@media (max-width: 640px) { .panel.prosjekthode h2 { font-size: 26px; } }
+
+/* Prosjektdelene: kort med ikon, valgt = mørkeblått med gul strek */
+.seksjoner { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 8px; }
+.seksjoner button { justify-content: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 17px; font-weight: 700; font-style: italic;
+  box-shadow: 0 1px 2px rgba(14, 20, 48, .06), 0 6px 14px -10px rgba(14, 20, 48, .35); }
+.seksjoner button .ikon { width: 22px; height: 22px; flex: none; color: var(--navy-2); }
+.seksjoner button .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seksjoner button:hover { transform: translateY(-1px); }
+.seksjoner button[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #FFFFFF; box-shadow: inset 0 -4px 0 var(--bf-yellow), 0 8px 18px -10px rgba(7, 20, 67, .8); }
+.seksjoner button[aria-pressed=true] .ikon { color: var(--bf-yellow); }
+@media (max-width: 640px) {
+  .seksjoner { grid-template-columns: repeat(2, 1fr); }
+  .seksjoner button { font-size: 15.5px; padding: 10px 11px; gap: 8px; }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="fargerik"]) .seksjoner button .ikon { color: #A9B3FF; }
+}
+:root[data-tema="mork"] .seksjoner button .ikon { color: #A9B3FF; }
+:root[data-tema="mork"] .seksjoner button[aria-pressed=true], :root[data-tema="mork"] .seksjoner button[aria-pressed=true] .ikon { color: var(--bf-yellow); }
+
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
 :root[data-tema="mork"] {
   --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;
@@ -431,7 +492,16 @@ td.timecelle.over { color: var(--warn); }
     radial-gradient(900px 500px at 50% 120%, #DDF6EE, transparent), var(--bg);
   background-attachment: fixed;
 }
-:root[data-tema="fargerik"] header.top { background: linear-gradient(120deg, #8E4EC6 0%, #D6409F 38%, #E5484D 70%, #F76B15 100%); }
+:root[data-tema="fargerik"] :is(.toppfelt, header.top) { background: linear-gradient(120deg, #8E4EC6 0%, #D6409F 38%, #E5484D 70%, #F76B15 100%); }
+:root[data-tema="fargerik"] .toppfelt header.top { background: none; }
+:root[data-tema="fargerik"] .seksjoner button .ikon { color: var(--k); }
+:root[data-tema="fargerik"] .seksjoner button[aria-pressed=true] { box-shadow: none; }
+:root[data-tema="fargerik"] .seksjoner button[aria-pressed=true] .ikon { color: #FFFFFF; }
+@media (min-width: 641px) {
+  :root[data-tema="fargerik"] .toppfelt nav.tabs.hoved button { color: #FFFFFF; box-shadow: inset 0 -3px 0 var(--k); }
+  :root[data-tema="fargerik"] .toppfelt nav.tabs.hoved button[aria-selected=true] { background: #FFFFFF; color: var(--k); box-shadow: 0 4px 0 rgba(0,0,0,.2); }
+  :root[data-tema="fargerik"] .toppfelt nav.tabs.hoved button[aria-selected=true] .ikon { color: var(--k); }
+}
 :root[data-tema="fargerik"] header.top .btn:hover:not(:disabled) { background: rgba(255,255,255,.18); }
 
 /* Fargesyklus: 8 farger som gjentas */
