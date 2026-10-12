@@ -406,3 +406,62 @@ table.kursmatrise td.k-utlopt { background: color-mix(in srgb, var(--warn) 28%, 
 .tbar.liten { height: 5px; margin-top: 4px; min-width: 70px; }
 td.timecelle.snart { color: var(--pending-text); }
 td.timecelle.over { color: var(--warn); }
+
+/* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
+:root[data-tema="mork"] {
+  --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;
+  --accent: #A9B3FF; --accent-ink: #0A0F2A; --sel: #FFCD00; --sel-ink: #1A1400;
+  --approved: #5ED394; --pending: #FFCD00; --pending-text: #FFCD00; --warn: #FF7A72; --info: #A9B3FF; --hatch: #2A335E;
+  --shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 30px -20px rgba(0,0,0,.9);
+  color-scheme: dark;
+}
+:root[data-tema="mork"] body { background: radial-gradient(1200px 520px at 50% -220px, #1A2356, transparent), var(--bg); background-attachment: fixed; }
+
+/* ---------- Tema: fargerik (Kjøkken og Interiør) – hver fane, flis og boks får sin egen farge ---------- */
+:root[data-tema="fargerik"] {
+  --bg: #FFF7F0; --surface: #FFFFFF; --sunk: #FCEFF6; --fg: #2A1433; --muted: #6B4E70; --line: #F0D3E3; --line-soft: #F6E3EC;
+  --accent: #8E4EC6; --accent-ink: #FFFFFF; --sel: #D6409F; --sel-ink: #FFFFFF;
+  --approved: #2B9A66; --pending: #FFC53D; --pending-ink: #3D2600; --pending-text: #A35200; --warn: #E5484D; --info: #0090FF; --hatch: #F3DDE9;
+  --shadow: 0 1px 2px rgba(142, 78, 198, .08), 0 12px 28px -18px rgba(214, 64, 159, .45);
+  --k1: #E5484D; --k2: #F76B15; --k3: #E2A400; --k4: #30A46C; --k5: #12A594; --k6: #0090FF; --k7: #8E4EC6; --k8: #D6409F;
+  color-scheme: light;
+}
+:root[data-tema="fargerik"] body {
+  background: radial-gradient(900px 420px at 0% -120px, #FFE3F1, transparent), radial-gradient(900px 420px at 100% -80px, #FFF1C9, transparent),
+    radial-gradient(900px 500px at 50% 120%, #DDF6EE, transparent), var(--bg);
+  background-attachment: fixed;
+}
+:root[data-tema="fargerik"] header.top { background: linear-gradient(120deg, #8E4EC6 0%, #D6409F 38%, #E5484D 70%, #F76B15 100%); }
+:root[data-tema="fargerik"] header.top .btn:hover:not(:disabled) { background: rgba(255,255,255,.18); }
+
+/* Fargesyklus: 8 farger som gjentas */
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+1) { --k: var(--k1); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+2) { --k: var(--k2); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+3) { --k: var(--k3); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+4) { --k: var(--k4); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+5) { --k: var(--k5); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+6) { --k: var(--k6); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+7) { --k: var(--k7); }
+:root[data-tema="fargerik"] :is(nav.tabs button, .seksjoner button, .wrap > .panel):nth-child(8n+8) { --k: var(--k8); }
+
+:root[data-tema="fargerik"] nav.tabs button { color: color-mix(in srgb, var(--k) 70%, var(--fg)); box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--k) 45%, transparent); }
+:root[data-tema="fargerik"] nav.tabs button:hover { background: color-mix(in srgb, var(--k) 12%, transparent); color: var(--fg); }
+:root[data-tema="fargerik"] nav.tabs button[aria-selected=true] { background: var(--k); color: #FFFFFF; box-shadow: none; }
+:root[data-tema="fargerik"] nav.tabs.hoved button .ikon { color: var(--k); }
+:root[data-tema="fargerik"] nav.tabs.hoved button[aria-selected=true] .ikon { color: #FFFFFF; }
+@media (max-width: 720px) {
+  :root[data-tema="fargerik"] nav.tabs.hoved button { box-shadow: none; }
+  :root[data-tema="fargerik"] nav.tabs.hoved button[aria-selected=true] { background: var(--k); color: #FFFFFF; }
+}
+
+:root[data-tema="fargerik"] .wrap > .panel { border-top: 5px solid var(--k); }
+:root[data-tema="fargerik"] .wrap > .panel h2 { color: color-mix(in srgb, var(--k) 75%, var(--fg)); }
+:root[data-tema="fargerik"] .seksjoner button { background: color-mix(in srgb, var(--k) 10%, var(--surface)); border-color: color-mix(in srgb, var(--k) 40%, transparent); }
+:root[data-tema="fargerik"] .seksjoner button:hover { border-color: var(--k); }
+:root[data-tema="fargerik"] .seksjoner button[aria-pressed=true] { background: var(--k); border-color: var(--k); color: #FFFFFF; }
+:root[data-tema="fargerik"] .seksjoner .n { background: color-mix(in srgb, var(--k) 20%, transparent); }
+:root[data-tema="fargerik"] .btn.primary { background: linear-gradient(120deg, #D6409F, #8E4EC6); border-color: transparent; }
+
+/* Temavelger i toppen */
+header.top select.temavalg { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.55); padding: 4px 8px; font-size: 14px; }
+header.top select.temavalg option { color: #10162E; }

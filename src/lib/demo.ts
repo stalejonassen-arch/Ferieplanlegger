@@ -369,6 +369,7 @@ export function demoApi(): Api {
     async slettBilde(id) { d.bilder = d.bilder.filter((b) => b.id !== id); endret(); },
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async settMittSprak(sprak) { const m = meg(); if (m) m.sprak = sprak; endret(); },
+    async settMittTema(tema) { const m = meg(); if (m) m.tema = tema; endret(); },
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },
     async lagreEiendom(id, e) { const p = d.prosjekter.find((x) => x.id === id); if (p) Object.assign(p, e); endret(); },
     async settFastpris(id, fastpris) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fastpris = fastpris; endret(); },

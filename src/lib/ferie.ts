@@ -12,6 +12,7 @@ import type { Avvik, Bilde, Dagbok, Tillegg } from "./hms";
 
 export type Status = "venter" | "godkjent" | "avslatt";
 export type Rolle = "ansatt" | "leder";
+export type Tema = "standard" | "fargerik" | "mork";
 
 export interface Avdeling { id: number; navn: string; maks_borte: number; rekkefolge: number }
 export interface Ansatt {
@@ -25,6 +26,7 @@ export interface Ansatt {
   ansattnr?: string | null;
   /** Språk i appen: nb (norsk) eller pl (polsk) */
   sprak?: "nb" | "pl";
+  tema?: Tema;
   /** Telles med i oversikten over kundetimer og interntid */
   i_timerapport?: boolean;
   lunsj_min?: number;

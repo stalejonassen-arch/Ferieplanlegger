@@ -1,7 +1,7 @@
 // Datalaget. Med Supabase-nøkler i .env brukes ekte database; uten nøkler
 // starter appen i demomodus med eksempeldata, så den kan prøves uten oppsett.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Ansatt, Avdeling, Data, Soknad, Status } from "./ferie";
+import type { Ansatt, Avdeling, Data, Soknad, Status, Tema } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
@@ -58,6 +58,7 @@ export interface Api {
   lagreEiendom(id: string, e: Partial<Pick<Prosjekt, "adresse" | "kommunenr" | "kommune" | "gnr" | "bnr" | "fnr" | "snr" | "bruksenhet" | "boligmappe_nr" | "fag">>): Promise<void>;
   /** Mitt språk i appen */
   settMittSprak(sprak: "nb" | "pl"): Promise<void>;
+  settMittTema(tema: Tema): Promise<void>;
   lagreAvvik(a: NyttAvvik): Promise<string>;
   slettAvvik(id: string): Promise<void>;
   lastOppBilde(fil: File, til: BildeMaal): Promise<void>;
@@ -425,6 +426,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       return r.data?.[0] ?? null;
     },
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
+    async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
     async settFakturertFull(id, full) { ok(await sb.from("prosjekter").update({ fakturert_full: full }).eq("id", id)); },
     async lagreEiendom(id, e) { ok(await sb.from("prosjekter").update(e).eq("id", id)); },
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },

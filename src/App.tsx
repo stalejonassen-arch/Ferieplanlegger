@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, feiltekst } from "./lib/api";
-import { isoOf, type Ansatt, type Data } from "./lib/ferie";
+import { isoOf, type Ansatt, type Data, type Tema } from "./lib/ferie";
 import { settSprak, type Sprak } from "./lib/sprak";
 import { Innlogging } from "./views/Innlogging";
 import { MinFerie } from "./views/MinFerie";
@@ -96,6 +96,13 @@ export function App() {
   );
   // Den ansattes språk følger med fra databasen
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
+  const [tema, settTema] = useState<Tema>(() => { try { return (localStorage.getItem("tema") as Tema) || "standard"; } catch { return "standard"; } });
+  useEffect(() => { if (meg?.tema) settTema(meg.tema); }, [meg?.tema]);
+  useEffect(() => {
+    document.documentElement.dataset.tema = tema;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : "#0A1EBE");
+    try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
+  }, [tema]);
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
     try { await fn(); if (ok) visToast(ok); await last(); return true; }
@@ -143,6 +150,10 @@ export function App() {
             <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
               onChange={(e) => { const s = e.target.value as Sprak; kjor(() => api.settMittSprak(s)).then(() => settSprak(s)); }}>
               <option value="nb">Norsk</option><option value="pl">Polski</option>
+            </select>
+            <select aria-label="Farger" className="temavalg" value={tema}
+              onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
+              <option value="standard">Byggfag-blå</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>

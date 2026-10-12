@@ -68,6 +68,7 @@ export const PL_TEKST: Record<string, string> = {
 "Fant ingen utløpsdato på beviset. Står det ingen, gjelder det uten utløp – sjekk selv.": "Nie znaleziono daty ważności. Jeśli jej nie ma, certyfikat jest bezterminowy – sprawdź sam.",
 "Klarte ikke å lese utløpsdatoen sikkert. Fyll inn fra beviset.": "Nie udało się odczytać daty ważności. Wpisz ją z certyfikatu.",
 "HMS- og sikkerhetskurs": "Kursy BHP i bezpieczeństwa",
+"Farger": "Kolory", "Byggfag-blå": "Niebieski Byggfag", "Fargerik": "Kolorowy", "Mørk": "Ciemny",
 "jan": "sty",
 "feb": "lut",
 "mar": "mar",
