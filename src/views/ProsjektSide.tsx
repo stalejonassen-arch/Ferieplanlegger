@@ -10,12 +10,14 @@ import { Sluttdok } from "./Sluttdok";
 import { Lonnsomhet } from "./Lonnsomhet";
 import { HendelseListe } from "./Dagslogg";
 import { Dokumenter, Statistikk } from "./ProsjektDeler";
+import { Traad } from "./Chat";
+import { prosjektKanal, uleste as ulesteChat } from "../lib/chat";
 import { dagHendelser, lokalDato } from "../lib/dag";
 
-type Del = "oversikt" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
-  const { d, leder } = useApp();
+  const { d, leder, meg, chat } = useApp();
   const [del, setDel] = useState<Del>("oversikt");
   const k = d.kunder.find((x) => x.id === p.kunde_id);
   const adr = p.adresse || [k?.adresse, [k?.postnr, k?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
@@ -28,7 +30,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   const [antallDok, setAntallDok] = useState<number | null>(null);
   useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
   const deler: [Del, string, number | null][] = [
-    ["oversikt", "Oversikt", null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
+    ["oversikt", "Oversikt", null], ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
     ["tillegg", "Tillegg", antall.tillegg], ["bilder", "Bilder", antall.bilder], ["dokumenter", "Dokumenter", antallDok],
     ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
     ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
@@ -57,6 +59,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         ))}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
+      {del === "chat" && <section className="panel" style={{ padding: 0, overflow: "hidden" }}><Traad kanal={prosjektKanal(p.id)} hoyde={520} /></section>}
       {del === "historikk" && <Historikk p={p} />}
       {del === "dagbok" && <DagbokDel p={p} />}
       {del === "tillegg" && <TilleggDel p={p} />}
@@ -81,6 +84,7 @@ const DEL_IKON: Record<string, React.ReactNode> = {
   avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
   statistikk: <><path d="M4 20V14M9 20V9M14 20v-8M19 20V5" /></>,
   okonomi: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
+  chat: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></>,
   sluttdok: <><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h7" /></>,
 };
 

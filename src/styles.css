@@ -468,6 +468,72 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 :root[data-tema="mork"] .seksjoner button .ikon { color: #A9B3FF; }
 :root[data-tema="mork"] .seksjoner button[aria-pressed=true], :root[data-tema="mork"] .seksjoner button[aria-pressed=true] .ikon { color: var(--bf-yellow); }
 
+
+/* ---------- Chat (meldinger) ---------- */
+.chat { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: min(78vh, 760px); min-height: 460px;
+  background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+.chat-liste { border-right: 1px solid var(--line-soft); display: flex; flex-direction: column; min-height: 0; background: color-mix(in srgb, var(--sunk) 45%, var(--surface)); }
+.chat-liste-topp { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 14px 10px; }
+.chat-liste ul { list-style: none; margin: 0; padding: 0 8px 8px; overflow-y: auto; flex: 1; }
+.chat-ny { display: grid; gap: 8px; padding: 0 14px 12px; }
+.chat-varsel { margin: 0 14px 10px; border: 1px dashed var(--line); background: var(--surface); border-radius: 10px; padding: 8px 10px; font-size: 13.5px; cursor: pointer; text-align: left; color: var(--fg); }
+.chat-rad { width: 100%; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 8px; border: 0; background: none;
+  border-radius: 12px; cursor: pointer; text-align: left; color: var(--fg); }
+.chat-rad:hover { background: var(--sunk); }
+.chat-rad.valgt { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.chat-rad-tekst { display: flex; flex-direction: column; min-width: 0; }
+.chat-rad-navn { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-rad-siste { font-size: 13.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-rad.ulest .chat-rad-navn, .chat-rad.ulest .chat-rad-siste { font-weight: 700; color: var(--fg); }
+.chat-rad-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.chat-rad-meta .small { font-size: 12px; white-space: nowrap; }
+.avatar { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #FFFFFF; font-weight: 700; font-size: 15px; flex: none;
+  background: var(--accent); font-family: var(--f-body); }
+.avatar.felles { background: linear-gradient(135deg, var(--bf-yellow), #F59E0B); font-size: 20px; }
+.avatar.prosjekt { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); font-size: 19px; }
+.avatar.liten { width: 30px; height: 30px; font-size: 12px; align-self: flex-end; }
+.chat-traad-boks { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.chat-hode { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); }
+.chat-hode h3 { font-size: 20px; }
+.chat-tilbake { display: none; }
+.chat-tom { display: grid; place-items: center; padding: 30px 16px; text-align: center; }
+.traad { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.traad-rull { flex: 1; overflow-y: auto; padding: 14px 14px 6px; display: flex; flex-direction: column; min-height: 240px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sunk) 40%, var(--surface)), var(--surface)); }
+.traad-dag { text-align: center; margin: 12px 0 8px; }
+.traad-dag span { font-size: 12.5px; color: var(--muted); background: var(--sunk); padding: 2px 10px; border-radius: 999px; }
+.boble-rad { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; max-width: 100%; }
+.boble-rad.samme { margin-top: 2px; }
+.boble-rad.min { justify-content: flex-end; }
+.boble { position: relative; max-width: min(78%, 560px); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px 16px 16px 4px;
+  padding: 7px 11px 5px; box-shadow: 0 1px 2px rgba(14, 20, 48, .06); }
+.boble-rad.min .boble { background: var(--navy, #0B1F5C); color: #FFFFFF; border-color: transparent; border-radius: 16px 16px 4px 16px; }
+.boble-navn { font-size: 12.5px; font-weight: 700; color: var(--accent); margin-bottom: 1px; }
+.boble-tekst { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.boble-tid { font-size: 11.5px; color: var(--muted); text-align: right; margin-top: 2px; display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+.boble-rad.min .boble-tid { color: rgba(255, 255, 255, .7); }
+.boble-meny { border: 0; background: none; color: inherit; cursor: pointer; padding: 0 2px; font-size: 15px; line-height: 1; opacity: .7; }
+.boble-valg { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.boble-valg .btn { color: var(--fg); }
+.boble-bilde { display: block; border: 0; padding: 0; background: none; cursor: zoom-in; margin: 2px -5px 4px; }
+.boble-bilde img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; }
+.boble-bilde.laster { width: 200px; height: 140px; display: grid; place-items: center; background: var(--sunk); border-radius: 12px; }
+.skriv-info { display: flex; gap: 10px; align-items: center; padding: 6px 14px; border-top: 1px solid var(--line-soft); background: var(--sunk); }
+.skriv { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line-soft); background: var(--surface); }
+.skriv textarea { flex: 1; resize: none; max-height: 140px; field-sizing: content; border-radius: 20px; padding: 9px 14px; line-height: 1.35; }
+.skriv-knapp, .skriv-send { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--accent); }
+.skriv-knapp svg, .skriv-send svg { width: 21px; height: 21px; }
+.skriv-send { background: var(--bf-yellow); border-color: var(--bf-yellow); color: #1A1400; }
+.skriv-send:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 760px) {
+  .chat { grid-template-columns: 1fr; height: calc(100dvh - 210px); min-height: 380px; border-radius: 14px; }
+  .chat.har-valgt .chat-liste { display: none; }
+  .chat:not(.har-valgt) .chat-traad-boks, .chat:not(.har-valgt) .chat-tom { display: none; }
+  .chat-liste { border-right: 0; }
+  .chat-tilbake { display: inline-flex; font-size: 20px; line-height: 1; padding: 4px 12px; }
+  .boble { max-width: 84%; }
+}
+
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
 :root[data-tema="mork"] {
   --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;

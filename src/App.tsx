@@ -18,6 +18,8 @@ import { Utstyr } from "./views/Utstyr";
 import { Kompetanse } from "./views/Kompetanse";
 import { trengerFornyelse } from "./lib/kompetanse";
 import { uleste } from "./lib/rapport";
+import { kanalNavn, uleste as ulesteMeldinger, type Lest, type Melding } from "./lib/chat";
+import { Chat } from "./views/Chat";
 
 export interface Ctx {
   d: Data;
@@ -27,12 +29,15 @@ export interface Ctx {
   idag: string;
   /** Kjør en lagring, vis bekreftelse eller feilmelding, og hent data på nytt. */
   kjor: (fn: () => Promise<void>, ok?: string) => Promise<boolean>;
+  /** Meldinger (chat) – lastes for seg selv og oppdateres i sanntid */
+  chat: { meldinger: Melding[]; lest: Lest; oppdater: () => void; markerLest: (kanal: string) => void };
 }
 const AppCtx = createContext<Ctx>(null!);
 
 /** Enkle strekikoner for hovedmenyen (vises i bunnmenyen på mobil) */
 const IKON: Record<string, React.ReactNode> = {
   timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>,
+  chat: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></>,
   prosjekter: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
   avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
   utstyr: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8 6.2 21l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></>,
@@ -57,10 +62,10 @@ const SKYLINE = (
 );
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "chat" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "chat", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -123,6 +128,48 @@ export function App() {
     catch (e) { visToast(feiltekst(e), true); await last(); return false; }
   }, [last]);
 
+  // ---- Meldinger
+  const [meldinger, setMeldinger] = useState<Melding[]>([]);
+  const [lest, setLest] = useState<Lest>({});
+  const forrige = useRef<Set<string> | null>(null);
+  const lastChat = useCallback(async () => {
+    try { const [m, l] = await Promise.all([api.meldinger(), api.kanalLest()]); setMeldinger(m); setLest(l); } catch { /* prøver igjen senere */ }
+  }, []);
+  useEffect(() => {
+    if (!epost) { setMeldinger([]); forrige.current = null; return; }
+    lastChat();
+    const stopp = api.abonnerMeldinger(lastChat);
+    const synlig = () => { if (document.visibilityState === "visible") lastChat(); };
+    document.addEventListener("visibilitychange", synlig);
+    return () => { stopp(); document.removeEventListener("visibilitychange", synlig); };
+  }, [epost, lastChat]);
+  const markerLest = useCallback((kanal: string) => {
+    setLest((l) => ({ ...l, [kanal]: new Date().toISOString() }));
+    api.markerKanalLest(kanal).catch(() => {});
+  }, []);
+  // Varsel på telefon/PC når det kommer nye meldinger fra andre og appen ikke er i bruk
+  useEffect(() => {
+    if (!meg) return;
+    const ids = new Set(meldinger.map((m) => m.id));
+    if (forrige.current) {
+      const nye = meldinger.filter((m) => !forrige.current!.has(m.id) && m.ansatt_id !== meg.id);
+      const iChat = location.hash === "#chat";
+      if (nye.length && (document.visibilityState !== "visible" || !iChat) && "Notification" in window && Notification.permission === "granted") {
+        const m = nye[nye.length - 1]!;
+        const fra = d?.ansatte.find((a) => a.id === m.ansatt_id)?.navn ?? "";
+        const hvor = d ? kanalNavn(m.kanal, meg.id, d.ansatte, d.prosjekter) : "";
+        try {
+          navigator.serviceWorker?.getRegistration().then((reg) => {
+            const tittel = m.kanal.startsWith("dm:") ? fra : `${fra} · ${hvor}`;
+            const opts = { body: m.tekst || "📷 Bilde", tag: m.kanal, icon: "/icon-192.png", data: { url: "/#chat" } };
+            if (reg) reg.showNotification(tittel, opts); else new Notification(tittel, opts);
+          });
+        } catch { /* ikke støttet */ }
+      }
+    }
+    forrige.current = ids;
+  }, [meldinger]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (epost === undefined) return <div className="wrap"><div className="empty">Starter …</div></div>;
   if (!epost) return <Innlogging />;
   if (feil && !d) return <Skall><div className="panel"><h2>Noe gikk galt</h2><p>{feil}</p><div><button className="btn" onClick={last}>Prøv igjen</button></div></div></Skall>;
@@ -144,7 +191,7 @@ export function App() {
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
-  const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const faner: [Fane, string][] = [["timer", "Timer"], ["chat", "Chat"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
   const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" ? fane : "timer";
@@ -153,9 +200,11 @@ export function App() {
   const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
+  const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
+  document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
   return (
-    <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor }}>
+    <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor, chat: { meldinger, lest, oppdater: lastChat, markerLest } }}>
       <div className="wrap">
         <div className="toppfelt">
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
@@ -181,6 +230,7 @@ export function App() {
               ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
               <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{IKON[f]}</svg>
               {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
+              {f === "chat" && ulestChat > 0 && <span className="badge">{ulestChat}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
               {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
               {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
@@ -222,6 +272,7 @@ export function App() {
         )}
 
         {aktiv === "timer" && <Timer />}
+        {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
         {aktiv === "utstyr" && <Utstyr />}

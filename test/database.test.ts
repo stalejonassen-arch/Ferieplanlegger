@@ -68,6 +68,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0030_dokumenter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0031_kompetanse.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0032_tema.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0033_chat.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -488,3 +489,27 @@ describe("kompetanse", () => {
   });
 });
 
+
+describe("meldinger", () => {
+  beforeAll(async () => { await db.exec(`update public.ansatte set aktiv=true where epost='${MADS}'`); });
+  it("felles ser alle; privat bare de to; ingen kan skrive i andres navn", async () => {
+    const [jim] = await as(STALE, "select id from public.ansatte where epost = $1", [JIM]);
+    const [mads] = await as(STALE, "select id from public.ansatte where epost = $1", [MADS]);
+    const [stale] = await as(STALE, "select id from public.ansatte where epost = $1", [STALE]);
+    const dm = jim.id < mads.id ? `dm:${jim.id}:${mads.id}` : `dm:${mads.id}:${jim.id}`;
+    const [f] = await as(JIM, "insert into public.meldinger (kanal, tekst, ansatt_id) values ('felles', 'Hei alle', $1) returning ansatt_id", [mads.id]);
+    expect(f.ansatt_id).toBe(jim.id);
+    await as(JIM, "insert into public.meldinger (kanal, tekst) values ($1, 'Hei Mads')", [dm]);
+    expect(await as(MADS, "select id from public.meldinger")).toHaveLength(2);
+    // Leder ser ikke private samtaler mellom andre, og kan ikke skrive i dem
+    expect(await as(STALE, "select id from public.meldinger")).toHaveLength(1);
+    await expect(as(STALE, "insert into public.meldinger (kanal, tekst) values ($1, 'snik')", [dm])).rejects.toThrow();
+    // Kan ikke starte samtale med seg selv / feil rekkefølge
+    await expect(as(JIM, "insert into public.meldinger (kanal, tekst) values ($1, 'x')", [`dm:${jim.id}:${jim.id}`])).rejects.toThrow();
+    // Lest-markering
+    await as(MADS, "select public.marker_kanal_lest('felles')");
+    expect(await as(MADS, "select kanal from public.kanal_lest")).toHaveLength(1);
+    expect(await as(JIM, "select kanal from public.kanal_lest")).toHaveLength(0);
+    expect(stale.id).toBeTruthy();
+  });
+});

@@ -8,6 +8,7 @@ import type { NyRapport } from "./rapport";
 import type { FravaerType } from "./fravaer";
 import { STANDARD_KVOTER, type Kvoter, type Utstyr } from "./utstyr";
 import type { Kompetanse } from "./kompetanse";
+import type { Lest, Melding } from "./chat";
 import type { Kobling, importRader } from "./svenn";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
@@ -59,6 +60,15 @@ export interface Api {
   /** Mitt språk i appen */
   settMittSprak(sprak: "nb" | "pl"): Promise<void>;
   settMittTema(tema: Tema): Promise<void>;
+  /** Meldinger (chat): alle kanaler jeg kan se, siste ~3000 */
+  meldinger(): Promise<Melding[]>;
+  kanalLest(): Promise<Lest>;
+  sendMelding(kanal: string, tekst: string, bilde?: File | null): Promise<void>;
+  rettMelding(id: string, tekst: string): Promise<void>;
+  slettMelding(id: string, bildeSti: string | null): Promise<void>;
+  markerKanalLest(kanal: string): Promise<void>;
+  /** Lytt på nye/endrede meldinger */
+  abonnerMeldinger(cb: () => void): () => void;
   lagreAvvik(a: NyttAvvik): Promise<string>;
   slettAvvik(id: string): Promise<void>;
   lastOppBilde(fil: File, til: BildeMaal): Promise<void>;
@@ -427,6 +437,36 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
+    async meldinger() {
+      const r = await sb.from("meldinger").select("id, ansatt_id, kanal, tekst, bilde_sti, opprettet, endret").order("opprettet", { ascending: false }).limit(3000);
+      return r.error ? [] : (r.data as Melding[]).reverse();
+    },
+    async kanalLest() {
+      const r = await sb.from("kanal_lest").select("kanal, lest");
+      return r.error ? {} : Object.fromEntries((r.data as { kanal: string; lest: string }[]).map((x) => [x.kanal, x.lest]));
+    },
+    async sendMelding(kanal, tekst, bilde) {
+      let bilde_sti: string | null = null;
+      if (bilde) {
+        const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+        bilde_sti = `${bedrift}/chat/${crypto.randomUUID()}.jpg`;
+        const data = await komprimer(bilde);
+        ok(await sb.storage.from("bilder").upload(bilde_sti, data, { contentType: data.type || "image/jpeg" }));
+      }
+      const r = await sb.from("meldinger").insert({ kanal, tekst: tekst.trim(), bilde_sti });
+      if (r.error && bilde_sti) await sb.storage.from("bilder").remove([bilde_sti]);
+      ok(r);
+    },
+    async rettMelding(id, tekst) { ok(await sb.from("meldinger").update({ tekst: tekst.trim() }).eq("id", id)); },
+    async slettMelding(id, bildeSti) {
+      ok(await sb.from("meldinger").delete().eq("id", id));
+      if (bildeSti) await sb.storage.from("bilder").remove([bildeSti]);
+    },
+    async markerKanalLest(kanal) { await sb.rpc("marker_kanal_lest", { k: kanal }); },
+    abonnerMeldinger(cb) {
+      const ch = sb.channel("meldinger").on("postgres_changes", { event: "*", schema: "public", table: "meldinger" }, () => cb()).subscribe();
+      return () => { sb.removeChannel(ch); };
+    },
     async settFakturertFull(id, full) { ok(await sb.from("prosjekter").update({ fakturert_full: full }).eq("id", id)); },
     async lagreEiendom(id, e) { ok(await sb.from("prosjekter").update(e).eq("id", id)); },
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },

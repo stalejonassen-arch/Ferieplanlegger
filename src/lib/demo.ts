@@ -1,6 +1,7 @@
 // Demomodus: samme oppførsel som databasen, men i minnet i nettleseren.
 // Brukes når appen kjøres uten Supabase-nøkler.
 import type { Api, FdvDok, FdvVare } from "./api";
+import type { Lest, Melding } from "./chat";
 import type { Ansatt, Data, Soknad } from "./ferie";
 import { addDays, isoOf } from "./ferie";
 import { mandag, varighet, type Time } from "./timer";
@@ -103,6 +104,18 @@ export function demoApi(): Api {
   const leder = () => meg()?.rolle === "leder";
   const nyId = () => Math.random().toString(36).slice(2, 10);
   const vent = () => new Promise((r) => setTimeout(r, 80));
+  const mld: Melding[] = [];
+  const lestPer = new Map<string, Lest>();
+  const chatLyttere = new Set<() => void>();
+  const chatEndret = () => chatLyttere.forEach((f) => f());
+  {
+    const [a, b] = [d.ansatte[0], d.ansatte[1]];
+    const t = (min: number) => new Date(Date.now() - min * 6e4).toISOString();
+    if (a && b) mld.push(
+      { id: "m1", ansatt_id: a.id, kanal: "felles", tekst: "God morgen! Husk allmøte fredag kl 07.30.", bilde_sti: null, opprettet: t(180), endret: null },
+      { id: "m2", ansatt_id: b.id, kanal: "felles", tekst: "Notert 👍", bilde_sti: null, opprettet: t(170), endret: null },
+    );
+  }
 
   return {
     modus: "demo",
@@ -118,6 +131,21 @@ export function demoApi(): Api {
       return kopi;
     },
     abonner(cb) { lyttere.add(cb); return () => lyttere.delete(cb); },
+    async meldinger() {
+      const m = meg(); if (!m) return [];
+      return structuredClone(mld.filter((x) => !x.kanal.startsWith("dm:") || x.kanal.includes(m.id)));
+    },
+    async kanalLest() { return { ...(lestPer.get(meg()?.id ?? "") ?? {}) }; },
+    async sendMelding(kanal, tekst, bilde) {
+      const m = meg(); if (!m) throw new Error("Ikke innlogget.");
+      if (!tekst.trim() && !bilde) return;
+      mld.push({ id: nyId(), ansatt_id: m.id, kanal, tekst: tekst.trim(), bilde_sti: null, opprettet: new Date().toISOString(), endret: null });
+      chatEndret();
+    },
+    async rettMelding(id, tekst) { const x = mld.find((y) => y.id === id && y.ansatt_id === meg()?.id); if (x) { x.tekst = tekst.trim(); x.endret = new Date().toISOString(); chatEndret(); } },
+    async slettMelding(id) { const i = mld.findIndex((y) => y.id === id); if (i >= 0) { mld.splice(i, 1); chatEndret(); } },
+    async markerKanalLest(kanal) { const id = meg()?.id; if (!id) return; const l = lestPer.get(id) ?? {}; l[kanal] = new Date().toISOString(); lestPer.set(id, l); },
+    abonnerMeldinger(cb) { chatLyttere.add(cb); return () => chatLyttere.delete(cb); },
     async lagreSoknad(n) {
       const m = meg();
       if (!m || (!leder() && n.ansatt_id !== m.id)) throw new Error("Du har ikke tilgang til å gjøre dette.");
