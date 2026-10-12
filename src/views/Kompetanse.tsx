@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { kortDato, sorterAnsatte } from "../lib/ferie";
+import { langDato as kortDato, sorterAnsatte } from "../lib/ferie";
 import { lesKursbevis } from "../lib/lesbevis";
 import { besteBevis, KURS, kursNavn, kStatus, STATUS_TEKST, trengerFornyelse, type Funn, type Kompetanse as K } from "../lib/kompetanse";
 

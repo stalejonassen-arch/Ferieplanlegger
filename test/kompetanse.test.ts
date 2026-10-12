@@ -30,6 +30,9 @@ describe("lesing av kursbevis", () => {
     expect(f).toMatchObject({ type: "stillas", utstedt: "2024-05-14", gyldig_til: "2029-05-14", utsteder: "AKA" });
     expect(f.navn).toBe("Inntil 9 m");
   });
+  it("finner kursholder med AS i navnet", () => {
+    expect(lesBevis("TESTKURS AS\nKURSBEVIS\nStillasmontør\nKursdato: 14.05.2024\nGyldig til: 14.05.2029").utsteder).toBe("TESTKURS AS");
+  });
   it("regner ut utløp fra varighet", () => {
     expect(lesBevis("Førstehjelpskurs\nGjennomført 02.10.2025\nKurset er gyldig i 2 år")).toMatchObject({ type: "forstehjelp", utstedt: "2025-10-02", gyldig_til: "2027-10-02" });
   });

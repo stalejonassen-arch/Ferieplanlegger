@@ -116,7 +116,13 @@ export function lesBevis(tekst: string): Funn {
   const f: Funn = {};
   const treff = KURS_ORD.map(([id, rx]) => [id, (t.match(new RegExp(rx.source, "gi")) ?? []).length] as const).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
   if (treff[0]) f.type = treff[0][0];
-  const kh = t.match(KURSHOLDERE); if (kh) f.utsteder = kh[1].trim();
+  const kh = t.match(KURSHOLDERE);
+  if (kh) f.utsteder = kh[1].trim();
+  else {
+    // Første firmanavn med AS/ASA/SA/ANS i teksten (ikke vårt eget)
+    const firma = t.split("\n").map((l) => l.trim()).find((l) => /^[A-ZÆØÅ0-9][\wÆØÅæøå&.\- ]{1,40}\s(AS|ASA|SA|ANS)$/i.test(l) && !/austnes/i.test(l));
+    if (firma) f.utsteder = firma.replace(/\s+(AS|ASA|SA|ANS)$/i, (m) => m.toUpperCase());
+  }
   const klasse = t.match(/\b(klasse|class|kl\.?|kategori)\s*:?\s*([A-Z]{1,2}\d{0,2}(?:\s*(?:,|og|\+|&)\s*[A-Z]{1,2}\d{0,2})*)\b/i);
   if (klasse) f.navn = `Klasse ${klasse[2].replace(/\s+/g, " ")}`;
   else { const h = t.match(/\b(\d{1,2}(?:[,.]\d)?)\s*(m|meter)\b/i); if (f.type === "stillas" && h) f.navn = `Inntil ${h[1].replace(".", ",")} m`; }
