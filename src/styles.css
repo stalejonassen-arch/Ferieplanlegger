@@ -386,3 +386,5 @@ table.kursmatrise td { font-family: var(--f-mono); font-size: 14px; }
 table.kursmatrise td.k-gyldig { background: color-mix(in srgb, var(--approved) 22%, transparent); }
 table.kursmatrise td.k-snart { background: color-mix(in srgb, var(--pending) 35%, transparent); }
 table.kursmatrise td.k-utlopt { background: color-mix(in srgb, var(--warn) 28%, transparent); }
+.lest { padding: 10px 12px; border-radius: 10px; font-size: 14.5px; border-left: 4px solid var(--approved); background: color-mix(in srgb, var(--approved) 12%, var(--surface)); }
+.lest.usikker { border-left-color: var(--pending); background: color-mix(in srgb, var(--pending) 14%, var(--surface)); }

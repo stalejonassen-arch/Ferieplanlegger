@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kortDato, sorterAnsatte } from "../lib/ferie";
-import { besteBevis, KURS, kursNavn, kStatus, STATUS_TEKST, trengerFornyelse, type Kompetanse as K } from "../lib/kompetanse";
+import { lesKursbevis } from "../lib/lesbevis";
+import { besteBevis, KURS, kursNavn, kStatus, STATUS_TEKST, trengerFornyelse, type Funn, type Kompetanse as K } from "../lib/kompetanse";
 
 const tom = (ansatt_id: string): Partial<K> & { ansatt_id: string; type: string } =>
   ({ ansatt_id, type: "stillas", navn: "", utsteder: "", utstedt: null, gyldig_til: null, merknad: "" });
@@ -46,11 +47,33 @@ function Person({ ansattId, navn, kanEndre }: { ansattId: string; navn: string; 
   const [lagrer, setLagrer] = useState(false);
   const [urler, setUrler] = useState<Record<string, string>>({});
   const [stort, setStort] = useState<K | null>(null);
+  const [leser, setLeser] = useState<number | null>(null);
+  const [funn, setFunn] = useState<Funn | null>(null);
+
+  /** Leser beviset og fyller inn feltene som er tomme */
+  const velgFil = async (f: File | null, start?: Partial<K> & { ansatt_id: string; type: string }) => {
+    setFil(f); setFunn(null);
+    if (!f) return;
+    const utgangspunkt = start ?? skjema ?? tom(ansattId);
+    if (start) setSkjema(start);
+    setLeser(0);
+    try {
+      const r = await lesKursbevis(f, (p) => setLeser(p));
+      setFunn(r);
+      setSkjema((s0) => {
+        const s1 = s0 ?? utgangspunkt;
+        const nyType = !s1.id && r.type && (s1.type === "stillas" || s1.type === "annet") ? r.type : s1.type;
+        return { ...s1, type: nyType, navn: s1.navn || r.navn || "", utsteder: s1.utsteder || r.utsteder || "",
+          utstedt: s1.utstedt || r.utstedt || null, gyldig_til: s1.gyldig_til || r.gyldig_til || null };
+      });
+    } catch { setFunn({}); }
+    setLeser(null);
+  };
   const bilder = liste.filter((k) => k.sti && !k.sti.endsWith(".pdf"));
   useEffect(() => {
     for (const k of bilder) if (k.sti && !urler[k.sti]) api.dokUrl(k.sti).then((u) => setUrler((x) => ({ ...x, [k.sti!]: u }))).catch(() => {});
   }, [bilder.map((k) => k.sti).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setSkjema(null); setFil(null); }, [ansattId]);
+  useEffect(() => { setSkjema(null); setFil(null); setFunn(null); }, [ansattId]);
 
   const aapne = async (k: K) => {
     if (!k.sti) return;
@@ -64,7 +87,7 @@ function Person({ ansattId, navn, kanEndre }: { ansattId: string; navn: string; 
     setLagrer(true);
     const ok = await kjor(() => api.lagreKompetanse({ ...skjema, navn: (skjema.navn ?? "").trim(), utsteder: (skjema.utsteder ?? "").trim() }, fil), skjema.id ? "Beviset er oppdatert" : "Beviset er lagret");
     setLagrer(false);
-    if (ok) { setSkjema(null); setFil(null); }
+    if (ok) { setSkjema(null); setFil(null); setFunn(null); }
   };
   const slett = (k: K) => kjor(() => api.slettKompetanse(k.id, k.sti), "Beviset er slettet");
   const hint = KURS.find((x) => x.id === skjema?.type)?.hint;
@@ -74,9 +97,15 @@ function Person({ ansattId, navn, kanEndre }: { ansattId: string; navn: string; 
       <section className="panel">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h2>{navn}</h2>
-          {kanEndre && !skjema && <button className="btn primary" onClick={() => setSkjema(tom(ansattId))}>Legg til bevis</button>}
+          {kanEndre && !skjema && (
+            <div className="row">
+              <label className="btn primary">Ta bilde av nytt bevis
+                <input type="file" accept="image/*,application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; velgFil(f, { ...tom(ansattId), type: "annet" }); }} /></label>
+              <button className="btn" onClick={() => setSkjema(tom(ansattId))}>Fyll inn selv</button>
+            </div>
+          )}
         </div>
-        <p className="small muted">Ta bilde av kursbeviset eller last opp PDF. Da har du alt på telefonen når noen spør på byggeplassen. Du får beskjed før et bevis går ut.</p>
+        <p className="small muted">Ta bilde av kursbeviset eller last opp PDF. Appen leser beviset og fyller inn kurs og datoer, så sjekker du og lagrer. Da har du alt på telefonen når noen spør på byggeplassen, og du får beskjed før et bevis går ut.</p>
 
         {skjema && (
           <form className="panel" style={{ background: "var(--sunk)", boxShadow: "none" }} onSubmit={lagre}>
@@ -98,12 +127,21 @@ function Person({ ansattId, navn, kanEndre }: { ansattId: string; navn: string; 
             </div>
             <div className="row">
               <label className="btn">{fil ? `Valgt: ${fil.name}` : skjema.sti ? "Bytt kopi av beviset" : "Ta bilde av beviset"}
-                <input type="file" accept="image/*,application/pdf" hidden onChange={(e) => setFil(e.target.files?.[0] ?? null)} /></label>
-              {fil && <button type="button" className="linkbtn small" onClick={() => setFil(null)}>Fjern</button>}
+                <input type="file" accept="image/*,application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; velgFil(f); }} /></label>
+              {fil && leser == null && <button type="button" className="linkbtn small" onClick={() => { setFil(null); setFunn(null); }}>Fjern</button>}
             </div>
+            {leser != null && <p className="small" role="status">Leser beviset … {Math.round(leser * 100)} %</p>}
+            {funn && leser == null && (
+              <div className={`lest ${funn.gyldig_til || funn.ingenUtlop ? "ok" : "usikker"}`} role="status">
+                {funn.gyldig_til ? <>Fant utløpsdato <b>{kortDato(funn.gyldig_til)}</b>{funn.bevis ? <> fra «{funn.bevis}»</> : null}. Sjekk at den stemmer.</>
+                  : funn.ingenUtlop ? <>Fant ingen utløpsdato på beviset. Står det ingen, gjelder det uten utløp – sjekk selv.</>
+                  : <>Klarte ikke å lese utløpsdatoen sikkert. Fyll inn fra beviset.</>}
+                {!funn.type && !funn.utstedt && !funn.gyldig_til ? " Bildet var vanskelig å lese – prøv et skarpere bilde med godt lys, eller fyll inn selv." : ""}
+              </div>
+            )}
             <div className="row">
-              <button className="btn primary" disabled={lagrer}>{lagrer ? "Lagrer …" : "Lagre bevis"}</button>
-              <button type="button" className="btn" onClick={() => { setSkjema(null); setFil(null); }}>Avbryt</button>
+              <button className="btn primary" disabled={lagrer || leser != null}>{lagrer ? "Lagrer …" : "Lagre bevis"}</button>
+              <button type="button" className="btn" onClick={() => { setSkjema(null); setFil(null); setFunn(null); }}>Avbryt</button>
             </div>
           </form>
         )}

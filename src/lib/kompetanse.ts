@@ -52,3 +52,94 @@ export function trengerFornyelse(liste: Kompetanse[], idag: string): Kompetanse[
   return [...besteBevis(liste).values()].filter((k) => kStatus(k, idag) !== "gyldig")
     .sort((a, b) => (a.gyldig_til ?? "").localeCompare(b.gyldig_til ?? ""));
 }
+
+// ------------------------------------------------------------ Lesing av kursbevis (tekst fra OCR/PDF)
+
+export interface Funn {
+  type?: string; navn?: string; utsteder?: string; utstedt?: string; gyldig_til?: string;
+  /** Teksten utløpsdatoen ble funnet i, så brukeren kan sjekke */
+  bevis?: string;
+  /** Beviset nevner ingen utløpsdato eller varighet */
+  ingenUtlop?: boolean;
+}
+
+const MND_NAVN: Record<string, number> = {
+  jan: 1, januar: 1, january: 1, stycznia: 1, styczeń: 1, feb: 2, februar: 2, february: 2, lutego: 2, mar: 3, mars: 3, march: 3, marca: 3,
+  apr: 4, april: 4, kwietnia: 4, mai: 5, may: 5, maja: 5, jun: 6, juni: 6, june: 6, czerwca: 6, jul: 7, juli: 7, july: 7, lipca: 7,
+  aug: 8, august: 8, sierpnia: 8, sep: 9, sept: 9, september: 9, września: 9, okt: 10, oktober: 10, oct: 10, october: 10, października: 10,
+  nov: 11, november: 11, listopada: 11, des: 12, desember: 12, dec: 12, december: 12, grudnia: 12,
+};
+const iso = (y: number, m: number, d: number) => {
+  if (y < 100) y += 2000;
+  if (y < 1960 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCMonth() === m - 1 ? dt.toISOString().slice(0, 10) : null;
+};
+
+/** Alle datoer i teksten med posisjon: 12.03.2024, 12/3-24, 2024-03-12, 12. mars 2024, March 12, 2024 */
+export function finnDatoer(tekst: string): { dato: string; pos: number }[] {
+  const ut: { dato: string; pos: number }[] = [];
+  const legg = (d: string | null, pos: number) => { if (d && !ut.some((x) => x.pos === pos)) ut.push({ dato: d, pos }); };
+  for (const m of tekst.matchAll(/\b(\d{4})[-./](\d{1,2})[-./](\d{1,2})\b/g)) legg(iso(+m[1], +m[2], +m[3]), m.index!);
+  for (const m of tekst.matchAll(/\b(\d{1,2})\s?[./-]\s?(\d{1,2})\s?[./-]\s?(\d{4}|\d{2})\b/g)) legg(iso(+m[3], +m[2], +m[1]), m.index!);
+  for (const m of tekst.matchAll(/\b(\d{1,2})\.?\s+([a-zæøåśźżńółęąć]{3,12})\.?,?\s+(\d{4})\b/gi)) {
+    const mnd = MND_NAVN[m[2].toLowerCase()]; if (mnd) legg(iso(+m[3], mnd, +m[1]), m.index!);
+  }
+  for (const m of tekst.matchAll(/\b([a-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})\b/gi)) {
+    const mnd = MND_NAVN[m[1].toLowerCase()]; if (mnd) legg(iso(+m[3], mnd, +m[2]), m.index!);
+  }
+  return ut.sort((a, b) => a.pos - b.pos);
+}
+
+const UTLOP = /(gyldig\s*(til|t\.?\s?o\.?\s?m\.?|tom|frem\s*til|fram\s*til)|utl(ø|o)p(s?dato|er)?|g(å|a)r\s*ut|fornyes|valid\s*(until|to|thru|through)|expir(y|es|ation)|ważn(y|ość)\s*do|data\s*ważności)/i;
+const UTSTEDT = /(utstedt|kursdato|gjennomf(ø|o)rt|best(å|a)tt|dato\s*:|date\s*(of\s*issue)?|issued|data\s*(wydania|ukończenia)|tatt)/i;
+const KURS_ORD: [string, RegExp][] = [
+  ["stillas", /stillas|scaffold|rusztowa/i],
+  ["hoyde", /h(ø|o)yde|fallsikr|fall\s*protect|wysoko/i],
+  ["lift", /personl(ø|o)fter|\blift\b|mewp|podno(ś|s)nik/i],
+  ["truck", /truck|forklift|w(ó|o)zek/i],
+  ["kran", /kran|anhuk|crane|d(ź|z)wig|hakow/i],
+  ["varme", /varme\s*arbeid|hot\s*work|prace\s*po(ż|z)arowo/i],
+  ["forstehjelp", /f(ø|o)rstehjelp|first\s*aid|pierwsz(a|ej)\s*pomoc/i],
+  ["hms", /hms[-\s]?kort|byggekort/i],
+  ["asbest", /asbest/i],
+  ["varsling", /arbeidsvarsling/i],
+  ["fagbrev", /fagbrev|svennebrev|mesterbrev/i],
+  ["forerkort", /f(ø|o)rerkort|driving\s*licen|prawo\s*jazdy/i],
+  ["verktoy", /motorsag|spikerpistol|verkt(ø|o)y|maskin/i],
+];
+const KURSHOLDERE = /(AKA|Fagopplæring|Arbeidsmiljøsenteret|Norsk\s*Folkehjelp|Røde\s*Kors|Norsk\s*Brannvernforening|Brannvernforeningen|Stillasopplæring|HMS\s*Partner|Kompetansesenter[\w ]*|Opplæringskontor[\w ]*|Statens\s*vegvesen|Forum\s*Stillas|Peri|Haki|Layher|Ramirent|Cramo|Byggmakker|Byggfag|Nordisk\s*Stillas[\w ]*)/i;
+
+/** Leser kurstype, kursholder, dato og utløp ut av teksten på et kursbevis. Gir bare det den finner – brukeren bekrefter. */
+export function lesBevis(tekst: string): Funn {
+  const t = tekst.replace(/\r/g, "").replace(/[ \t]+/g, " ");
+  const f: Funn = {};
+  const treff = KURS_ORD.map(([id, rx]) => [id, (t.match(new RegExp(rx.source, "gi")) ?? []).length] as const).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  if (treff[0]) f.type = treff[0][0];
+  const kh = t.match(KURSHOLDERE); if (kh) f.utsteder = kh[1].trim();
+  const klasse = t.match(/\b(klasse|class|kl\.?|kategori)\s*:?\s*([A-Z]{1,2}\d{0,2}(?:\s*(?:,|og|\+|&)\s*[A-Z]{1,2}\d{0,2})*)\b/i);
+  if (klasse) f.navn = `Klasse ${klasse[2].replace(/\s+/g, " ")}`;
+  else { const h = t.match(/\b(\d{1,2}(?:[,.]\d)?)\s*(m|meter)\b/i); if (f.type === "stillas" && h) f.navn = `Inntil ${h[1].replace(".", ",")} m`; }
+
+  const datoer = finnDatoer(t);
+  // Utløp: dato rett etter et «gyldig til/utløper»-ord
+  for (const m of t.matchAll(new RegExp(UTLOP.source, "gi"))) {
+    const d = datoer.find((x) => x.pos >= m.index! && x.pos - m.index! < 60);
+    if (d) { f.gyldig_til = d.dato; f.bevis = t.slice(m.index!, Math.min(t.length, d.pos + 12)).replace(/\s+/g, " ").trim(); break; }
+  }
+  for (const m of t.matchAll(new RegExp(UTSTEDT.source, "gi"))) {
+    const d = datoer.find((x) => x.pos >= m.index! && x.pos - m.index! < 60 && x.dato !== f.gyldig_til);
+    if (d) { f.utstedt = d.dato; break; }
+  }
+  if (!f.utstedt) { const andre = datoer.filter((x) => x.dato !== f.gyldig_til).map((x) => x.dato).sort(); if (andre.length) f.utstedt = andre[andre.length - 1]; }
+  if (f.utstedt && f.gyldig_til && f.utstedt > f.gyldig_til) f.utstedt = undefined;
+  // «Gyldig i 3 år» / «varighet 5 år» → regn ut fra kursdato
+  if (!f.gyldig_til) {
+    const v = t.match(/(gyldig\s*i|varighet|gyldighet|valid\s*for|ważn\w*\s*przez)\s*:?\s*(\d{1,2})\s*(år|years?|lat)/i);
+    if (v && f.utstedt) {
+      const d = new Date(f.utstedt + "T00:00:00Z"); d.setUTCFullYear(d.getUTCFullYear() + Number(v[2]));
+      f.gyldig_til = d.toISOString().slice(0, 10); f.bevis = v[0];
+    } else if (!UTLOP.test(t)) f.ingenUtlop = true;
+  }
+  return f;
+}

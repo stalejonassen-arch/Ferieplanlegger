@@ -17,3 +17,27 @@ describe("kompetanse", () => {
     expect(trengerFornyelse(liste, "2026-10-12").map((x) => x.id)).toEqual(["3"]);
   });
 });
+
+import { finnDatoer, lesBevis } from "../src/lib/kompetanse";
+describe("lesing av kursbevis", () => {
+  it("finner datoer i mange formater", () => {
+    expect(finnDatoer("12.03.2024 og 2025-01-05 og 3. mars 2026 og March 4, 2027").map((x) => x.dato))
+      .toEqual(["2024-03-12", "2025-01-05", "2026-03-03", "2027-03-04"]);
+    expect(finnDatoer("31.02.2024")).toEqual([]);
+  });
+  it("leser stillaskurs med gyldig til", () => {
+    const f = lesBevis("KURSBEVIS\nStillasmontør inntil 9 m\nNavn: Dawid Reiske\nKursdato: 14.05.2024\nGyldig til: 14.05.2029\nAKA AS");
+    expect(f).toMatchObject({ type: "stillas", utstedt: "2024-05-14", gyldig_til: "2029-05-14", utsteder: "AKA" });
+    expect(f.navn).toBe("Inntil 9 m");
+  });
+  it("regner ut utløp fra varighet", () => {
+    expect(lesBevis("Førstehjelpskurs\nGjennomført 02.10.2025\nKurset er gyldig i 2 år")).toMatchObject({ type: "forstehjelp", utstedt: "2025-10-02", gyldig_til: "2027-10-02" });
+  });
+  it("sier fra når det ikke er utløp", () => {
+    expect(lesBevis("Fagbrev i tømrerfaget\nDato: 20.06.2015")).toMatchObject({ type: "fagbrev", utstedt: "2015-06-20", ingenUtlop: true });
+  });
+  it("leser truck-klasser og engelsk/polsk", () => {
+    expect(lesBevis("Forklift certificate\nClass: T1, T4\nDate of issue: 01/02/2023\nValid until 01/02/2028")).toMatchObject({ type: "truck", navn: "Klasse T1, T4", gyldig_til: "2028-02-01" });
+    expect(lesBevis("Zaświadczenie praca na wysokości\nData wydania 10.01.2024\nWażny do 10.01.2027")).toMatchObject({ type: "hoyde", utstedt: "2024-01-10", gyldig_til: "2027-01-10" });
+  });
+});
