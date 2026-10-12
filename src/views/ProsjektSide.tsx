@@ -3,7 +3,7 @@ import { useApp } from "../App";
 import { api, type FdvVare } from "../lib/api";
 import { kortDato, langDato } from "../lib/ferie";
 import { TILLEGG_STATUS, VAER, type Tillegg, type TilleggStatus } from "../lib/hms";
-import { t2, type Prosjekt } from "../lib/timer";
+import { t2, timeStatus, type Prosjekt } from "../lib/timer";
 import { Bilder } from "./Bilder";
 import { Avvik } from "./Avvik";
 import { Sluttdok } from "./Sluttdok";
@@ -42,11 +42,11 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         <h2 style={{ margin: 0 }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</h2>
         <div className="row small" style={{ gap: "4px 14px" }}>
           {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
-          {adr && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}`} target="_blank" rel="noreferrer">{adr} ↗</a>}
-          {adr && !p.adresse && <span className="muted">(kundens adresse – ikke bekreftet som adresse for utførelse)</span>}
           {k?.telefon && <a href={`tel:${k.telefon.replace(/\s/g, "")}`}>{k.telefon}</a>}
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
         </div>
+        <TimerStatus p={p} />
+        <Adresse p={p} adr={adr} />
       </section>
       <nav className="seksjoner" aria-label="Deler av prosjektet">
         {deler.map(([x, t, n]) => (
@@ -374,3 +374,59 @@ function SignerDialog({ t, lukk }: { t: Tillegg; lukk: () => void }) {
     </div>
   );
 }
+
+// ------------------------------------------------------------ Adresse med kart
+
+/** Adressen der jobben gjøres, med knapper til kart og veibeskrivelse. Leder kan rette den. */
+function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
+  const { leder, kjor } = useApp();
+  const [endre, setEndre] = useState(false);
+  const [ny, setNy] = useState(p.adresse || adr);
+  useEffect(() => { setEndre(false); setNy(p.adresse || adr); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const q = encodeURIComponent(adr);
+  const lagre = async () => { if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.trim() }), "Adressen er lagret")) setEndre(false); };
+
+  if (endre) return (
+    <div className="adresse">
+      <label className="field" style={{ flex: "1 1 260px" }}><span className="label">Adresse for utførelse</span>
+        <input type="text" value={ny} onChange={(e) => setNy(e.target.value)} placeholder="Gate 1, 6290 Haramsøy" autoFocus /></label>
+      <div className="row"><button className="btn primary sm" onClick={lagre}>Lagre</button><button className="btn sm" onClick={() => setEndre(false)}>Avbryt</button></div>
+    </div>
+  );
+  return (
+    <div className="adresse">
+      <div style={{ minWidth: 0 }}>
+        <span className="label">Adresse</span>
+        {adr ? <div className="adr">{adr}</div> : <div className="muted">Ingen adresse på prosjektet</div>}
+        {adr && !p.adresse && <div className="small muted">Kundens adresse – ikke bekreftet som adresse for utførelse</div>}
+      </div>
+      <div className="row">
+        {adr && <a className="btn sm primary" href={`https://www.google.com/maps/dir/?api=1&destination=${q}`} target="_blank" rel="noreferrer">Kjør hit</a>}
+        {adr && <a className="btn sm" href={`https://www.google.com/maps/search/?api=1&query=${q}`} target="_blank" rel="noreferrer">Vis i kart</a>}
+        {leder && <button className="btn sm" onClick={() => setEndre(true)}>{adr ? "Endre" : "Legg inn adresse"}</button>}
+      </div>
+    </div>
+  );
+}
+
+/** Timer brukt mot kalkyle, med fargestatus */
+function TimerStatus({ p }: { p: Prosjekt }) {
+  const { d } = useApp();
+  const brukt = d.timer.filter((t) => t.prosjekt_id === p.id).reduce((n, t) => n + Number(t.timer), 0);
+  const est = p.estimert_timer ? Number(p.estimert_timer) : null;
+  const tillegg = d.tillegg.filter((t) => t.prosjekt_id === p.id && (t.status === "signert" || t.status === "fakturert")).reduce((n, t) => n + (t.timer ?? 0), 0);
+  const ramme = est != null ? est + tillegg : null;
+  const s = timeStatus(brukt, ramme);
+  return (
+    <div className={`timestatus ${s.status}`}>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+        <span><span className="tall">{t2(brukt)}</span>{ramme ? <span className="av"> av {t2(ramme)} t</span> : <span className="av"> t brukt</span>}
+          {tillegg > 0 && <span className="small muted"> (inkl. {t2(tillegg)} t tillegg)</span>}</span>
+        <span className={`chip ${s.status === "ok" ? "godkjent" : s.status === "snart" ? "venter" : s.status === "over" ? "avslatt" : "demo"}`}>
+          {s.pct != null ? `${Math.round(s.pct)} % · ` : ""}{s.tekst}</span>
+      </div>
+      {ramme ? <div className="tbar"><i style={{ width: `${Math.min(100, s.pct ?? 0)}%` }} /></div> : null}
+    </div>
+  );
+}
+

@@ -200,3 +200,13 @@ export function sisteProsjekter(timer: Time[], ansattId: string, antall = 4) {
   const sortert = timer.filter((t) => t.ansatt_id === ansattId && t.prosjekt_id).sort((a, b) => (b.dato + b.fra).localeCompare(a.dato + a.fra));
   return [...new Set(sortert.map((t) => t.prosjekt_id as string))].slice(0, antall);
 }
+
+export type TStatus = "ingen" | "ok" | "snart" | "over";
+/** Timestatus mot kalkyle (+ godkjente tillegg): grønn under 80 %, gul 80–100 %, rød over */
+export function timeStatus(brukt: number, ramme: number | null): { pct: number | null; status: TStatus; tekst: string } {
+  if (!ramme) return { pct: null, status: "ingen", tekst: "Ingen kalkyle" };
+  const pct = (brukt / ramme) * 100;
+  if (pct > 100) return { pct, status: "over", tekst: `${Math.round(brukt - ramme)} t over kalkyle` };
+  if (pct >= 80) return { pct, status: "snart", tekst: `${Math.round(ramme - brukt)} t igjen` };
+  return { pct, status: "ok", tekst: `${Math.round(ramme - brukt)} t igjen` };
+}

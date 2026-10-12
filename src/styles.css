@@ -388,3 +388,21 @@ table.kursmatrise td.k-snart { background: color-mix(in srgb, var(--pending) 35%
 table.kursmatrise td.k-utlopt { background: color-mix(in srgb, var(--warn) 28%, transparent); }
 .lest { padding: 10px 12px; border-radius: 10px; font-size: 14.5px; border-left: 4px solid var(--approved); background: color-mix(in srgb, var(--approved) 12%, var(--surface)); }
 .lest.usikker { border-left-color: var(--pending); background: color-mix(in srgb, var(--pending) 14%, var(--surface)); }
+
+/* Adresse på prosjektsiden, med kart og veibeskrivelse */
+.adresse { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px;
+  border-radius: 12px; background: var(--sunk); border: 1px solid var(--line-soft); }
+.adresse .adr { font-family: var(--f-display); font-size: 21px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.adresse a.btn { text-decoration: none; }
+
+/* Timer brukt mot kalkyle: grønn / gul / rød */
+.timestatus { display: flex; flex-direction: column; gap: 6px; }
+.timestatus .tall { font-family: var(--f-display); font-size: 26px; font-weight: 700; }
+.timestatus .av { color: var(--muted); font-weight: 600; }
+.tbar { height: 10px; border-radius: 6px; background: var(--sunk); overflow: hidden; }
+.tbar i { display: block; height: 100%; border-radius: 6px; background: var(--approved); }
+.snart .tbar i { background: var(--pending); }
+.over .tbar i { background: var(--warn); }
+.tbar.liten { height: 5px; margin-top: 4px; min-width: 70px; }
+td.timecelle.snart { color: var(--pending-text); }
+td.timecelle.over { color: var(--warn); }

@@ -88,3 +88,13 @@ describe("smart timeføring", () => {
     expect(sisteProsjekter([t("2026-10-01", "A"), t("2026-10-02", "B"), t("2026-10-03", "A"), t("2026-10-03", null, "12:00")], "a")).toEqual(["A", "B"]);
   });
 });
+
+import { timeStatus } from "../src/lib/timer";
+describe("timestatus mot kalkyle", () => {
+  it("farge etter andel brukt", () => {
+    expect(timeStatus(10, null).status).toBe("ingen");
+    expect(timeStatus(50, 100)).toMatchObject({ status: "ok", tekst: "50 t igjen" });
+    expect(timeStatus(85, 100).status).toBe("snart");
+    expect(timeStatus(120, 100)).toMatchObject({ status: "over", tekst: "20 t over kalkyle" });
+  });
+});

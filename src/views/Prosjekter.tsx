@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { prosjektTimer, sistAktiv, t2 } from "../lib/timer";
+import { timeStatus } from "../lib/timer";
 import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
 import { Fordeling } from "./Fordeling";
@@ -75,6 +76,8 @@ export function Prosjekter() {
                       <td className="n">{p.visma_nr ?? "–"}</td>
                       <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
+                        {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id); const a = p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+                          return a ? <div className="small"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`} target="_blank" rel="noreferrer">{a}</a></div> : null; })()}
                         {(() => { const f = fakt?.get(p.id); return f && liteFakturert(f) ? (
                           <div className="small" style={{ color: "var(--warn)" }} title="Registrerte fakturerbare timer mot «Arbeid» fakturert og på ordre i Visma (og beregnet fastpris)">
                             Lite fakturert: {t2(Math.round(f.fakturert + f.fastpris))} av {t2(Math.round(f.registrert))} t{f.aapent ? `, ${t2(Math.round(f.aapent))} t på åpen ordre` : ""}
@@ -82,9 +85,11 @@ export function Prosjekter() {
                         {sist.get(p.id) && <div className="small muted">Sist aktivitet {kortDato(sist.get(p.id)!)}{mine.has(p.id) ? " · du har ført timer her" : ""}</div>}
                         {(() => { const n = d.avvik.filter((a) => a.prosjekt_id === p.id && a.status !== "lukket").length; const b = d.bilder.filter((x) => x.prosjekt_id === p.id).length;
                           return (n || b) ? <div className="small muted">{b ? `${b} bilder` : ""}{n && b ? " · " : ""}{n ? <span style={{ color: "var(--warn)" }}>{n} åpne avvik</span> : ""}</div> : null; })()}</td>
-                      <td className="n" style={est && b > est ? { color: "var(--warn)" } : est && b >= est * 0.9 ? { color: "var(--pending-text)" } : undefined}
-                        title={est ? `${Math.round((b / est) * 100)} % av kalkulerte timer` : undefined}>{t2(b)}{est ? ` / ${t2(est)}` : ""}
-                        {est && b >= est * 0.9 && <div className="small">{b > est ? "over kalkyle" : "snart brukt opp"}</div>}</td>
+                      {(() => { const st = timeStatus(b, est); return (
+                        <td className={`n timecelle ${st.status}`} title={st.pct != null ? `${Math.round(st.pct)} % av kalkulerte timer · ${st.tekst}` : "Ingen kalkulerte timer"}>
+                          {t2(b)}{est ? ` / ${t2(est)}` : ""}
+                          {est ? <div className="tbar liten"><i style={{ width: `${Math.min(100, st.pct ?? 0)}%` }} /></div> : null}
+                          {st.status === "snart" || st.status === "over" ? <div className="small">{st.tekst}</div> : null}</td>); })()}
                       {leder && <td><button className="btn sm" onClick={() => kjor(() => api.lagreProsjekt({ id: p.id, navn: p.navn, aktiv: !p.aktiv }), p.aktiv ? "Avsluttet" : "Åpnet igjen")}>{p.aktiv ? "Avslutt" : "Åpne"}</button></td>}
                     </tr>
                   );

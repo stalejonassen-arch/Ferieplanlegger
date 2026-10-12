@@ -429,9 +429,10 @@ function supabaseApi(sb: SupabaseClient): Api {
     async lagreEiendom(id, e) { ok(await sb.from("prosjekter").update(e).eq("id", id)); },
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },
     async lagreProsjekt(p, nyKunde) {
-      let kunde_id = p.kunde_id ?? null;
-      if (nyKunde?.trim()) kunde_id = (ok(await sb.from("kunder").insert({ navn: nyKunde.trim() }).select("id").single()) as { id: string }).id;
-      const { id, ...rad } = { ...p, kunde_id };
+      // Kunden røres bare hvis den er oppgitt (eller en ny kunde opprettes) – ellers beholdes den
+      const kunde: { kunde_id?: string | null } = "kunde_id" in p ? { kunde_id: p.kunde_id ?? null } : {};
+      if (nyKunde?.trim()) kunde.kunde_id = (ok(await sb.from("kunder").insert({ navn: nyKunde.trim() }).select("id").single()) as { id: string }).id;
+      const { id, ...rad } = { ...p, ...kunde };
       ok(id ? await sb.from("prosjekter").update(rad).eq("id", id) : await sb.from("prosjekter").insert(rad));
     },
   };
