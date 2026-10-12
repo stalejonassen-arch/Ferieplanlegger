@@ -120,7 +120,7 @@ export function App() {
   useEffect(() => { if (meg?.tema) settTema(meg.tema); }, [meg?.tema]);
   useEffect(() => {
     document.documentElement.dataset.tema = tema;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : "#0A1EBE");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : tema === "byggfag" ? "#0B1F5C" : "#F6F2EB");
     try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
   }, [tema]);
 
@@ -220,7 +220,7 @@ export function App() {
             </select>
             <select aria-label="Farger" className="temavalg" value={tema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              <option value="standard">Byggfag-blå</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              <option value="standard">Skandinavisk</option><option value="byggfag">Byggfag-blå</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>

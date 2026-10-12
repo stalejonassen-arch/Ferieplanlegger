@@ -700,6 +700,111 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
   .ferie-flate nav.tabs.undertabs button { flex: 1; padding: 7px 8px; }
 }
 
+
+/* =================================================================================================
+   Standardtema: SKANDINAVISK – varm hvit, sand, dempet grønn og mørk grå. Lyst, rolig og luftig.
+   (Det mørkeblå Byggfag-oppsettet ligger over og kan velges som «Byggfag-blå».)
+   ================================================================================================= */
+:root[data-tema="standard"] {
+  --bg: #F6F2EB; --surface: #FFFDF9; --sunk: #F1ECE3; --fg: #2F3133; --muted: #6E6A63; --line: #E2D9CB; --line-soft: #ECE5DA;
+  --accent: #3F6B4A; --accent-ink: #FFFFFF; --sel: #3F6B4A; --sel-ink: #FFFFFF;
+  --approved: #5E8C63; --pending: #D8B26E; --pending-ink: #3A2E14; --pending-text: #8A6420; --warn: #B9614F; --info: #6F8AA0; --hatch: #E9E1D4;
+  --fravaer: #8FA3B5;
+  --navy: #34503D; --navy-2: #3F6B4A; --bf-yellow: #D8B26E; --bf-blue: #3F6B4A; --bf-blue-dark: #2F5238;
+  --shadow: 0 1px 2px rgba(60, 50, 30, .05), 0 14px 32px -24px rgba(60, 50, 30, .4);
+  --f-display: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+:root[data-tema="standard"] body {
+  background: radial-gradient(1100px 480px at 100% -160px, #EFE6D6, transparent 70%), radial-gradient(900px 420px at -10% 0%, #E9EFE6, transparent 70%), var(--bg);
+  background-attachment: fixed;
+}
+:root[data-tema="standard"] .wrap { gap: 20px; }
+:root[data-tema="standard"] h1, :root[data-tema="standard"] h2, :root[data-tema="standard"] h3 { font-style: normal; letter-spacing: -.01em; }
+:root[data-tema="standard"] h2 { font-size: 21px; font-weight: 600; }
+:root[data-tema="standard"] h3 { font-size: 17px; font-weight: 600; }
+
+/* Toppen: lys flate med diskret silhuett */
+:root[data-tema="standard"] .toppfelt { background: linear-gradient(180deg, #FFFDF9, #FBF7F0); color: var(--fg); border: 1px solid var(--line-soft);
+  border-radius: 22px; box-shadow: var(--shadow); }
+:root[data-tema="standard"] .toppfelt::after { display: none; }
+:root[data-tema="standard"] .toppfelt .skyline { color: rgba(63, 107, 74, .09); bottom: 0; }
+:root[data-tema="standard"] .toppfelt header.top { color: var(--fg); padding: 20px 24px 8px; }
+:root[data-tema="standard"] header.top h1 { color: var(--fg); font-style: normal; font-weight: 700; font-size: 34px; letter-spacing: -.03em; }
+:root[data-tema="standard"] header.top h1 .ord span { color: var(--accent); }
+:root[data-tema="standard"] header.top .hjelm { stroke: var(--accent); width: 38px; height: 32px; }
+:root[data-tema="standard"] .brand small { color: var(--muted); font-style: normal; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 11.5px; }
+:root[data-tema="standard"] header.top .muted { color: var(--muted); }
+:root[data-tema="standard"] header.top .btn, :root[data-tema="standard"] header.top select.sprakvalg, :root[data-tema="standard"] header.top select.temavalg {
+  background: var(--surface); color: var(--fg); border-color: var(--line); border-radius: 999px; }
+:root[data-tema="standard"] header.top .btn:hover:not(:disabled) { background: var(--sunk); border-color: var(--accent); }
+@media (min-width: 641px) {
+  :root[data-tema="standard"] .toppfelt nav.tabs.hoved { padding: 6px 20px 18px; gap: 4px; }
+  :root[data-tema="standard"] .toppfelt nav.tabs.hoved button { color: var(--muted); font-family: var(--f-body); font-style: normal; font-size: 15.5px; font-weight: 600;
+    padding: 8px 16px; border-radius: 999px; }
+  :root[data-tema="standard"] .toppfelt nav.tabs.hoved button:hover { background: var(--sunk); color: var(--fg); }
+  :root[data-tema="standard"] .toppfelt nav.tabs.hoved button[aria-selected=true] { background: var(--accent); color: #FFFFFF; box-shadow: 0 6px 14px -8px rgba(63, 107, 74, .8); }
+}
+@media (max-width: 640px) {
+  :root[data-tema="standard"] .toppfelt header.top { padding: 14px 16px 14px; }
+  :root[data-tema="standard"] header.top h1 { font-size: 28px; }
+  :root[data-tema="standard"] nav.tabs.hoved { background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 -8px 22px -14px rgba(60, 50, 30, .35); }
+  :root[data-tema="standard"] nav.tabs.hoved button[aria-selected=true] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+}
+
+/* Flater, knapper og felt */
+:root[data-tema="standard"] .panel { border-radius: 20px; padding: 24px; gap: 16px; }
+@media (max-width: 640px) { :root[data-tema="standard"] .panel { padding: 18px; border-radius: 18px; } }
+:root[data-tema="standard"] .btn { border-radius: 999px; padding: 9px 18px; }
+:root[data-tema="standard"] .btn.sm { padding: 5px 13px; }
+:root[data-tema="standard"] .btn.primary { box-shadow: 0 6px 14px -8px rgba(63, 107, 74, .75); }
+:root[data-tema="standard"] .btn.gul { background: var(--accent); border-color: var(--accent); color: #FFFFFF; box-shadow: 0 6px 14px -8px rgba(63, 107, 74, .8); }
+:root[data-tema="standard"] .btn.ok { background: color-mix(in srgb, var(--approved) 12%, var(--surface)); }
+:root[data-tema="standard"] :is(select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input[type=email], input[type=number], textarea) {
+  background: var(--surface); border-radius: 12px; }
+:root[data-tema="standard"] .banner { border-radius: 16px; background: color-mix(in srgb, var(--pending) 12%, var(--surface)); border-color: color-mix(in srgb, var(--pending) 30%, transparent); }
+:root[data-tema="standard"] .scroll { border-radius: 16px; }
+:root[data-tema="standard"] table.tbl th { text-transform: uppercase; font-size: 11.5px; letter-spacing: .05em; background: color-mix(in srgb, var(--sunk) 60%, transparent); }
+:root[data-tema="standard"] table.tbl th, :root[data-tema="standard"] table.tbl td { padding: 11px 12px; }
+:root[data-tema="standard"] table.tbl td.n { font-family: var(--f-body); font-size: 15px; }
+:root[data-tema="standard"] .item { border-radius: 14px; border-left-width: 5px; padding: 14px 16px; }
+:root[data-tema="standard"] .chip { padding: 2px 10px; }
+:root[data-tema="standard"] .chip.godkjent { background: color-mix(in srgb, var(--approved) 20%, var(--surface)); color: #2F5A36; }
+:root[data-tema="standard"] .chip.venter { background: color-mix(in srgb, var(--pending) 30%, var(--surface)); color: #6B4C14; }
+:root[data-tema="standard"] .chip.avslatt { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: #873C2E; }
+:root[data-tema="standard"] .empty { border-radius: 16px; background: color-mix(in srgb, var(--sunk) 50%, transparent); }
+:root[data-tema="standard"] .badge { background: var(--pending); color: var(--pending-ink); }
+:root[data-tema="standard"] nav.tabs.undertabs { border: 0; background: var(--sunk); border-radius: 999px; padding: 4px; gap: 2px; width: fit-content; max-width: 100%; }
+:root[data-tema="standard"] nav.tabs.undertabs button { border-radius: 999px; font-family: var(--f-body); font-size: 14.5px; font-weight: 600; padding: 7px 16px; color: var(--muted); }
+:root[data-tema="standard"] nav.tabs.undertabs button[aria-selected=true] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(60, 50, 30, .14); }
+:root[data-tema="standard"] .saldo-top .big, :root[data-tema="standard"] .legend .v, :root[data-tema="standard"] .num { font-family: var(--f-body); letter-spacing: -.02em; }
+:root[data-tema="standard"] .stempel, :root[data-tema="standard"] .klokke { font-family: var(--f-body); }
+
+/* Prosjektsiden */
+:root[data-tema="standard"] .panel.prosjekthode { border-left: 0; border-top: 0; background: linear-gradient(180deg, var(--surface), #FBF8F2); }
+:root[data-tema="standard"] .panel.prosjekthode h2 { font-style: normal; font-weight: 700; font-size: 28px; letter-spacing: -.02em; }
+:root[data-tema="standard"] .seksjoner button { font-family: var(--f-body); font-style: normal; font-weight: 600; font-size: 15px; border-radius: 14px; }
+:root[data-tema="standard"] .seksjoner button .ikon { color: var(--accent); }
+:root[data-tema="standard"] .seksjoner button:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+:root[data-tema="standard"] .seksjoner button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); box-shadow: 0 8px 18px -10px rgba(63, 107, 74, .8); }
+:root[data-tema="standard"] .seksjoner button[aria-pressed=true] .ikon { color: #FFFFFF; }
+
+/* Chat */
+:root[data-tema="standard"] .chat { border-radius: 20px; }
+:root[data-tema="standard"] .boble-rad.min .boble { background: var(--accent); }
+:root[data-tema="standard"] .boble-navn { color: var(--accent); }
+:root[data-tema="standard"] .avatar.felles { background: linear-gradient(135deg, #E7D3A8, #D8B26E); }
+:root[data-tema="standard"] .skriv-send { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+
+
+:root[data-tema="standard"] .stempel { background: linear-gradient(150deg, #4A7A55, #3F6B4A 55%, #355C40); border-radius: 22px; padding: 24px; box-shadow: 0 18px 36px -22px rgba(47, 82, 56, .8); }
+:root[data-tema="standard"] .stempel::before { display: none; }
+:root[data-tema="standard"] .stempel > :first-child { margin-top: 0; }
+:root[data-tema="standard"] .toppfelt .skyline [fill="#FFCD00"] { fill: #D8B26E; }
+/* Ferie-delen trenger ikke egen sandboks når hele appen er lys */
+:root[data-tema="standard"] .ferie-flate { background: none; border: 0; padding: 0; }
+@media (max-width: 640px) { :root[data-tema="standard"] .ferie-flate { margin-inline: 0; } }
+
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
 :root[data-tema="mork"] {
   --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;
