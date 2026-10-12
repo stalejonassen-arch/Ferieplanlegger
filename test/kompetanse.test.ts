@@ -30,6 +30,13 @@ describe("lesing av kursbevis", () => {
     expect(f).toMatchObject({ type: "stillas", utstedt: "2024-05-14", gyldig_til: "2029-05-14", utsteder: "AKA" });
     expect(f.navn).toBe("Inntil 9 m");
   });
+  it("leser kurstittel fra diplom", () => {
+    const d = (tittel: string, kode: string, dato: string, beskr: string) => `DIPLOM\nDELTAKER\nMats Lausund\n${tittel}\n${kode}\nGJENNOMFØRT\n${dato}\nBeskrivelse\n${beskr}`;
+    expect(lesBevis(d("Prosjekt fareblind", "SfS001", "30. oktober 2024", "Kursbeviset er gyldig i 3 år fra gjennomføringsdato."))).toMatchObject({ type: "sikkerhet", navn: "Prosjekt fareblind", utstedt: "2024-10-30", gyldig_til: "2027-10-30" });
+    expect(lesBevis(d("HMS-regelverk", "EBA001", "10. desember 2022", "Risikovurdering og opplæringskrav."))).toMatchObject({ type: "sikkerhet", navn: "HMS-regelverk", ingenUtlop: true });
+    expect(lesBevis(d("Arbeid i høyden", "EO-00105-NO", "31. mars 2023", "Du har bestått kurset."))).toMatchObject({ type: "hoyde", utstedt: "2023-03-31" });
+    expect(lesBevis(d("Klima, miljø og bærekraft i\nbyggenæringen", "Byggopp016", "24. oktober 2024", "Kravene til fagarbeidere.")).navn).toBe("Klima, miljø og bærekraft");
+  });
   it("finner kursholder med AS i navnet", () => {
     expect(lesBevis("TESTKURS AS\nKURSBEVIS\nStillasmontør\nKursdato: 14.05.2024\nGyldig til: 14.05.2029").utsteder).toBe("TESTKURS AS");
   });

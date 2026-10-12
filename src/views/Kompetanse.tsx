@@ -156,8 +156,8 @@ function Person({ ansattId, navn, kanEndre }: { ansattId: string; navn: string; 
                   {k.sti && urler[k.sti] ? <img src={urler[k.sti]} alt="" /> : <span className="small muted">{k.sti ? (k.sti.endsWith(".pdf") ? "PDF" : "…") : "Ingen kopi"}</span>}
                 </button>
                 <div className="bevis-tekst">
-                  <div className="t">{kursNavn(k.type)}</div>
-                  {k.navn && <div className="small">{k.navn}</div>}
+                  <div className="t">{k.type === "annet" && k.navn ? k.navn : kursNavn(k.type)}</div>
+                  {k.navn && k.type !== "annet" && <div className="small">{k.navn}</div>}
                   <div className="small muted">{[k.utsteder, k.utstedt ? `tatt ${kortDato(k.utstedt)}` : ""].filter(Boolean).join(" · ")}</div>
                   <div className="row" style={{ gap: 6, marginTop: 4 }}>
                     <span className={`chip ${st === "gyldig" ? "godkjent" : st === "snart" ? "venter" : "avslatt"}`}>{STATUS_TEKST[st]}</span>

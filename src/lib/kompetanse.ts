@@ -15,6 +15,7 @@ export const KURS: { id: string; navn: string; hint?: string }[] = [
   { id: "varme", navn: "Varme arbeider" },
   { id: "forstehjelp", navn: "Førstehjelp" },
   { id: "hms", navn: "HMS-kort" },
+  { id: "sikkerhet", navn: "HMS- og sikkerhetskurs", hint: "F.eks. Prosjekt fareblind" },
   { id: "verktoy", navn: "Maskiner og verktøy", hint: "F.eks. motorsag, spikerpistol" },
   { id: "asbest", navn: "Asbest og miljøsanering" },
   { id: "varsling", navn: "Arbeidsvarsling" },
@@ -56,7 +57,7 @@ export function trengerFornyelse(liste: Kompetanse[], idag: string): Kompetanse[
 // ------------------------------------------------------------ Lesing av kursbevis (tekst fra OCR/PDF)
 
 export interface Funn {
-  type?: string; navn?: string; utsteder?: string; utstedt?: string; gyldig_til?: string;
+  type?: string; navn?: string; tittel?: string; utsteder?: string; utstedt?: string; gyldig_til?: string;
   /** Teksten utløpsdatoen ble funnet i, så brukeren kan sjekke */
   bevis?: string;
   /** Beviset nevner ingen utløpsdato eller varighet */
@@ -102,6 +103,7 @@ const KURS_ORD: [string, RegExp][] = [
   ["varme", /varme\s*arbeid|hot\s*work|prace\s*po(ż|z)arowo/i],
   ["forstehjelp", /f(ø|o)rstehjelp|first\s*aid|pierwsz(a|ej)\s*pomoc/i],
   ["hms", /hms[-\s]?kort|byggekort/i],
+  ["sikkerhet", /hms|sikkerhet|fareblind|farlige\s*m(ø|o)nstre|risikovurdering|bhp|safety/i],
   ["asbest", /asbest/i],
   ["varsling", /arbeidsvarsling/i],
   ["fagbrev", /fagbrev|svennebrev|mesterbrev/i],
@@ -123,8 +125,15 @@ export function lesBevis(tekst: string): Funn {
     const firma = t.split("\n").map((l) => l.trim()).find((l) => /^[A-ZÆØÅ0-9][\wÆØÅæøå&.\- ]{1,40}\s(AS|ASA|SA|ANS)$/i.test(l) && !/austnes/i.test(l));
     if (firma) f.utsteder = firma.replace(/\s+(AS|ASA|SA|ANS)$/i, (m) => m.toUpperCase());
   }
+  // Kurstittel: linjen etter deltakerens navn på diplomer («DIPLOM / DELTAKER / navn / tittel»), ellers linjen etter «Kurs:»
+  const linjer = t.split("\n").map((l) => l.trim()).filter(Boolean);
+  const iDelt = linjer.findIndex((l) => /^(deltaker|participant|uczestnik|navn|name)\b:?$/i.test(l));
+  const tittel = iDelt >= 0 ? linjer.slice(iDelt + 2).find((l) => !/^(gjennomført|beskrivelse|dato)/i.test(l) && /[a-zæøå]/i.test(l) && !/^[A-Za-z]{1,10}-?\d[\w-]*$/.test(l) && !finnDatoer(l).length)
+    : t.match(/\b(kurs|course|kurs\s*nazwa)\s*:\s*(.+)/i)?.[2]?.trim();
+  if (tittel && tittel.length <= 80) f.tittel = tittel.replace(/\s+i$/, "");
   const klasse = t.match(/\b(klasse|class|kl\.?|kategori)\s*:?\s*([A-Z]{1,2}\d{0,2}(?:\s*(?:,|og|\+|&)\s*[A-Z]{1,2}\d{0,2})*)\b/i);
   if (klasse) f.navn = `Klasse ${klasse[2].replace(/\s+/g, " ")}`;
+  else if (f.tittel && (!f.type || ["annet", "sikkerhet", "verktoy"].includes(f.type))) f.navn = f.tittel;
   else { const h = t.match(/\b(\d{1,2}(?:[,.]\d)?)\s*(m|meter)\b/i); if (f.type === "stillas" && h) f.navn = `Inntil ${h[1].replace(".", ",")} m`; }
 
   const datoer = finnDatoer(t);

@@ -67,6 +67,7 @@ export const PL_TEKST: Record<string, string> = {
 "Ta bilde av kursbeviset eller last opp PDF. Appen leser beviset og fyller inn kurs og datoer, så sjekker du og lagrer. Da har du alt på telefonen når noen spør på byggeplassen, og du får beskjed før et bevis går ut.": "Zrób zdjęcie certyfikatu lub prześlij PDF. Aplikacja odczyta certyfikat i uzupełni kurs oraz daty – sprawdź i zapisz. Masz wszystko w telefonie, gdy ktoś zapyta na budowie, i dostaniesz powiadomienie przed wygaśnięciem.",
 "Fant ingen utløpsdato på beviset. Står det ingen, gjelder det uten utløp – sjekk selv.": "Nie znaleziono daty ważności. Jeśli jej nie ma, certyfikat jest bezterminowy – sprawdź sam.",
 "Klarte ikke å lese utløpsdatoen sikkert. Fyll inn fra beviset.": "Nie udało się odczytać daty ważności. Wpisz ją z certyfikatu.",
+"HMS- og sikkerhetskurs": "Kursy BHP i bezpieczeństwa",
 "jan": "sty",
 "feb": "lut",
 "mar": "mar",
