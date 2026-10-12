@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { MND, UKEDAG, borteDag, erVirkedag, helligdag, periode, sorterAnsatte, ukedag } from "../lib/ferie";
+import { FRAVAER_TYPE, fravaerPaa } from "../lib/fravaer";
 
 const STATUS = { venter: "venter", godkjent: "godkjent", avslatt: "avslått" };
 
@@ -55,9 +56,16 @@ export function Kalender() {
                     <td className="name" title={a.navn}>{a.navn}</td>
                     {nr.map((n) => {
                       const i = iso(n);
-                      const s = aktive.find((x) => x.ansatt_id === a.id && x.fra <= i && x.til >= i);
-                      const kl = [s ? `c-${s.status}` : erVirkedag(i) ? "" : "off", i === idag ? "today" : ""].join(" ");
-                      return <td key={n} className={kl} title={s ? `${a.navn}: ${periode(s.fra, s.til)} (${STATUS[s.status]})` : undefined} />;
+                      const merke = (x: string) => {
+                        const s = aktive.find((y) => y.ansatt_id === a.id && y.fra <= x && y.til >= x);
+                        if (s) return { k: `c-${s.status}`, t: `${a.navn}: ${periode(s.fra, s.til)} (${STATUS[s.status]})` };
+                        const f = fravaerPaa(d.fravaer ?? [], a.id, x);
+                        return f ? { k: "c-fravaer", t: `${a.navn}: ${FRAVAER_TYPE[f.type]} ${periode(f.fra, f.til)}` } : null;
+                      };
+                      const m = merke(i);
+                      const forr = n > 1 ? merke(iso(n - 1))?.k : undefined, neste = n < dager ? merke(iso(n + 1))?.k : undefined;
+                      const kl = [m ? m.k : erVirkedag(i) ? "" : "off", m && forr !== m.k ? "start" : "", m && neste !== m.k ? "slutt" : "", i === idag ? "today" : ""].join(" ");
+                      return <td key={n} className={kl} title={m?.t} />;
                     })}
                   </tr>
                 ))}
@@ -77,8 +85,10 @@ export function Kalender() {
         </table>
       </div>
       <div className="cal-legend">
-        <span><i className="dot bg-approved" />Godkjent</span>
-        <span><i className="dot stripe" />Venter</span>
+        <span><i className="dot bg-approved" />Godkjent ferie</span>
+        <span><i className="dot stripe" />Venter på svar</span>
+        <span><i className="dot bg-fravaer" />Fravær (syk)</span>
+        <span><i className="dot bg-avslatt" />Avslått (vises i søknadslisten)</span>
         <span><i className="dot bg-off" />Søndag eller helligdag</span>
         <span><i className="dot bg-warn" />Over bemanningsgrensen</span>
       </div>

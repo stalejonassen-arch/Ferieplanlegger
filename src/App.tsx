@@ -20,6 +20,7 @@ import { trengerFornyelse } from "./lib/kompetanse";
 import { uleste } from "./lib/rapport";
 import { kanalNavn, uleste as ulesteMeldinger, type Lest, type Melding } from "./lib/chat";
 import { Chat } from "./views/Chat";
+import { FerieOversikt } from "./views/FerieOversikt";
 
 export interface Ctx {
   d: Data;
@@ -249,21 +250,6 @@ export function App() {
         )}
 
 
-        {iFerie && (
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <nav className="tabs undertabs" role="tablist" style={{ flex: 1 }}>
-              {ferieFaner.map(([f, navn]) => (
-                <button key={f} role="tab" aria-selected={aktiv === f} onClick={() => velg(f)}>
-                  {navn}{f === "sok" && venter > 0 && <span className="badge">{venter}</span>}
-                </button>
-              ))}
-            </nav>
-            {aktiv !== "syk" && <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
-              {[y0 - 1, y0, y0 + 1].map((y) => <option key={y} value={y}>Ferieår {y}</option>)}
-            </select>}
-          </div>
-        )}
-
         {iUtstyr && (
           <nav className="tabs undertabs" role="tablist">
             <button role="tab" aria-selected={aktiv === "utstyr"} onClick={() => velg("utstyr")}>Utstyr</button>
@@ -278,12 +264,29 @@ export function App() {
         {aktiv === "utstyr" && <Utstyr />}
         {aktiv === "kurs" && <Kompetanse />}
         {aktiv === "rapporter" && <Rapporter />}
-        {aktiv === "syk" && <Sykdom />}
-        {aktiv === "min" && <MinFerie />}
-        {aktiv === "kal" && <Kalender />}
-        {aktiv === "sok" && <Soknader />}
+        {iFerie && (
+          <div className="ferie-flate">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <nav className="tabs undertabs" role="tablist" style={{ flex: 1 }}>
+              {ferieFaner.map(([f, navn]) => (
+                <button key={f} role="tab" aria-selected={aktiv === f} onClick={() => velg(f)}>
+                  {navn}{f === "sok" && venter > 0 && <span className="badge">{venter}</span>}
+                </button>
+              ))}
+            </nav>
+            {aktiv !== "syk" && <select id="aar" aria-label="Ferieår" value={aar} onChange={(e) => setAar(Number(e.target.value))}>
+              {[y0 - 1, y0, y0 + 1].map((y) => <option key={y} value={y}>Ferieår {y}</option>)}
+            </select>}
+          </div>
+            {(aktiv === "min" || aktiv === "sok") && <FerieOversikt />}
+            {aktiv === "syk" && <Sykdom />}
+            {aktiv === "min" && <MinFerie />}
+            {aktiv === "kal" && <Kalender />}
+            {aktiv === "sok" && <Soknader />}
+            {aktiv === "regler" && <Regler />}
+          </div>
+        )}
         {aktiv === "lonn" && <Lonn />}
-        {aktiv === "regler" && <Regler />}
         {aktiv === "oppsett" && <Oppsett />}
       </div>
       {toast && <div className={`toast${toast.feil ? " feil" : ""}`} role="status">{toast.t}</div>}

@@ -432,7 +432,7 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 @media (min-width: 641px) {
   .toppfelt nav.tabs.hoved { position: relative; z-index: 1; background: none; backdrop-filter: none; -webkit-backdrop-filter: none;
     border: 0; padding: 4px 18px 22px; gap: 4px; }
-  .toppfelt nav.tabs.hoved button { color: rgba(255, 255, 255, .86); font-size: 19px; font-weight: 700; font-style: italic; padding: 8px 16px; border-radius: 12px; }
+  .toppfelt nav.tabs.hoved button { color: rgba(255, 255, 255, .86); font-size: 18px; font-weight: 700; font-style: italic; padding: 8px 12px; border-radius: 12px; }
   .toppfelt nav.tabs.hoved button:hover { background: rgba(255, 255, 255, .1); color: #FFFFFF; }
   .toppfelt nav.tabs.hoved button[aria-selected=true] { background: var(--bf-yellow); color: #1A1400; box-shadow: 0 4px 0 rgba(0, 0, 0, .25); }
 }
@@ -532,6 +532,107 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
   .chat-liste { border-right: 0; }
   .chat-tilbake { display: inline-flex; font-size: 20px; line-height: 1; padding: 4px 12px; }
   .boble { max-width: 84%; }
+}
+
+
+/* ---------- Ferie: skandinavisk, lyst og rolig (varm hvit, sand, dempet grønn, mørk grå) ---------- */
+.ferie-flate { display: flex; flex-direction: column; gap: 18px; }
+:root:not([data-tema="mork"]) .ferie-flate {
+  --fg: #2F3133; --muted: #6E6A63; --surface: #FFFDF9; --sunk: #F4EFE7; --line: #E4DCCF; --line-soft: #EDE6DB; --hatch: #EAE2D5;
+  --accent: #3F6B4A; --accent-ink: #FFFFFF; --sel: #3F6B4A; --sel-ink: #FFFFFF;
+  --approved: #6E9873; --pending: #D8B26E; --pending-ink: #3A2E14; --pending-text: #8A6420; --warn: #C27464; --info: #7E93A6;
+  --fravaer: #8FA3B5;
+  --shadow: 0 1px 2px rgba(60, 50, 30, .05), 0 12px 30px -22px rgba(60, 50, 30, .35);
+  color: var(--fg); background: linear-gradient(180deg, #F7F2EA, #F3EDE3); border-radius: 22px; padding: 18px;
+  border: 1px solid #ECE4D8;
+}
+.ferie-flate { --fravaer: #8FA3B5; }
+.ferie-flate h2 { font-family: var(--f-body); font-weight: 600; font-size: 21px; letter-spacing: -.01em; font-style: normal; }
+.ferie-flate .panel { border-radius: 20px; padding: 24px; gap: 16px; border-color: var(--line-soft); }
+.ferie-flate .label { font-weight: 500; letter-spacing: .01em; }
+.ferie-flate .btn { border-radius: 999px; font-weight: 600; }
+.ferie-flate .btn.primary { box-shadow: 0 6px 14px -8px rgba(63, 107, 74, .7); }
+.ferie-flate .btn.ok { background: color-mix(in srgb, var(--approved) 12%, var(--surface)); }
+.ferie-flate input, .ferie-flate select, .ferie-flate textarea { border-radius: 12px; background: var(--surface); }
+.ferie-flate .banner { border-radius: 16px; background: color-mix(in srgb, var(--pending) 14%, var(--surface)); border-color: color-mix(in srgb, var(--pending) 35%, transparent); }
+/* Underfaner som segmentert bryter */
+.ferie-flate nav.tabs.undertabs { border: 0; background: var(--sunk); border-radius: 999px; padding: 4px; gap: 2px; flex: 0 1 auto !important; width: fit-content; max-width: 100%; }
+.ferie-flate nav.tabs.undertabs button { border-radius: 999px; font-family: var(--f-body); font-size: 14.5px; font-weight: 600; font-style: normal; padding: 7px 16px; color: var(--muted); box-shadow: none; }
+.ferie-flate nav.tabs.undertabs button:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.ferie-flate nav.tabs.undertabs button[aria-selected=true] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(60, 50, 30, .14); }
+/* Søknadsrader og statusmerker */
+.ferie-flate .item { border-radius: 14px; border-left-width: 5px; padding: 14px 16px; background: var(--surface); }
+.ferie-flate .item.godkjent { background: color-mix(in srgb, var(--approved) 6%, var(--surface)); }
+.ferie-flate .item.venter { background: color-mix(in srgb, var(--pending) 9%, var(--surface)); }
+.ferie-flate .item.avslatt { background: color-mix(in srgb, var(--warn) 7%, var(--surface)); }
+.ferie-flate .chip { padding: 2px 10px; font-weight: 600; }
+.ferie-flate .chip.godkjent { background: color-mix(in srgb, var(--approved) 20%, var(--surface)); color: #2F5A36; }
+.ferie-flate .chip.venter { background: color-mix(in srgb, var(--pending) 30%, var(--surface)); color: #6B4C14; }
+.ferie-flate .chip.avslatt { background: color-mix(in srgb, var(--warn) 20%, var(--surface)); color: #8A3F31; }
+.ferie-flate .checks li { border-radius: 12px; }
+.ferie-flate .bar { height: 12px; border-radius: 999px; }
+.ferie-flate .bar::after { display: none; }
+.ferie-flate .saldo-top .big { font-family: var(--f-body); font-weight: 600; font-size: 56px; letter-spacing: -.03em; color: var(--accent); }
+.ferie-flate .legend .v { font-family: var(--f-body); font-weight: 600; font-size: 24px; }
+.ferie-flate .dot { border-radius: 50%; width: 10px; height: 10px; }
+.bg-fravaer { background: var(--fravaer, #8FA3B5); }
+.bg-avslatt { background: var(--warn); }
+.ferie-flate .tbl th { font-weight: 600; color: var(--muted); }
+.ferie-flate .empty { border-radius: 16px; background: color-mix(in srgb, var(--sunk) 50%, transparent); }
+
+/* Kalenderen: perioder som sammenhengende avrundede striper */
+.ferie-flate table.cal th, .ferie-flate table.cal td { border-bottom-color: var(--line-soft); height: 34px; min-width: 28px; }
+.ferie-flate table.cal thead th { font-weight: 500; }
+.ferie-flate table.cal thead th.today b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #FFFFFF; }
+.ferie-flate table.cal .today { box-shadow: none; }
+.ferie-flate table.cal td.today:not(.c-godkjent):not(.c-venter):not(.c-fravaer) { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.ferie-flate table.cal .off { background: color-mix(in srgb, var(--sunk) 80%, transparent); }
+.ferie-flate table.cal td.c-godkjent, .ferie-flate table.cal td.c-venter, .ferie-flate table.cal td.c-fravaer { background-clip: content-box; padding: 7px 0; }
+.ferie-flate table.cal td.c-godkjent { background-color: var(--approved); }
+.ferie-flate table.cal td.c-venter { background: repeating-linear-gradient(135deg, var(--pending) 0 5px, color-mix(in srgb, var(--pending) 45%, var(--surface)) 5px 9px) content-box; }
+.ferie-flate table.cal td.c-fravaer { background-color: var(--fravaer); }
+.ferie-flate table.cal td.start { padding-left: 3px; }
+.ferie-flate table.cal td.slutt { padding-right: 3px; }
+.ferie-flate table.cal td.start { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
+.ferie-flate table.cal td.slutt { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
+.ferie-flate table.cal .name { background: var(--surface); font-weight: 500; }
+.ferie-flate table.cal tr.grp td, .ferie-flate table.cal tr.grp td.name { background: var(--sunk); color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.ferie-flate table.cal tr.me .name { color: var(--accent); font-weight: 700; }
+.ferie-flate table.cal tr.sum td.over { background: var(--warn); border-radius: 6px; }
+.ferie-flate .cal-legend { gap: 8px 18px; padding-top: 4px; }
+.ferie-flate .cal-legend .dot { width: 12px; height: 12px; }
+.ferie-flate .cal-nav h2 { min-width: 170px; }
+.ferie-flate .scroll { border-radius: 14px; border-color: var(--line-soft); }
+
+/* Ferieoversikt (dashbord) */
+.ferie-dash { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.fd-kort { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 20px; padding: 18px 18px 16px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fd-idag { background: linear-gradient(160deg, color-mix(in srgb, var(--approved) 16%, var(--surface)), var(--surface) 70%); }
+.fd-venter { background: linear-gradient(160deg, color-mix(in srgb, var(--pending) 22%, var(--surface)), var(--surface) 70%); }
+.fd-topp { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.fd-tittel { font-weight: 600; font-size: 15px; }
+.fd-tall { font-size: 34px; font-weight: 600; letter-spacing: -.03em; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.fd-under { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.fd-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fd-liste li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.fd-navn { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.fd-navn b { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fd-navn span { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fd-avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; color: #FFFFFF; background: var(--approved); }
+.fd-avatar.ferie, .fd-avatar.godkjent { background: var(--approved); }
+.fd-avatar.fravaer { background: var(--fravaer, #8FA3B5); }
+.fd-avatar.venter { background: var(--pending); color: var(--pending-ink); }
+.fd-tom { font-size: 14px; color: var(--muted); padding: 6px 0; }
+.fd-mer { display: block !important; font-size: 13px; color: var(--muted); }
+.fd-knapp { margin-top: 10px; align-self: flex-start; text-decoration: none; }
+@media (max-width: 900px) { .ferie-dash { grid-template-columns: 1fr 1fr; } .fd-idag { grid-column: 1 / -1; } }
+@media (max-width: 640px) {
+  :root:not([data-tema="mork"]) .ferie-flate { padding: 10px; border-radius: 18px; margin-inline: -6px; }
+  .ferie-flate .panel { padding: 18px; }
+  .ferie-dash { grid-template-columns: 1fr; gap: 10px; }
+  .ferie-flate nav.tabs.undertabs { width: 100%; }
+  .ferie-flate nav.tabs.undertabs button { flex: 1; padding: 7px 8px; }
 }
 
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
