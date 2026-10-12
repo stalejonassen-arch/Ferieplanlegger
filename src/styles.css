@@ -926,6 +926,38 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 :root[data-tema="bfportal"] .skriv-send { background: var(--grad-bla); border: 0; color: #FFFFFF; }
 :root[data-tema="bfportal"] .avatar.felles { background: var(--grad-rosa); }
 
+
+/* ---------- «Lagre som app» ---------- */
+.lagre-app { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 12px 12px 14px;
+  border-radius: 16px; color: #FFFFFF; background: linear-gradient(120deg, #0A1EBE, #13308F 60%, #0B1F5C); box-shadow: 0 12px 26px -16px rgba(10, 30, 190, .8);
+  position: relative; overflow: hidden; }
+.lagre-app::after { content: ""; position: absolute; right: -40px; top: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255, 205, 0, .16); pointer-events: none; }
+.lagre-app-ikon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: #FFCD00; color: #1A1400; flex: none; }
+.lagre-app-ikon svg { width: 24px; height: 24px; }
+.lagre-app-tekst { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.lagre-app-tekst b { font-size: 16px; }
+.lagre-app-tekst span { font-size: 13.5px; opacity: .85; }
+.lagre-app .lagre-app-knapp { background: #FFCD00 !important; color: #1A1400 !important; border: 0 !important; font-weight: 800; white-space: nowrap; position: relative; z-index: 1;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .25); animation: lagre-puls 2.4s ease-in-out infinite; }
+@keyframes lagre-puls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .lagre-app .lagre-app-knapp { animation: none; } }
+.lagre-app-lukk { border: 0; background: none; color: rgba(255, 255, 255, .75); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 6px; position: relative; z-index: 1; }
+.lagre-app-lukk:hover { color: #FFFFFF; }
+.lagre-app-veiledning { max-width: 420px; color: var(--fg); }
+.lysboks .lagre-app-veiledning .btn.primary { color: var(--sel-ink); }
+.lagre-app-veiledning ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+.del-ikon { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; background: var(--sunk); color: #0A84FF; vertical-align: middle; }
+.del-ikon svg { width: 17px; height: 17px; }
+@media (max-width: 520px) {
+  .lagre-app { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .lagre-app .lagre-app-knapp { grid-column: 1 / -1; grid-row: 2; width: 100%; padding: 12px; font-size: 16px; }
+  .lagre-app-lukk { grid-column: 3; grid-row: 1; }
+}
+:root[data-tema="standard"] .lagre-app { background: linear-gradient(120deg, #3F6B4A, #34503D); box-shadow: 0 12px 26px -16px rgba(47, 82, 56, .8); }
+:root[data-tema="standard"] .lagre-app-ikon, :root[data-tema="standard"] .lagre-app .lagre-app-knapp { background: #E7D3A8 !important; }
+:root[data-tema="bfportal"] .lagre-app { background: linear-gradient(310deg, #141727, #3A416F); }
+:root[data-tema="fargerik"] .lagre-app { background: linear-gradient(120deg, #8E4EC6, #D6409F 50%, #F76B15); }
+
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
 :root[data-tema="mork"] {
   --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;

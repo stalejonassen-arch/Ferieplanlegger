@@ -21,6 +21,7 @@ import { uleste } from "./lib/rapport";
 import { kanalNavn, uleste as ulesteMeldinger, type Lest, type Melding } from "./lib/chat";
 import { Chat } from "./views/Chat";
 import { FerieOversikt } from "./views/FerieOversikt";
+import { LagreSomApp } from "./views/LagreSomApp";
 
 export interface Ctx {
   d: Data;
@@ -239,6 +240,8 @@ export function App() {
           ))}
         </nav>
         </div>
+
+        <LagreSomApp />
 
         {api.modus === "demo" && (
           <div className="banner"><span><span className="chip demo">Demo</span> Eksempeldata som bare ligger i denne nettleseren. Koble til Supabase for ekte bruk.</span></div>
