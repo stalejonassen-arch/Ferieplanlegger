@@ -12,6 +12,10 @@ const erInstallert = () =>
   window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 const erIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const erIosSafari = () => erIos() && !/crios|fxios|edgios/i.test(navigator.userAgent);
+const erAndroid = () => /android/i.test(navigator.userAgent);
+/** Innebygd nettleser i Messenger, Facebook, Instagram, Gmail o.l. – der kan man ikke installere */
+const erInnebygd = () => /FBAN|FBAV|FB_IAB|Instagram|Line\/|; wv\)|GSA\//i.test(navigator.userAgent);
+const erSamsung = () => /SamsungBrowser/i.test(navigator.userAgent);
 const SKJULT = "lagre-som-app-skjult";
 
 /** Synlig stripe med «Lagre som app» – vises bare når appen ikke allerede er lagt på hjemskjermen. */
@@ -31,9 +35,9 @@ export function LagreSomApp() {
     return () => { window.removeEventListener("bygglogg-kan-installeres", kanNaa); window.removeEventListener("appinstalled", installert); };
   }, []);
 
-  const ios = erIos();
+  const ios = erIos(), android = erAndroid();
   if (ferdig || (skjult && !veiledning)) return null;
-  if (!kan && !ios) return null; // nettleser som ikke kan installere (f.eks. Firefox på PC)
+  if (!kan && !ios && !android) return null; // PC-nettleser som ikke kan installere (f.eks. Firefox)
 
   /** Når knappen er trykket én gang, skal den ikke vises igjen på denne enheten */
   const fjernForGodt = () => {
@@ -66,8 +70,22 @@ export function LagreSomApp() {
       {veiledning && (
         <div className="lysboks" role="dialog" aria-label="Slik lagrer du som app" onClick={() => { setVeiledning(false); setSkjult(true); }}>
           <div className="panel lagre-app-veiledning" onClick={(e) => e.stopPropagation()}>
-            <h2>Lagre som app på iPhone</h2>
-            {erIosSafari() ? (
+            <h2>{android ? "Lagre som app på Android" : "Lagre som app på iPhone"}</h2>
+            {android ? (erInnebygd() ? (
+              <p>Du har åpnet ByggLogg inne i en annen app (for eksempel Messenger eller e-post). Trykk på <b>⋮</b> øverst og velg <b>«Åpne i Chrome»</b>, så trykker du «Lagre som app» der.</p>
+            ) : erSamsung() ? (
+              <ol>
+                <li>Trykk på menyen <b>☰</b> nederst til høyre.</li>
+                <li>Velg <b>«Legg til side til»</b> og så <b>«Startskjerm»</b>.</li>
+                <li>Trykk <b>«Legg til»</b>.</li>
+              </ol>
+            ) : (
+              <ol>
+                <li>Trykk på de tre prikkene <b>⋮</b> øverst til høyre i Chrome.</li>
+                <li>Velg <b>«Installer app»</b> eller <b>«Legg til på startsiden»</b>.</li>
+                <li>Trykk <b>«Installer»</b> / <b>«Legg til»</b>.</li>
+              </ol>
+            )) : erIosSafari() ? (
               <ol>
                 <li>Trykk på <b>Del</b>-knappen <span className="del-ikon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v8h14v-8" /></svg></span> nederst (eller øverst på iPad).</li>

@@ -76,7 +76,7 @@ export const PL_TEKST: Record<string, string> = {
 "Rett": "Popraw", "Retter melding": "Poprawiasz wiadomość",
 "🔔 Slå på varsel når det kommer nye meldinger": "🔔 Włącz powiadomienia o nowych wiadomościach",
 "Lagre som app": "Zapisz jako aplikację", "Lagre ByggLogg som app": "Zapisz ByggLogg jako aplikację", "Få ikon på hjemskjermen og åpne appen med ett trykk.": "Ikona na ekranie głównym – otwierasz aplikację jednym dotknięciem.",
-"Ikke nå": "Nie teraz", "Lagre som app på iPhone": "Zapisz jako aplikację na iPhonie", "Skjønner": "Rozumiem",
+"Ikke nå": "Nie teraz", "Lagre som app på iPhone": "Zapisz jako aplikację na iPhonie", "Lagre som app på Android": "Zapisz jako aplikację na Androidzie", "Skjønner": "Rozumiem",
 "jan": "sty",
 "feb": "lut",
 "mar": "mar",
