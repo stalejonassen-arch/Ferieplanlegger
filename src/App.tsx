@@ -116,7 +116,7 @@ export function App() {
   );
   // Den ansattes språk følger med fra databasen
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
-  const [tema, settTema] = useState<Tema>(() => { try { return (localStorage.getItem("tema") as Tema) || "standard"; } catch { return "standard"; } });
+  const [tema, settTema] = useState<Tema>(() => { try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
   useEffect(() => { if (meg?.tema) settTema(meg.tema); }, [meg?.tema]);
   useEffect(() => {
     document.documentElement.dataset.tema = tema;
@@ -220,7 +220,7 @@ export function App() {
             </select>
             <select aria-label="Farger" className="temavalg" value={tema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              <option value="standard">Skandinavisk</option><option value="byggfag">Byggfag-blå</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              <option value="byggfag">Byggfag-blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
