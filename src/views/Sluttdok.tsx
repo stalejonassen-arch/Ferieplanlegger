@@ -7,7 +7,7 @@ import { delAdresse, eiendom, erSjekkliste, FAG, filnavn, klarForBoligmappa, lag
 
 /** Sluttdokumentasjon til kunden: utført arbeid, tilleggsarbeid, bilder. Skrives ut eller lagres som PDF fra nettleseren. */
 export function Sluttdok({ p }: { p: Prosjekt }) {
-  const { d, idag, leder, kjor } = useApp();
+  const { d, idag, leder, kjor, meg } = useApp();
   const [fdv, setFdv] = useState<{ varer: FdvVare[]; dok: FdvDok[] } | null>(null);
   const [medFdv, setMedFdv] = useState(true);
   const [visSkjulte, setVisSkjulte] = useState(false);
@@ -118,76 +118,115 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
         )}
       </section>
 
-      <article className="panel utskrift">
-        <header className="utskrift-topp">
-          <div><div className="label">N L Austnes AS</div><h1 style={{ margin: "2px 0" }}>Sluttdokumentasjon</h1></div>
-          <div className="small" style={{ textAlign: "right" }}>Larsnilsvegen 41, 6290 Haramsøy<br />Org.nr. 832 507 652<br />{langDato(idag)}</div>
+      <article className="panel utskrift rapport">
+        <header className="rp-topp">
+          <div className="rp-merke">
+            <svg viewBox="0 0 48 40" aria-hidden="true"><path d="M6 30a18 18 0 0 1 36 0" /><path d="M20 13v-3h8v3M24 10v12" /><path d="M2 30h44v4H2z" /></svg>
+            <div><b>N L Austnes AS</b><span>Tømrer · Byggevarer · Kjøkken og interiør</span></div>
+          </div>
+          <div className="rp-firma">Larsnilsvegen 41, 6290 Haramsøy<br />Org.nr. 832 507 652<br />Tlf. 70 21 01 09</div>
         </header>
-        <table className="tbl"><tbody>
-          <tr><th>Prosjekt</th><td style={{ whiteSpace: "normal" }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</td></tr>
-          {k && <tr><th>Kunde</th><td style={{ whiteSpace: "normal" }}>{k.navn}</td></tr>}
-          {adr && <tr><th>Adresse</th><td style={{ whiteSpace: "normal" }}>{adr}{e.bruksenhet ? `, bruksenhet ${e.bruksenhet}` : ""}</td></tr>}
-          {matrikkelTekst(e) && <tr><th>Eiendom</th><td style={{ whiteSpace: "normal" }}>{matrikkelTekst(e)}</td></tr>}
-          <tr><th>Utførende</th><td style={{ whiteSpace: "normal" }}>N L Austnes AS (org.nr. 832 507 652) · {e.fag}</td></tr>
-          {datoer.length > 0 && <tr><th>Utført</th><td>{langDato(datoer[0])} – {langDato(datoer[datoer.length - 1])}</td></tr>}
-          {medTimer && sumT > 0 && <tr><th>Timer</th><td>{t2(sumT)}</td></tr>}
-        </tbody></table>
-        {innledning && <p style={{ whiteSpace: "pre-wrap" }}>{innledning}</p>}
 
+        <div className="rp-tittel">
+          <div className="rp-overtittel">Sluttdokumentasjon</div>
+          <h1>{p.navn}</h1>
+          <div className="rp-meta">
+            {p.visma_nr ? <span><small>Prosjektnr.</small>{p.visma_nr}</span> : null}
+            <span><small>Dato</small>{langDato(idag)}</span>
+            <span><small>Utarbeidet av</small>{meg.navn}</span>
+          </div>
+        </div>
+
+        <section className="rp-del">
+          <h2><span>1</span>Prosjektinformasjon</h2>
+          <dl className="rp-fakta">
+            {k && <><dt>Kunde</dt><dd>{k.navn}{k.visma_nr ? <small> · kundenr. {k.visma_nr}</small> : null}</dd></>}
+            {adr && <><dt>Adresse for utførelse</dt><dd>{adr}{e.bruksenhet ? `, bruksenhet ${e.bruksenhet}` : ""}</dd></>}
+            {matrikkelTekst(e) && <><dt>Eiendom</dt><dd>{matrikkelTekst(e)}</dd></>}
+            <dt>Utførende</dt><dd>N L Austnes AS · {e.fag}</dd>
+            {datoer.length > 0 && <><dt>Utført</dt><dd>{langDato(datoer[0]!)} – {langDato(datoer[datoer.length - 1]!)}</dd></>}
+            {medTimer && sumT > 0 && <><dt>Timer</dt><dd>{t2(sumT)} timer</dd></>}
+            {tillegg.length > 0 && <><dt>Tilleggsarbeid</dt><dd>{tillegg.length} godkjent{tillegg.length === 1 ? "" : "e"}</dd></>}
+          </dl>
+          {innledning && <p className="rp-innledning">{innledning}</p>}
+        </section>
+
+        {(() => { let n = 1; const nr = () => ++n; return (<>
         {medDagbok && dagbok.length > 0 && (
-          <>
-            <h2>Utført arbeid</h2>
-            {dagbok.map((x) => <p key={x.id} style={{ margin: "0 0 6px" }}><b>{langDato(x.dato)}:</b> {x.tekst}</p>)}
-          </>
+          <section className="rp-del">
+            <h2><span>{nr()}</span>Utført arbeid</h2>
+            <table className="rp-tabell rp-logg"><thead><tr><th>Dato</th><th>Beskrivelse</th></tr></thead><tbody>
+              {dagbok.map((x) => <tr key={x.id}><td>{langDato(x.dato)}</td><td>{x.tekst}</td></tr>)}
+            </tbody></table>
+          </section>
         )}
 
         {tillegg.length > 0 && (
-          <>
-            <h2>Godkjent tilleggsarbeid</h2>
+          <section className="rp-del">
+            <h2><span>{nr()}</span>Godkjent tilleggsarbeid</h2>
             {tillegg.map((x) => (
-              <div key={x.id} style={{ marginBottom: 10, breakInside: "avoid" }}>
-                <b>{x.tittel}</b>{x.beskrivelse ? ` – ${x.beskrivelse}` : ""}
-                <div className="small">{[x.timer != null ? `${t2(x.timer)} t` : "", x.materiell].filter(Boolean).join(" · ")}</div>
-                <div className="small">Godkjent av {x.signert_navn}{x.signert_tid ? ` ${new Date(x.signert_tid).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" })}` : ""}</div>
-                {x.signatur && <img src={x.signatur} alt="Signatur" style={{ height: 50 }} />}
+              <div key={x.id} className="rp-tillegg">
+                <div><b>{x.tittel}</b>{x.beskrivelse ? <p>{x.beskrivelse}</p> : null}
+                  <small>{[x.timer != null ? `${t2(x.timer)} timer` : "", x.materiell].filter(Boolean).join(" · ")}</small></div>
+                <div className="rp-sign">
+                  {x.signatur && <img src={x.signatur} alt="Signatur" />}
+                  <small>Godkjent av {x.signert_navn}{x.signert_tid ? `, ${new Date(x.signert_tid).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" })}` : ""}</small>
+                </div>
               </div>
             ))}
-          </>
+          </section>
         )}
 
         {medBilder && bilder.length > 0 && (
-          <>
-            <h2>Bilder</h2>
-            <div className="utskrift-bilder">
-              {bilder.slice().reverse().map((b) => urler[b.sti] ? <figure key={b.id}><img src={urler[b.sti]} alt={b.tekst || "Bilde"} />{b.tekst && <figcaption className="small">{b.tekst}</figcaption>}</figure> : null)}
+          <section className="rp-del">
+            <h2><span>{nr()}</span>Bilder fra arbeidet</h2>
+            <div className="rp-bilder">
+              {bilder.slice().reverse().map((b) => urler[b.sti] ? (
+                <figure key={b.id}><img src={urler[b.sti]} alt={b.tekst || "Bilde"} />
+                  {(b.tekst || b.opprettet) && <figcaption>{b.tekst}{b.tekst && b.opprettet ? " · " : ""}{b.opprettet ? langDato(b.opprettet.slice(0, 10)) : ""}</figcaption>}
+                </figure>) : null)}
             </div>
-          </>
+          </section>
         )}
+
         {medFdv && (fdvVarer.length > 0 || kundeDok.length > 0) && (
-          <>
-            <h2>FDV-dokumentasjon</h2>
-            <p className="small" style={{ margin: "0 0 6px" }}>Forvaltning, drift og vedlikehold for produktene som er brukt. Dokumentasjonen for hver vare ligger hos NOBB (fanen «Dokumentasjon» på lenken).</p>
+          <section className="rp-del">
+            <h2><span>{nr()}</span>FDV-dokumentasjon</h2>
+            <p className="rp-ingress">Forvaltning, drift og vedlikehold for produktene som er brukt. Dokumentasjonen for hver vare ligger hos NOBB (fanen «Dokumentasjon» på lenken).</p>
             {fdvVarer.length > 0 && (
-              <table className="tbl" style={{ breakInside: "auto" }}><thead><tr><th>Produkt</th><th>NOBB-nr</th><th>Antall</th><th>Dokumentasjon</th></tr></thead><tbody>
+              <table className="rp-tabell"><thead><tr><th>Produkt</th><th>NOBB-nr.</th><th className="h">Antall</th><th>Dokumentasjon</th></tr></thead><tbody>
                 {fdvVarer.map((v) => (
-                  <tr key={v.varenr} style={{ breakInside: "avoid" }}>
-                    <td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td>
-                    <td>{v.nobb_nr}</td>
-                    <td>{v.antall ? `${t2(v.antall)} ${v.enhet.toLowerCase()}` : "–"}</td>
-                    <td style={{ whiteSpace: "normal", wordBreak: "break-all" }}>{lenke(v) && <a href={lenke(v)}>{lenke(v).replace(/^https?:\/\/(www\.)?/, "")}</a>}</td>
+                  <tr key={v.varenr}>
+                    <td>{v.beskrivelse}</td>
+                    <td className="tall">{v.nobb_nr}</td>
+                    <td className="h tall">{v.antall ? `${t2(v.antall)} ${v.enhet.toLowerCase()}` : "–"}</td>
+                    <td className="lenke">{lenke(v) && <a href={lenke(v)}>{lenke(v).replace(/^https?:\/\/(www\.)?/, "")}</a>}</td>
                   </tr>
                 ))}
               </tbody></table>
             )}
             {kundeDok.length > 0 && (
               <>
-                <h3 style={{ marginBottom: 4 }}>Vedlagte dokumenter</h3>
-                <ul style={{ margin: 0 }}>{kundeDok.map((x) => <li key={x.id}>{x.navn}</li>)}</ul>
+                <h3>Vedlagte dokumenter</h3>
+                <ul className="rp-vedlegg">{kundeDok.map((x) => <li key={x.id}>{x.navn}</li>)}</ul>
               </>
             )}
-          </>
+          </section>
         )}
-        <p className="small muted" style={{ marginTop: 16 }}>Spørsmål om arbeidet? Kontakt N L Austnes AS på 70 21 01 09.</p>
+
+        <section className="rp-del">
+          <h2><span>{nr()}</span>Garanti og reklamasjon</h2>
+          <p className="rp-ingress">Arbeidet er utført i henhold til avtale, gjeldende forskrifter og produsentenes monteringsanvisninger. Oppdager du feil eller mangler, gi oss beskjed så snart som mulig. Reklamasjon behandles etter avtalen og gjeldende lov – for forbrukere håndverkertjenesteloven, med en absolutt frist på fem år for arbeid som skal vare vesentlig lenger. Følg FDV-dokumentasjonen for riktig vedlikehold.</p>
+        </section>
+        </>); })()}
+
+        <section className="rp-signatur">
+          <div><div className="rp-linje" /><small>Overlevert av – N L Austnes AS</small><small>{meg.navn}</small></div>
+          <div><div className="rp-linje" /><small>Mottatt av kunde</small><small>{k?.navn ?? ""}</small></div>
+          <div><div className="rp-linje" /><small>Sted og dato</small></div>
+        </section>
+
+        <footer className="rp-bunn">N L Austnes AS · Org.nr. 832 507 652 · Larsnilsvegen 41, 6290 Haramsøy · Tlf. 70 21 01 09 · Spørsmål om arbeidet? Ta gjerne kontakt.</footer>
       </article>
     </>
   );
