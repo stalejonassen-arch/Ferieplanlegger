@@ -32,15 +32,20 @@ export function LagreSomApp() {
   }, []);
 
   const ios = erIos();
-  if (ferdig || skjult) return null;
+  if (ferdig || (skjult && !veiledning)) return null;
   if (!kan && !ios) return null; // nettleser som ikke kan installere (f.eks. Firefox på PC)
 
+  /** Når knappen er trykket én gang, skal den ikke vises igjen på denne enheten */
+  const fjernForGodt = () => {
+    try { localStorage.setItem(SKJULT, String(Date.now() + 10 * 365 * 864e5)); } catch { /* privat modus */ }
+  };
   const lagre = async () => {
+    fjernForGodt();
     if (lagret) {
       await lagret.prompt();
       const { outcome } = await lagret.userChoice;
       if (outcome === "accepted") setFerdig(true);
-      lagret = null; setKan(false);
+      lagret = null; setKan(false); setSkjult(true);
     } else setVeiledning(true);
   };
   const ikkeNaa = () => {
@@ -59,7 +64,7 @@ export function LagreSomApp() {
         <button className="lagre-app-lukk" onClick={ikkeNaa} aria-label="Ikke nå">×</button>
       </div>
       {veiledning && (
-        <div className="lysboks" role="dialog" aria-label="Slik lagrer du som app" onClick={() => setVeiledning(false)}>
+        <div className="lysboks" role="dialog" aria-label="Slik lagrer du som app" onClick={() => { setVeiledning(false); setSkjult(true); }}>
           <div className="panel lagre-app-veiledning" onClick={(e) => e.stopPropagation()}>
             <h2>Lagre som app på iPhone</h2>
             {erIosSafari() ? (
@@ -73,7 +78,7 @@ export function LagreSomApp() {
               <p>Åpne denne siden i <b>Safari</b> – på iPhone kan apper bare lagres på hjemskjermen derfra. Kopier adressen og lim den inn i Safari, så følger du stegene der.</p>
             )}
             <p className="small muted">Da får du ByggLogg-ikonet på hjemskjermen, og appen åpner i fullskjerm uten adresselinje.</p>
-            <div><button className="btn primary" onClick={() => setVeiledning(false)}>Skjønner</button></div>
+            <div><button className="btn primary" onClick={() => { setVeiledning(false); setSkjult(true); }}>Skjønner</button></div>
           </div>
         </div>
       )}
