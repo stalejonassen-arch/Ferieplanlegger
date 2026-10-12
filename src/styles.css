@@ -366,3 +366,23 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
 .hbar-rad .spor i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .hbar-rad .tall { font-family: var(--f-mono); font-size: 16px; text-align: right; }
 @media (max-width: 520px) { .hbar-rad { grid-template-columns: 1fr 64px; } .hbar-rad .spor { grid-column: 1 / -1; grid-row: 2; } }
+
+/* ---------- Kurs og kompetansebevis ---------- */
+.bevisliste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.bevis { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 6px 12px; padding: 10px; border: 1px solid var(--line-soft); border-left: 4px solid var(--approved);
+  border-radius: 12px; background: var(--surface); }
+.bevis.snart { border-left-color: var(--pending); }
+.bevis.utlopt { border-left-color: var(--warn); }
+.bevis-bilde { width: 84px; height: 84px; padding: 0; border: 1px solid var(--line-soft); border-radius: 8px; overflow: hidden; background: var(--sunk); cursor: pointer;
+  display: grid; place-items: center; }
+.bevis-bilde:disabled { cursor: default; }
+.bevis-bilde img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bevis-tekst { min-width: 0; }
+.bevis-tekst .t { font-weight: 700; }
+.bevis .acts { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; }
+table.kursmatrise td, table.kursmatrise th { text-align: center; }
+table.kursmatrise td:first-child, table.kursmatrise th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+table.kursmatrise td { font-family: var(--f-mono); font-size: 14px; }
+table.kursmatrise td.k-gyldig { background: color-mix(in srgb, var(--approved) 22%, transparent); }
+table.kursmatrise td.k-snart { background: color-mix(in srgb, var(--pending) 35%, transparent); }
+table.kursmatrise td.k-utlopt { background: color-mix(in srgb, var(--warn) 28%, transparent); }

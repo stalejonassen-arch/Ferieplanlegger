@@ -285,6 +285,15 @@ export function demoApi(): Api {
       liste.unshift(ny); endret(); return ny.id;
     },
     async slettUtstyr(id) { d.utstyr = (d.utstyr ?? []).filter((u) => u.id !== id || u.kilde === "visma"); endret(); },
+    async lagreKompetanse(k, fil) {
+      const liste = d.kompetanse ?? (d.kompetanse = []);
+      const x = k.id ? liste.find((y) => y.id === k.id) : undefined;
+      const fil2 = fil ? { sti: URL.createObjectURL(fil), filnavn: fil.name } : {};
+      if (x) Object.assign(x, k, fil2);
+      else liste.push({ id: nyId(), navn: "", utsteder: "", utstedt: null, gyldig_til: null, sti: null, filnavn: "", merknad: "", opprettet: new Date().toISOString(), ...k, ...fil2 });
+      endret();
+    },
+    async slettKompetanse(id) { d.kompetanse = (d.kompetanse ?? []).filter((x) => x.id !== id); endret(); },
     async utstyrBilde(id, fil) { const u = d.utstyr?.find((x) => x.id === id); if (u) u.bilde_sti = URL.createObjectURL(fil); endret(); },
     async svennKoblinger() { return [...svennKob.values()]; },
     async svennProsjekter(koblinger) {

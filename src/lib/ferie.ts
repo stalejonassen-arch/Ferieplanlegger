@@ -3,6 +3,7 @@ import type { Lesing, Rapport } from "./rapport";
 import type { Stempling } from "./timer";
 import type { Fravaer } from "./fravaer";
 import type { Utstyr, UtstyrGrenser } from "./utstyr";
+import type { Kompetanse } from "./kompetanse";
 // Ferieregler for N L Austnes AS: datoer, helligdager, saldo og regelsjekk.
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
@@ -45,6 +46,8 @@ export interface Data {
   /** Verktøy, arbeidstøy og forbruk (egne linjer, leder ser alle) */
   utstyr?: Utstyr[];
   utstyrGrenser?: UtstyrGrenser;
+  /** Kurs og kompetansebevis (alle i bedriften) */
+  kompetanse?: Kompetanse[];
   /** Regler for egenmelding (per gang / ganger per 12 måneder) */
   egenmelding?: { maksDager: number; maksGanger: number };
   /** Mål for fakturerte timer i året */

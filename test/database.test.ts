@@ -66,6 +66,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0028_boligmappa.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0029_manuell_vare.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0030_dokumenter.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0031_kompetanse.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -467,3 +468,22 @@ describe("dagbok og tilleggsarbeid", () => {
     await expect(as(STALE, "insert into public.bilder (sti, prosjekt_id, svenn_id) values ('1/p-x/b.jpg', $1, 777)", [pid])).rejects.toThrow();
   });
 });
+
+describe("kompetanse", () => {
+  it("ansatt legger inn egne bevis, leder for alle; alle ser, bare eier/leder sletter", async () => {
+    const [jim] = await as(STALE, "select id from public.ansatte where epost = $1", [JIM]);
+    const [mads] = await as(STALE, "select id from public.ansatte where epost = $1", [MADS]);
+    // Jim prøver å legge inn på Mads – havner på Jim selv
+    const [r1] = await as(JIM, "insert into public.kompetanse (ansatt_id, type, navn, gyldig_til) values ($1, 'stillas', 'Stillaskurs', '2030-01-01') returning ansatt_id", [mads.id]);
+    expect(r1.ansatt_id).toBe(jim.id);
+    // Leder legger inn for Mads
+    const [r2] = await as(STALE, "insert into public.kompetanse (ansatt_id, type, navn) values ($1, 'hoyde', 'Arbeid i høyden') returning id, ansatt_id", [mads.id]);
+    expect(r2.ansatt_id).toBe(mads.id);
+    // Jim ser begge, men kan ikke slette Mads sitt
+    expect((await as(JIM, "select id from public.kompetanse")).length).toBe(2);
+    await as(JIM, "delete from public.kompetanse where id = $1", [r2.id]);
+    expect((await as(STALE, "select id from public.kompetanse")).length).toBe(2);
+    expect((await as(null, "select id from public.kompetanse").catch(() => []))).toEqual([]);
+  });
+});
+

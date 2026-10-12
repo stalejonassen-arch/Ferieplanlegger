@@ -15,6 +15,8 @@ import { Avvik } from "./views/Avvik";
 import { Rapporter, lesRapport } from "./views/Rapporter";
 import { Sykdom } from "./views/Sykdom";
 import { Utstyr } from "./views/Utstyr";
+import { Kompetanse } from "./views/Kompetanse";
+import { trengerFornyelse } from "./lib/kompetanse";
 import { uleste } from "./lib/rapport";
 
 export interface Ctx {
@@ -41,10 +43,10 @@ const IKON: Record<string, React.ReactNode> = {
 };
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "prosjekter" | "avvik" | "utstyr" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "prosjekter", "avvik", "utstyr", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -124,8 +126,10 @@ export function App() {
   const faner: [Fane, string][] = [["timer", "Timer"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
-  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) ? fane : "timer";
+  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
+  const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
+  const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
 
@@ -155,11 +159,12 @@ export function App() {
 
         <nav className="tabs hoved" role="tablist">
           {faner.map(([f, navn]) => (
-            <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie)} onClick={() => velg(f)}
-              ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
+            <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr)} onClick={() => velg(f)}
+              ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
               <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{IKON[f]}</svg>
               {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
+              {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
               {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
             </button>
           ))}
@@ -180,10 +185,18 @@ export function App() {
           </div>
         )}
 
+        {iUtstyr && (
+          <nav className="tabs undertabs" role="tablist">
+            <button role="tab" aria-selected={aktiv === "utstyr"} onClick={() => velg("utstyr")}>Utstyr</button>
+            <button role="tab" aria-selected={aktiv === "kurs"} onClick={() => velg("kurs")}>Kurs og bevis{kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}</button>
+          </nav>
+        )}
+
         {aktiv === "timer" && <Timer />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
         {aktiv === "utstyr" && <Utstyr />}
+        {aktiv === "kurs" && <Kompetanse />}
         {aktiv === "rapporter" && <Rapporter />}
         {aktiv === "syk" && <Sykdom />}
         {aktiv === "min" && <MinFerie />}

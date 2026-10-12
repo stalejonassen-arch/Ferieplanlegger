@@ -7,6 +7,7 @@ import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
 import type { FravaerType } from "./fravaer";
 import { STANDARD_KVOTER, type Kvoter, type Utstyr } from "./utstyr";
+import type { Kompetanse } from "./kompetanse";
 import type { Kobling, importRader } from "./svenn";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
@@ -92,6 +93,9 @@ export interface Api {
   slettUtstyr(id: string, bilde_sti: string | null): Promise<void>;
   /** Bilde av verktøyet (erstatter et tidligere bilde) */
   utstyrBilde(id: string, fil: File, gammel: string | null): Promise<void>;
+  /** Kurs/kompetansebevis: lagre (ny eller endret), med kopi av beviset (bilde/PDF) */
+  lagreKompetanse(k: Partial<Kompetanse> & { ansatt_id: string; type: string }, fil?: File | null): Promise<void>;
+  slettKompetanse(id: string, sti: string | null): Promise<void>;
   /** Leder: grenser for arbeidstøy og verktøy (kr per ansatt per år, 0 = ingen) og måneder før samme vare igjen */
   settUtstyrGrenser(arbeidstoy: number, verktoy: number, sammeMnd: number): Promise<void>;
   /** Leder: kvoter på antall per plaggtype */
@@ -158,7 +162,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -178,6 +182,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("prosjekt_ordre").select("visma_ordrenr, prosjekt_id, kunde_nr, transaksjonstype, ordretype, fakturert, kostnad, ordredato, ferdig").order("visma_ordrenr"), 20000),
         alle(() => sb.from("fakturerte_timer").select("visma_ordrenr, linjenr, ordredato, fakturadato, fakturanr, kunde_id, prosjekt_id, antall, fakturert, ikke_fakturert, pris").order("visma_ordrenr").order("linjenr"), 20000),
         alle(() => sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad, bytte_avklart").order("dato", { ascending: false }).order("id"), 20000),
+        sb.from("kompetanse").select("*").order("gyldig_til", { ascending: true, nullsFirst: false }).limit(5000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -190,6 +195,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         egetKundenr: b0.eget_kundenr == null ? null : Number(b0.eget_kundenr),
         timepris: b0.timepris == null ? null : Number(b0.timepris),
         fakturerteTimer: fakt.error ? [] : (fakt.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), fakturert: Number(x.fakturert), ikke_fakturert: Number(x.ikke_fakturert), pris: Number(x.pris) })),
+        kompetanse: kompetanse.error ? [] : kompetanse.data,
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -217,6 +223,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "stempling" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "fravaer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "utstyr" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "kompetanse" }, snart)
         .subscribe();
       return () => { sb.removeChannel(ch); };
     },
@@ -367,6 +374,29 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettUtstyr(id, bilde_sti) {
       ok(await sb.from("utstyr").delete().eq("id", id));
       if (bilde_sti) await sb.storage.from("bilder").remove([bilde_sti]);
+    },
+    async lagreKompetanse(k, fil) {
+      let sti: string | undefined; let filnavn: string | undefined;
+      if (fil) {
+        if (fil.size > 25 * 1024 * 1024) throw new Error("Filen er større enn 25 MB.");
+        const ext = (fil.name.match(/\.(\w+)$/)?.[1] ?? "").toLowerCase();
+        const type = ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : /jpe?g/.test(ext) ? "image/jpeg" : fil.type;
+        if (!/^(application\/pdf|image\/(jpeg|png))$/.test(type)) throw new Error("Last opp beviset som bilde (JPG/PNG) eller PDF.");
+        const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+        const data = type.startsWith("image/") ? await komprimer(fil) : fil;
+        sti = `${bedrift}/k-${k.ansatt_id}/${crypto.randomUUID()}.${type === "application/pdf" ? "pdf" : "jpg"}`;
+        filnavn = fil.name;
+        ok(await sb.storage.from("dokumenter").upload(sti, data, { contentType: type === "application/pdf" ? type : "image/jpeg" }));
+      }
+      const { id, opprettet: _o, ...rad } = k;
+      const r = id ? await sb.from("kompetanse").update({ ...rad, ...(sti ? { sti, filnavn } : {}) }).eq("id", id)
+        : await sb.from("kompetanse").insert({ ...rad, ...(sti ? { sti, filnavn } : {}) });
+      if (r.error) { if (sti) await sb.storage.from("dokumenter").remove([sti]); throw r.error; }
+      if (id && sti && k.sti) await sb.storage.from("dokumenter").remove([k.sti]);
+    },
+    async slettKompetanse(id, sti) {
+      ok(await sb.from("kompetanse").delete().eq("id", id));
+      if (sti) await sb.storage.from("dokumenter").remove([sti]);
     },
     async utstyrBilde(id, fil, gammel) {
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
