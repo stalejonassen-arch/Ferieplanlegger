@@ -121,7 +121,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
       <article className="panel utskrift rapport">
         <header className="rp-topp">
           <div className="rp-merke">
-            <svg viewBox="0 0 48 40" aria-hidden="true"><path d="M6 30a18 18 0 0 1 36 0" /><path d="M20 13v-3h8v3M24 10v12" /><path d="M2 30h44v4H2z" /></svg>
+            <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg>
             <div><b>N L Austnes AS</b><span>Tømrer · Byggevarer · Kjøkken og interiør</span></div>
           </div>
           <div className="rp-firma">Larsnilsvegen 41, 6290 Haramsøy<br />Org.nr. 832 507 652<br />Tlf. 70 21 01 09</div>
