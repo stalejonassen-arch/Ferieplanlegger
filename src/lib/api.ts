@@ -488,5 +488,17 @@ function supabaseApi(sb: SupabaseClient): Api {
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const api: Api = url && key ? supabaseApi(createClient(url, key)) : demoApi();
+/** «?demo» i adressen gir en prøveversjon med eksempeldata – ingenting lagres i den ekte databasen. «?demo=av» går tilbake. */
+function demoValgt(): boolean {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.has("demo")) {
+      if (q.get("demo") === "av") sessionStorage.removeItem("bygglogg-demo"); else sessionStorage.setItem("bygglogg-demo", "1");
+      history.replaceState(null, "", location.pathname + location.hash);
+    }
+    return sessionStorage.getItem("bygglogg-demo") === "1";
+  } catch { return false; }
+}
+
+export const api: Api = url && key && !demoValgt() ? supabaseApi(createClient(url, key)) : demoApi();
 export type { Soknad };
