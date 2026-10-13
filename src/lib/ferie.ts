@@ -27,6 +27,10 @@ export interface Ansatt {
   /** Språk i appen: nb (norsk) eller pl (polsk) */
   sprak?: "nb" | "pl";
   tema?: Tema;
+  /** Vis kampanjer fra Byggfag (DM) i appen */
+  vis_kampanjer?: boolean;
+  /** Kampanjer den ansatte har skjult */
+  skjulte_kampanjer?: string[];
   /** Telles med i oversikten over kundetimer og interntid */
   i_timerapport?: boolean;
   lunsj_min?: number;
@@ -38,6 +42,9 @@ export interface Soknad {
   id: string; ansatt_id: string; fra: string; til: string; merknad: string; status: Status;
   kommentar: string; behandlet_av: string | null; behandlet_tid: string | null; opprettet: string;
 }
+/** Kampanje fra Byggfag (DM). sider = bildestier (én per side). */
+export interface Kampanje { id: string; tittel: string; tekst: string; fra: string; til: string; lenke: string | null; sider: string[]; opprettet: string }
+
 export interface Data {
   avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
@@ -57,6 +64,8 @@ export interface Data {
   /** Omsetning per måned fra Visma (bare leder) og omsetningsmål for året */
   omsetning?: { aar: number; mnd: number; belop: number; oppdatert: string }[];
   maalOmsetning?: number | null;
+  /** Kampanjer fra Byggfag (DM) */
+  kampanjer?: Kampanje[];
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
   /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */

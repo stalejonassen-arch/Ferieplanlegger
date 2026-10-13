@@ -5,6 +5,7 @@ import { sorterAnsatte, type Ansatt } from "../lib/ferie";
 import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
 import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, lesXlsx, svennBildetekst, svennProsjekter, type Kobling, type SvennFil, type SvennProsjekt, type SvennRad } from "../lib/svenn";
 import type { SvennResultat } from "../lib/api";
+import { KampanjeOppsett } from "./Kampanjer";
 
 export function Oppsett() {
   const { d, aar, kjor } = useApp();
@@ -123,6 +124,7 @@ export function Oppsett() {
           </table>
         </div>
       </section>
+      <KampanjeOppsett />
       <UtstyrOppsett lagre={lagre} />
       <SvennImport />
       <SvennDokumentasjon />

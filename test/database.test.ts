@@ -73,6 +73,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0035_tema_standard_byggfag.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0036_tema_bfportal.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0037_omsetning.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0038_kampanjer.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -515,5 +516,28 @@ describe("meldinger", () => {
     expect(await as(MADS, "select kanal from public.kanal_lest")).toHaveLength(1);
     expect(await as(JIM, "select kanal from public.kanal_lest")).toHaveLength(0);
     expect(stale.id).toBeTruthy();
+  });
+});
+
+describe("kampanjer", () => {
+  it("bare leder legger inn; alle ser; hver ansatt skjuler for seg selv", async () => {
+    await expect(as(JIM, "insert into public.kampanjer (tittel, fra, til) values ('DM', '2026-10-01', '2026-10-20')")).rejects.toThrow();
+    const [k] = await as(STALE, "insert into public.kampanjer (tittel, fra, til, sider) values ('DM 9', '2026-10-01', '2026-10-20', '{1/kampanjer/a.jpg}') returning id");
+    expect(await as(JIM, "select id from public.kampanjer")).toHaveLength(1);
+    await as(JIM, "update public.kampanjer set tittel = 'hack' where id = $1", [k.id]);
+    expect((await as(STALE, "select tittel from public.kampanjer"))[0].tittel).toBe("DM 9");
+    await expect(as(STALE, "insert into public.kampanjer (tittel, fra, til) values ('Feil', '2026-10-20', '2026-10-01')")).rejects.toThrow();
+    await as(JIM, "select public.skjul_kampanje($1)", [k.id]);
+    await as(JIM, "select public.skjul_kampanje($1)", [k.id]);
+    await as(MADS, "select public.sett_vis_kampanjer(false)");
+    const rader = await as(STALE, "select epost, vis_kampanjer, skjulte_kampanjer from public.ansatte where epost in ($1, $2, $3) order by epost", [JIM, MADS, STALE]);
+    const p = (e: string) => rader.find((r: any) => r.epost === e);
+    expect(p(JIM).skjulte_kampanjer).toEqual([k.id]);
+    expect(p(MADS).vis_kampanjer).toBe(false);
+    expect(p(STALE).vis_kampanjer).toBe(true);
+    await as(JIM, "delete from public.kampanjer where id = $1", [k.id]);
+    expect(await as(STALE, "select id from public.kampanjer")).toHaveLength(1);
+    await as(STALE, "delete from public.kampanjer where id = $1", [k.id]);
+    expect(await as(JIM, "select id from public.kampanjer")).toHaveLength(0);
   });
 });

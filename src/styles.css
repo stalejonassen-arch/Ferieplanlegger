@@ -1068,3 +1068,31 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 /* Temavelger i toppen */
 header.top select.temavalg { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.55); padding: 4px 8px; font-size: 14px; }
 header.top select.temavalg option { color: #10162E; }
+
+/* ---------- Kampanjer fra Byggfag (DM) ---------- */
+.kampanje { position: relative; border-top: 4px solid #FFCD00; }
+.kampanje-topp { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.kampanje-topp h2 { margin: 6px 0 2px; }
+.kampanje-chip { background: #FFCD00; color: #0B1F5C; font-weight: 700; }
+.kampanje-lukk { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
+.kampanje-lukk:hover { color: var(--fg); border-color: var(--fg); }
+.kampanje-skjul { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; padding: 10px; border-radius: 10px; background: var(--sunk); }
+.kampanje-tekst { margin: 8px 0 0; }
+.kampanje-sider { display: flex; gap: 10px; overflow-x: auto; padding: 12px 2px 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.kampanje-side { position: relative; flex: none; width: 150px; aspect-ratio: 210 / 297; padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--sunk); cursor: zoom-in; scroll-snap-align: start; box-shadow: 0 2px 8px rgba(11, 31, 92, .12); }
+.kampanje-side img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.kampanje-sider.liten .kampanje-side { width: 84px; cursor: pointer; }
+.kampanje-side.fjernet img { opacity: .25; }
+.kampanje-fjern { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, .65); color: #FFF; font-size: 14px; line-height: 22px; text-align: center; }
+.kampanje-laster { display: block; width: 100%; height: 100%; background: linear-gradient(90deg, var(--sunk), var(--line), var(--sunk)); background-size: 200% 100%; animation: kampanje-glans 1.2s linear infinite; }
+@keyframes kampanje-glans { to { background-position: -200% 0; } }
+.kampanje-lys img { max-height: calc(100vh - 90px); background: #FFF; }
+.kampanje-lys .row { align-items: center; color: #FFF; }
+.kampanje-liste { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.kampanje-liste li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.kampanje-skjema { display: grid; gap: 10px; }
+.kampanjer-av { text-align: center; margin: 18px 0 6px; }
+.lenkeknapp { background: none; border: 0; padding: 0; color: var(--accent, inherit); text-decoration: underline; cursor: pointer; font: inherit; }
+@media (max-width: 560px) { .kampanje-side { width: 118px; } }
+.kampanje-topp h2 { font-size: 1.2rem; line-height: 1.25; }
+@media (max-width: 560px) { .kampanje-side { width: 104px; } .kampanje-sider { padding: 10px 2px 6px; } }

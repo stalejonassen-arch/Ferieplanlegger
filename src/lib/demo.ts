@@ -62,6 +62,7 @@ function startdata(): Data {
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
+    kampanjer: demoKampanjer(),
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
     utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) } };
 }
@@ -400,6 +401,18 @@ export function demoApi(): Api {
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async settMittSprak(sprak) { const m = meg(); if (m) m.sprak = sprak; endret(); },
     async settMittTema(tema) { const m = meg(); if (m) m.tema = tema; endret(); },
+    async lagreKampanje(k, nyeSider = [], fjern = []) {
+      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const liste = (d.kampanjer ??= []);
+      const sider = [...(k.sider ?? []).filter((s) => !fjern.includes(s)), ...nyeSider.map((b) => URL.createObjectURL(b))];
+      const g = k.id ? liste.find((x) => x.id === k.id) : undefined;
+      const rad = { tittel: k.tittel, tekst: k.tekst ?? "", fra: k.fra, til: k.til, lenke: k.lenke || null, sider };
+      if (g) Object.assign(g, rad); else liste.unshift({ id: nyId(), opprettet: new Date().toISOString(), ...rad });
+      endret();
+    },
+    async slettKampanje(id) { d.kampanjer = (d.kampanjer ?? []).filter((x) => x.id !== id); endret(); },
+    async settVisKampanjer(vis) { const m = meg(); if (m) m.vis_kampanjer = vis; endret(); },
+    async skjulKampanje(id) { const m = meg(); if (m) m.skjulte_kampanjer = [...(m.skjulte_kampanjer ?? []), id]; endret(); },
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },
     async lagreEiendom(id, e) { const p = d.prosjekter.find((x) => x.id === id); if (p) Object.assign(p, e); endret(); },
     async settFastpris(id, fastpris) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fastpris = fastpris; endret(); },
@@ -418,4 +431,32 @@ export function demoApi(): Api {
       endret();
     },
   };
+}
+
+/** Eksempel på en DM-kampanje i demoen: fire enkle sider tegnet som SVG */
+function demoKampanjer(): Data["kampanjer"] {
+  const idag = isoOf(new Date());
+  const side = (tittel: string, varer: [string, string, string][], farge: string) => {
+    const rader = varer.map(([navn, pris, foer], i) => {
+      const y = 330 + i * 250;
+      return `<rect x="40" y="${y}" width="760" height="220" rx="18" fill="#FFFFFF"/><rect x="60" y="${y + 20}" width="180" height="180" rx="12" fill="#E8ECF6"/>`
+        + `<text x="270" y="${y + 70}" font-size="34" font-weight="700" fill="#0B1F5C">${navn}</text>`
+        + `<text x="270" y="${y + 115}" font-size="24" fill="#5A6278">Før ${foer}</text>`
+        + `<rect x="560" y="${y + 120}" width="220" height="80" rx="40" fill="#FFCD00"/><text x="670" y="${y + 173}" font-size="40" font-weight="800" text-anchor="middle" fill="#0B1F5C">${pris}</text>`;
+    }).join("");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1188" font-family="Arial, sans-serif"><rect width="840" height="1188" fill="${farge}"/>`
+      + `<rect width="840" height="280" fill="#0B1F5C"/><text x="40" y="120" font-size="36" fill="#FFCD00" font-weight="700">DEMO-KAMPANJE</text>`
+      + `<text x="40" y="200" font-size="64" fill="#FFFFFF" font-weight="800">${tittel}</text>${rader}</svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  };
+  return [{
+    id: "demo-kampanje", tittel: "Høstkampanje (eksempel)", tekst: "Eksempel på hvordan en DM-kampanje vises. Tips kundene om tilbudene!",
+    fra: addDays(idag, -3), til: addDays(idag, 11), lenke: null, opprettet: new Date().toISOString(),
+    sider: [
+      side("Høstkupp", [["Drill/skrutrekker 18 V", "1 990,-", "2 790,-"], ["Kappsag 216 mm", "3 490,-", "4 290,-"], ["Batteripakke 2 stk", "1 290,-", "1 790,-"]], "#F3F5FA"),
+      side("Terrasse og ute", [["Terrassebord 28x120", "19,90 lm", "24,90 lm"], ["Terrasseskruer 1000 stk", "449,-", "599,-"], ["Beis 2,7 L", "399,-", "529,-"]], "#F6F2EB"),
+      side("Isolasjon og tak", [["Isolasjon 200 mm", "89,- pk", "119,- pk"], ["Takpapp 10 m²", "699,-", "849,-"], ["Lekter 23x48", "8,90 lm", "11,50 lm"]], "#F3F5FA"),
+      side("Maling", [["Innendørs maling 9 L", "899,-", "1 199,-"], ["Grunning 3 L", "299,-", "399,-"], ["Rull og brett", "149,-", "219,-"]], "#F6F2EB"),
+    ],
+  }];
 }

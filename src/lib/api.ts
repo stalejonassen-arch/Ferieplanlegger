@@ -1,7 +1,7 @@
 // Datalaget. Med Supabase-nøkler i .env brukes ekte database; uten nøkler
 // starter appen i demomodus med eksempeldata, så den kan prøves uten oppsett.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Ansatt, Avdeling, Data, Soknad, Status, Tema } from "./ferie";
+import type { Ansatt, Avdeling, Data, Kampanje, Soknad, Status, Tema } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
@@ -60,6 +60,13 @@ export interface Api {
   /** Mitt språk i appen */
   settMittSprak(sprak: "nb" | "pl"): Promise<void>;
   settMittTema(tema: Tema): Promise<void>;
+  /** Leder: lagre kampanje (DM). nyeSider legges til bak eksisterende, fjern = stier som tas bort. */
+  lagreKampanje(k: Partial<Kampanje> & { tittel: string; fra: string; til: string }, nyeSider?: Blob[], fjern?: string[]): Promise<void>;
+  slettKampanje(id: string, sider: string[]): Promise<void>;
+  /** Mitt valg: vis kampanjer i appen eller ikke */
+  settVisKampanjer(vis: boolean): Promise<void>;
+  /** Skjul én kampanje for meg */
+  skjulKampanje(id: string): Promise<void>;
   /** Meldinger (chat): alle kanaler jeg kan se, siste ~3000 */
   meldinger(): Promise<Melding[]>;
   kanalLest(): Promise<Lest>;
@@ -174,7 +181,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -196,6 +203,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad, bytte_avklart").order("dato", { ascending: false }).order("id"), 20000),
         sb.from("kompetanse").select("*").order("gyldig_til", { ascending: true, nullsFirst: false }).limit(5000),
         sb.from("omsetning_mnd").select("aar, mnd, belop, oppdatert").order("aar").order("mnd"),
+        sb.from("kampanjer").select("id, tittel, tekst, fra, til, lenke, sider, opprettet").order("fra", { ascending: false }).limit(100),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -211,6 +219,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         kompetanse: kompetanse.error ? [] : kompetanse.data,
         omsetning: omsetning.error ? [] : (omsetning.data as any[]).map((x) => ({ ...x, belop: Number(x.belop) })),
         maalOmsetning: b0.maal_omsetning_aar == null ? null : Number(b0.maal_omsetning_aar),
+        kampanjer: kampanjer.error ? [] : kampanjer.data,
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -231,6 +240,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "prosjekter" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "kampanjer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "dagbok" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "tillegg" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "rapporter" }, snart)
@@ -442,6 +452,30 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
+    async lagreKampanje(k, nyeSider = [], fjern = []) {
+      const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+      const lastet: string[] = [];
+      try {
+        for (const b of nyeSider) {
+          const sti = `${bedrift}/kampanjer/${crypto.randomUUID()}.jpg`;
+          ok(await sb.storage.from("bilder").upload(sti, b, { contentType: b.type || "image/jpeg" }));
+          lastet.push(sti);
+        }
+        const sider = [...(k.sider ?? []).filter((s) => !fjern.includes(s)), ...lastet];
+        const rad = { tittel: k.tittel, tekst: k.tekst ?? "", fra: k.fra, til: k.til, lenke: k.lenke || null, sider };
+        ok(k.id ? await sb.from("kampanjer").update(rad).eq("id", k.id) : await sb.from("kampanjer").insert(rad));
+      } catch (e) {
+        if (lastet.length) await sb.storage.from("bilder").remove(lastet);
+        throw e;
+      }
+      if (fjern.length) await sb.storage.from("bilder").remove(fjern);
+    },
+    async slettKampanje(id, sider) {
+      ok(await sb.from("kampanjer").delete().eq("id", id));
+      if (sider.length) await sb.storage.from("bilder").remove(sider);
+    },
+    async settVisKampanjer(vis) { ok(await sb.rpc("sett_vis_kampanjer", { vis })); },
+    async skjulKampanje(kampanje) { ok(await sb.rpc("skjul_kampanje", { kampanje })); },
     async meldinger() {
       const r = await sb.from("meldinger").select("id, ansatt_id, kanal, tekst, bilde_sti, opprettet, endret").order("opprettet", { ascending: false }).limit(3000);
       return r.error ? [] : (r.data as Melding[]).reverse();
