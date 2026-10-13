@@ -1127,3 +1127,13 @@ header.top select.temavalg option { color: #10162E; }
 .vaer-skjul { position: absolute; top: -4px; right: -4px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
 .vaer-skjul:hover { color: var(--fg); border-color: var(--fg); }
 .vaer-vis { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+
+/* ---------- Push-varsler ---------- */
+.varsel-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; margin: 0 0 12px;
+  border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 8px 20px -16px rgba(11, 31, 92, .6); }
+.varsel-ikon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: #FFCD00; font-size: 22px; }
+.varsel-tekst { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.varsel-tekst span { font-size: 13.5px; color: var(--muted); }
+.varsel-lukk { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+.chat-varsel.paa { cursor: default; border-style: solid; }
+@media (max-width: 560px) { .varsel-banner { grid-template-columns: auto minmax(0, 1fr) auto; } .varsel-banner .btn { grid-column: 2 / 4; justify-self: start; } .varsel-lukk { grid-column: 3; grid-row: 1; } }

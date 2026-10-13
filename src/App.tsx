@@ -24,6 +24,8 @@ import { FerieOversikt } from "./views/FerieOversikt";
 import { LagreSomApp } from "./views/LagreSomApp";
 import { KampanjeKort, KampanjerAv } from "./views/Kampanjer";
 import { Vaer } from "./views/Vaer";
+import { VarselBanner } from "./views/Varsler";
+import { fornyPush } from "./lib/push";
 
 export interface Ctx {
   d: Data;
@@ -117,6 +119,8 @@ export function App() {
     () => d?.ansatte.find((a) => a.aktiv && a.epost?.toLowerCase() === epost?.toLowerCase()),
     [d, epost],
   );
+  // Push-varsler: hold abonnementet oppdatert i databasen
+  useEffect(() => { if (meg?.id) fornyPush(); }, [meg?.id]);
   // Den ansattes språk følger med fra databasen
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
   const [tema, settTema] = useState<Tema>(() => { try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
@@ -262,7 +266,7 @@ export function App() {
           </nav>
         )}
 
-        {aktiv === "timer" && <><Vaer /><KampanjeKort /><Timer /><KampanjerAv /></>}
+        {aktiv === "timer" && <><VarselBanner /><Vaer /><KampanjeKort /><Timer /><KampanjerAv /></>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}

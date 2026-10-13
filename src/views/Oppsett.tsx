@@ -105,10 +105,10 @@ export function Oppsett() {
         <p className="small muted">Brukes i lønnsgrunnlaget. Overtid regnes når uka går over normaltiden. Ansatte med lunsjtrekk får lunsj trukket på dager over 5,5 timer der lunsj ikke er registrert. Ansattnr er det samme nummeret som i Svenn og følger med i lønnsfilene. «I timerapport» styrer hvem som telles i oversikten over kundetimer og interntid (snekkere og allround).</p>
         <div className="scroll" style={{ border: 0 }}>
           <table className="tbl">
-            <thead><tr><th>Ansatt</th><th>Ansattnr (Svenn)</th><th>Normaltid per uke</th><th>Lunsjtrekk</th><th>Lunsj (min)</th><th>I timerapport</th></tr></thead>
+            <thead><tr><th>Ansatt</th><th>Ansattnr (Svenn)</th><th>Normaltid per uke</th><th>Lunsjtrekk</th><th>Lunsj (min)</th><th>I timerapport</th><th>Varsel nye prosjekter</th></tr></thead>
             <tbody>
               {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => (
-                <tr key={`${a.id}-${a.normaltid_uke}-${a.lunsjtrekk}-${a.lunsj_min}-${a.i_timerapport}-${a.ansattnr}`}>
+                <tr key={`${a.id}-${a.normaltid_uke}-${a.lunsjtrekk}-${a.lunsj_min}-${a.i_timerapport}-${a.varsel_prosjekt}-${a.ansattnr}`}>
                   <td>{a.navn}</td>
                   <td><input type="text" inputMode="numeric" aria-label={`Ansattnr ${a.navn}`} style={{ width: 90 }} defaultValue={a.ansattnr ?? ""}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v !== (a.ansattnr ?? "")) lagre(a, { ansattnr: v || null }); }} /></td>
@@ -118,6 +118,7 @@ export function Oppsett() {
                   <td><input type="number" aria-label={`Lunsj minutter ${a.navn}`} min={0} max={120} step={5} style={{ width: 80 }} defaultValue={a.lunsj_min ?? 30}
                     onBlur={(e) => { const v = Math.max(0, Math.min(120, Number(e.target.value) || 0)); if (v !== (a.lunsj_min ?? 30)) lagre(a, { lunsj_min: v }); }} /></td>
                   <td><input type="checkbox" aria-label={`I timerapport ${a.navn}`} checked={a.i_timerapport !== false} onChange={(e) => lagre(a, { i_timerapport: e.target.checked })} /></td>
+                  <td><input type="checkbox" aria-label={`Varsel om nye prosjekter til ${a.navn}`} checked={a.varsel_prosjekt !== false} onChange={(e) => lagre(a, { varsel_prosjekt: e.target.checked })} /></td>
                 </tr>
               ))}
             </tbody>

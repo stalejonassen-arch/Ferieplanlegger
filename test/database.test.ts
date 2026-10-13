@@ -74,6 +74,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0036_tema_bfportal.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0037_omsetning.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0038_kampanjer.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -539,5 +540,21 @@ describe("kampanjer", () => {
     expect(await as(STALE, "select id from public.kampanjer")).toHaveLength(1);
     await as(STALE, "delete from public.kampanjer where id = $1", [k.id]);
     expect(await as(JIM, "select id from public.kampanjer")).toHaveLength(0);
+  });
+});
+
+describe("push-varsler", () => {
+  it("hver ansatt melder på sin egen enhet; ingen kan lese abonnementer eller nøkler", async () => {
+    await as(JIM, "select public.lagre_push('https://push.example/abc', 'p', 'a')");
+    await as(MADS, "select public.lagre_push('https://push.example/def', 'p', 'a')");
+    await expect(as(JIM, "select * from public.push_abonnement")).rejects.toThrow();
+    await expect(as(JIM, "select * from public.push_noekler")).rejects.toThrow();
+    await expect(as(JIM, "select public.lagre_push('http://usikker', 'p', 'a')")).rejects.toThrow();
+    // Jim kan ikke melde av Mads sin enhet
+    await as(JIM, "select public.slett_push('https://push.example/def')");
+    const r = await db.query("select endpoint from public.push_abonnement order by endpoint");
+    expect(r.rows.map((x: any) => x.endpoint)).toEqual(["https://push.example/abc", "https://push.example/def"]);
+    // Ny melding fyrer utløseren uten feil (pg_net finnes ikke i testen)
+    await as(JIM, "insert into public.meldinger (kanal, tekst) values ('felles', 'Test varsel')");
   });
 });

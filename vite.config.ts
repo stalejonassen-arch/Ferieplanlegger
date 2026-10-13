@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "apple-touch-icon.png"],
+      includeAssets: ["icon.svg", "apple-touch-icon.png", "push-sw.js"],
       manifest: {
         name: "ByggLogg – N L Austnes",
         short_name: "ByggLogg",
@@ -23,7 +23,7 @@ export default defineConfig({
           { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
         ]
       },
-      workbox: { navigateFallbackDenylist: [/^\/auth/], skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true }
+      workbox: { importScripts: ["push-sw.js"], navigateFallbackDenylist: [/^\/auth/], skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true }
     })
   ],
   test: { environment: "node", include: ["test/**/*.test.ts"] }

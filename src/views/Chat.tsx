@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { VarselBryter } from "./Varsler";
 import { useApp } from "../App";
 import { api, feiltekst } from "../lib/api";
 import { FELLES, dmKanal, erDm, initialer, kanalNavn, kanaler, motpart, personFarge, prosjektKanal, tidTekst, type Melding } from "../lib/chat";
@@ -22,9 +23,7 @@ export function Chat() {
           <h2>Meldinger</h2>
           <button className="btn sm primary" onClick={() => setNy(!ny)} aria-expanded={ny}>{ny ? "Lukk" : "+ Ny"}</button>
         </div>
-        {"Notification" in window && Notification.permission === "default" && (
-          <button className="chat-varsel" onClick={() => Notification.requestPermission().then(() => setNy((x) => x))}>🔔 Slå på varsel når det kommer nye meldinger</button>
-        )}
+        <VarselBryter />
         {ny && (
           <div className="chat-ny">
             <label className="field"><span className="label">Skriv til en kollega</span>

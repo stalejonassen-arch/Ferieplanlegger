@@ -63,6 +63,9 @@ export interface Api {
   /** Leder: lagre kampanje (DM). nyeSider legges til bak eksisterende, fjern = stier som tas bort. */
   lagreKampanje(k: Partial<Kampanje> & { tittel: string; fra: string; til: string }, nyeSider?: Blob[], fjern?: string[]): Promise<void>;
   slettKampanje(id: string, sider: string[]): Promise<void>;
+  /** Push-varsler: meld på/av denne enheten */
+  lagrePush(endpoint: string, p256dh: string, auth: string): Promise<void>;
+  slettPush(endpoint: string): Promise<void>;
   /** Mitt valg: vis kampanjer i appen eller ikke */
   settVisKampanjer(vis: boolean): Promise<void>;
   /** Skjul én kampanje for meg */
@@ -478,6 +481,8 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (sider.length) await sb.storage.from("bilder").remove(sider);
     },
     async settVisKampanjer(vis) { ok(await sb.rpc("sett_vis_kampanjer", { vis })); },
+    async lagrePush(endpoint, p256dh, auth) { ok(await sb.rpc("lagre_push", { endpoint, p256dh, auth })); },
+    async slettPush(endpoint) { ok(await sb.rpc("slett_push", { endpoint })); },
     async skjulKampanje(kampanje) { ok(await sb.rpc("skjul_kampanje", { kampanje })); },
     async meldinger() {
       const r = await sb.from("meldinger").select("id, ansatt_id, kanal, tekst, bilde_sti, opprettet, endret").order("opprettet", { ascending: false }).limit(3000);

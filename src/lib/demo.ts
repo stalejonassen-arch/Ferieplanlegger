@@ -411,6 +411,8 @@ export function demoApi(): Api {
       endret();
     },
     async slettKampanje(id) { d.kampanjer = (d.kampanjer ?? []).filter((x) => x.id !== id); endret(); },
+    async lagrePush() { /* ikke i demo */ },
+    async slettPush() { /* ikke i demo */ },
     async settVisKampanjer(vis) { const m = meg(); if (m) m.vis_kampanjer = vis; endret(); },
     async skjulKampanje(id) { const m = meg(); if (m) m.skjulte_kampanjer = [...(m.skjulte_kampanjer ?? []), id]; endret(); },
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },

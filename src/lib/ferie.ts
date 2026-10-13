@@ -27,6 +27,8 @@ export interface Ansatt {
   /** Språk i appen: nb (norsk) eller pl (polsk) */
   sprak?: "nb" | "pl";
   tema?: Tema;
+  /** Får push-varsel om nye prosjekter */
+  varsel_prosjekt?: boolean;
   /** Vis kampanjer fra Byggfag (DM) i appen */
   vis_kampanjer?: boolean;
   /** Kampanjer den ansatte har skjult */
