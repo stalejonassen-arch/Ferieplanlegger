@@ -1123,3 +1123,7 @@ header.top select.temavalg option { color: #10162E; }
   .vaer-time-ikon { font-size: 18px; }
   .vaer-timer { margin-top: 8px; }
 }
+.vaer-topp { position: relative; padding-right: 40px; }
+.vaer-skjul { position: absolute; top: -4px; right: -4px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.vaer-skjul:hover { color: var(--fg); border-color: var(--fg); }
+.vaer-vis { display: flex; justify-content: flex-end; margin: 0 0 8px; }

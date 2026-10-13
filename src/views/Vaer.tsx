@@ -9,6 +9,8 @@ const ms = (v: number) => `${Math.round(v)} m/s`;
 export function Vaer() {
   const [timer, setTimer] = useState<VaerTime[] | null>(null);
   const [feil, setFeil] = useState(false);
+  const [skjult, setSkjult] = useState(() => { try { return localStorage.getItem("vaer-skjult") === "1"; } catch { return false; } });
+  const settSkjult = (v: boolean) => { setSkjult(v); try { localStorage.setItem("vaer-skjult", v ? "1" : "0"); } catch { /* privat modus */ } };
 
   useEffect(() => {
     let aktiv = true;
@@ -20,6 +22,16 @@ export function Vaer() {
     return () => { aktiv = false; clearInterval(id); document.removeEventListener("visibilitychange", synlig); };
   }, []);
 
+  if (skjult) {
+    const n = timer?.find((t) => new Date(t.tid).getTime() + 3600e3 > Date.now());
+    return (
+      <div className="vaer-vis">
+        <button className="btn sm" onClick={() => settSkjult(false)}>
+          {n ? `${vaerIkon(n.symbol)} ${grader(n.temp)} · ` : ""}Vis været
+        </button>
+      </div>
+    );
+  }
   if (feil && !timer) return null;
   if (!timer) return <section className="panel vaer laster" aria-label="Værmelding"><span className="small muted">Henter værmelding for {STED.navn} …</span></section>;
 
@@ -51,6 +63,7 @@ export function Vaer() {
             <div className="small">{vaerTekst(denne.symbol)} · {STED.navn}</div>
           </div>
         </div>
+        <button className="vaer-skjul" onClick={() => settSkjult(true)} aria-label="Skjul været" title="Skjul været">×</button>
         <div className="vaer-info">
           <div className="label">Været på {STED.navn} nå</div>
           <div><span className="vaer-pil" style={{ transform: `rotate(${denne.retning + 180}deg)` }} aria-hidden="true">↑</span> {ms(denne.vind)}{denne.kast ? ` (kast ${ms(denne.kast)})` : ""} fra {vindRetning(denne.retning)}</div>
@@ -70,7 +83,7 @@ export function Vaer() {
         ))}
       </div>
       <div className="small muted vaer-kilde">
-        Vind i m/s, kast i parentes. Data fra <a href={`https://www.yr.no/nb/v%C3%A6rvarsel/daglig-tabell/${STED.lat},${STED.lon}`} target="_blank" rel="noopener noreferrer">MET Norway / Yr</a>
+        Vind i m/s{dag.some((t) => t.kast) ? ", kast i parentes" : ""}. Data fra <a href={`https://www.yr.no/nb/v%C3%A6rvarsel/daglig-tabell/${STED.lat},${STED.lon}`} target="_blank" rel="noopener noreferrer">MET Norway / Yr</a>
       </div>
     </section>
   );

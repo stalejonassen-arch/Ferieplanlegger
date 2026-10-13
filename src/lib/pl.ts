@@ -147,6 +147,7 @@ export const PL_TEKST: Record<string, string> = {
 "Slå på": "Włącz",
 "Kampanjer vises igjen": "Promocje są znowu pokazywane",
 "Se kampanjen på nett ↗": "Zobacz promocję online ↗",
+"Vis været": "Pokaż pogodę",
 "Avslutt demo": "Zakończ demo",
 "Ny rapport:": "Nowy raport:",
 "Les nå": "Czytaj teraz",
