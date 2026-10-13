@@ -54,6 +54,9 @@ export interface Data {
   egenmelding?: { maksDager: number; maksGanger: number };
   /** Mål for fakturerte timer i året */
   maal?: number;
+  /** Omsetning per måned fra Visma (bare leder) og omsetningsmål for året */
+  omsetning?: { aar: number; mnd: number; belop: number; oppdatert: string }[];
+  maalOmsetning?: number | null;
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
   /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */

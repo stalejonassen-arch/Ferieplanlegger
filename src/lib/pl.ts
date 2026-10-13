@@ -508,7 +508,7 @@ export const PL_TEKST: Record<string, string> = {
 "Sist aktivitet": "Ostatnia aktywność",
 "· du har ført timer her": "· wpisywałeś tu godziny",
 "åpne avvik": "otwarte zdarzenia",
-"over kalkyle": "ponad kalkulację",
+"over kalkyle": "ponad kalkulację", "av": "z", "planlagte timer": "zaplanowanych godzin", "timer ført så langt": "godzin wpisanych dotąd", "Ingen plan lagt inn": "Brak planu godzin",
 "snart brukt opp": "prawie wykorzystane",
 "Ingen prosjekter passer søket.": "Żaden projekt nie pasuje do wyszukiwania.",
 "Ingen prosjekter ennå.": "Brak projektów.",
@@ -604,6 +604,8 @@ export const PL_TEKST: Record<string, string> = {
 "Antall feriedager mandag–fredag med norske helligdager trukket fra, saldo, 2 måneders varsel, hovedferie i sommerperioden, overlapp med egne søknader og at ikke for mange i samme avdeling er borte samtidig.": "Liczba dni urlopu pon.–pt. bez norweskich świąt, saldo, 2 miesiące wyprzedzenia, urlop główny latem, nakładanie się z własnymi wnioskami oraz to, czy zbyt wielu z tego samego działu nie jest nieobecnych jednocześnie."
 };
 export const PL_MALER: [string, string][] = [
+["^([\\d,]+) t igjen$", "Zostało $1 godz."],
+["^([\\d,]+) t over kalkyle$", "$1 godz. ponad kalkulację"],
 [
 "^(.+?)\\ timer\\ registrert$",
 "Zarejestrowano $1 godz."

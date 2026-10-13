@@ -35,6 +35,27 @@ async function felt(tok: string, type: string) {
 }
 const velg = (finnes: Set<string>, ønsket: string[]) => ønsket.filter((f) => finnes.has(f));
 
+/** Omsetning per måned fra hovedboken (kontoklasse 3, salgsinntekter), i år og i fjor. */
+async function synkOmsetning(tok: string, b: { id: number; visma_firma_nr: number }) {
+  const aar = new Date().getFullYear();
+  const pb = await alle(tok, b.visma_firma_nr, "generalLedgerPeriodBalance", ["accountNo", "year", "period", "flowDomestic"],
+    `{ accountNo: { _gte: 3000, _lt: 4000 }, year: { _gte: ${aar - 1}, _lte: ${aar} } }`);
+  const sum = new Map<string, number>();
+  for (const x of pb) {
+    const p = Number(x.period);
+    if (p < 1 || p > 12) continue;
+    const k = `${x.year}-${p}`;
+    sum.set(k, (sum.get(k) ?? 0) - Number(x.flowDomestic ?? 0));
+  }
+  const naa = new Date().toISOString();
+  const rader = [...sum].map(([k, v]) => { const [a, m] = k.split("-").map(Number); return { bedrift_id: b.id, aar: a, mnd: m, belop: Math.round(v), oppdatert: naa }; });
+  if (rader.length) {
+    const { error } = await sb.from("omsetning_mnd").upsert(rader, { onConflict: "bedrift_id,aar,mnd" });
+    if (error) throw new Error(error.message);
+  }
+  return rader.length;
+}
+
 /** Henter alle rader fra en tabell med sidevisning. */
 async function alle(tok: string, firma: number, tabell: string, felter: string[], filter?: string) {
   const ut: Record<string, unknown>[] = [];
@@ -328,7 +349,10 @@ Deno.serve(async (req) => {
       let arbeidAntall: number | string = 0;
       try { arbeidAntall = await synkArbeid(tok, b, pk.nr); }
       catch (e) { arbeidAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, arbeid: arbeidAntall, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      let omsetning: number | string = 0;
+      try { omsetning = await synkOmsetning(tok, b); }
+      catch (e) { omsetning = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, arbeid: arbeidAntall, omsetning, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

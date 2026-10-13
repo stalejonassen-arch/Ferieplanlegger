@@ -7,6 +7,7 @@ import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
 import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
+import { Omsetning } from "./Omsetning";
 import { Fakturering } from "./Fakturering";
 import { liteFakturert, prosjektFakturering } from "../lib/faktura";
 
@@ -47,6 +48,7 @@ export function Prosjekter() {
 
   return (
     <>
+      {leder && <Omsetning />}
       {leder && <Maal />}
       {leder && <Fordeling />}
       {leder && <Fakturering />}

@@ -958,6 +958,49 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 :root[data-tema="bfportal"] .lagre-app { background: linear-gradient(310deg, #141727, #3A416F); }
 :root[data-tema="fargerik"] .lagre-app { background: linear-gradient(120deg, #8E4EC6, #D6409F 50%, #F76B15); }
 
+
+/* ---------- Omsetning (leder) ---------- */
+.omsetning .oms-topp { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: end; }
+.oms-tall { font-family: var(--f-display); font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -.01em; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
+.oms-endring { font-size: 14px; font-weight: 600; }
+.oms-endring.opp, .oms-opp { color: var(--approved); }
+.oms-endring.ned, .oms-ned { color: var(--warn); }
+.oms-endring .muted { font-weight: 400; }
+.oms-sammen { display: grid; gap: 8px; }
+.oms-sammen div { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 8px 12px; border-radius: 10px; background: var(--sunk); }
+.oms-sammen b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.oms-bar { position: relative; height: 26px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+.oms-bar .fyll { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--approved), color-mix(in srgb, var(--approved) 70%, var(--accent))); border-radius: 999px; }
+.oms-bar .tempo { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fg); opacity: .55; }
+.oms-bar .tekst { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; color: var(--fg); mix-blend-mode: normal; }
+.oms-mnd { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; height: 120px; align-items: end; }
+.oms-kol { display: grid; grid-template-rows: 1fr 16px; height: 100%; text-align: center; font-size: 11px; color: var(--muted); }
+.oms-kol.naa span { color: var(--fg); font-weight: 700; }
+.oms-par { display: flex; gap: 2px; align-items: flex-end; justify-content: center; height: 100%; }
+.oms-par i { display: block; width: 42%; min-height: 1px; border-radius: 3px 3px 0 0; }
+.oms-par .fjor, .oms-dot-fjor { background: color-mix(in srgb, var(--muted) 40%, transparent); }
+.oms-par .iaar, .oms-dot-iaar { background: var(--accent); }
+.oms-kol.naa .iaar { background: var(--approved); }
+@media (max-width: 640px) {
+  .omsetning .oms-topp { grid-template-columns: 1fr; }
+  .oms-tall { font-size: 38px; }
+  .oms-mnd { height: 90px; }
+}
+
+
+/* Planlagte timer mot forbruk (timeføring og stempling) */
+.forbruk { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--sunk); border-left: 4px solid var(--line); font-size: 14px; }
+.forbruk.ok { border-left-color: var(--approved); }
+.forbruk.snart { border-left-color: var(--pending); }
+.forbruk.over { border-left-color: var(--warn); }
+.forbruk-rad { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.forbruk-tekst { font-weight: 700; }
+.forbruk.ok .forbruk-tekst { color: var(--approved); }
+.forbruk.snart .forbruk-tekst { color: var(--pending-text); }
+.forbruk.over .forbruk-tekst { color: var(--warn); }
+.forbruk.lys { background: rgba(255, 255, 255, .12); color: #FFFFFF; border-left-color: rgba(255, 255, 255, .5); }
+.forbruk.lys .forbruk-tekst { color: #FFFFFF; }
+
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
 :root[data-tema="mork"] {
   --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;

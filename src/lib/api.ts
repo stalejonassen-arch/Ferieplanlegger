@@ -123,6 +123,7 @@ export interface Api {
   markerLest(id: string): Promise<void>;
   /** Leder: sett mål for fakturerte timer i året */
   settMaal(aar: number): Promise<void>;
+  settOmsetningsmaal(belop: number | null): Promise<void>;
   /** Leder: siste henting fra Visma */
   vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
 }
@@ -173,7 +174,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -194,6 +195,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("fakturerte_timer").select("visma_ordrenr, linjenr, ordredato, fakturadato, fakturanr, kunde_id, prosjekt_id, antall, fakturert, ikke_fakturert, pris").order("visma_ordrenr").order("linjenr"), 20000),
         alle(() => sb.from("utstyr").select("id, ansatt_id, kilde, visma_ordrenr, dato, varenr, nobb_nr, beskrivelse, antall, enhet, pris, kategori, kategori_manuell, serienr, bilde_sti, status, merknad, bytte_avklart").order("dato", { ascending: false }).order("id"), 20000),
         sb.from("kompetanse").select("*").order("gyldig_til", { ascending: true, nullsFirst: false }).limit(5000),
+        sb.from("omsetning_mnd").select("aar, mnd, belop, oppdatert").order("aar").order("mnd"),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -207,6 +209,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         timepris: b0.timepris == null ? null : Number(b0.timepris),
         fakturerteTimer: fakt.error ? [] : (fakt.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), fakturert: Number(x.fakturert), ikke_fakturert: Number(x.ikke_fakturert), pris: Number(x.pris) })),
         kompetanse: kompetanse.error ? [] : kompetanse.data,
+        omsetning: omsetning.error ? [] : (omsetning.data as any[]).map((x) => ({ ...x, belop: Number(x.belop) })),
+        maalOmsetning: b0.maal_omsetning_aar == null ? null : Number(b0.maal_omsetning_aar),
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -431,6 +435,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async settUtstyrGrenser(arbeidstoy, verktoy, sammeMnd) { ok(await sb.rpc("sett_utstyr_grenser", { arbeidstoy, verktoy, samme_mnd: sammeMnd })); },
     async markerLest(id) { ok(await sb.rpc("marker_lest", { rapport: id })); },
     async settMaal(aar) { ok(await sb.rpc("sett_maal", { aar })); },
+    async settOmsetningsmaal(belop) { ok(await sb.rpc("sett_omsetningsmaal", { belop })); },
     async vismaStatus() {
       const r = await sb.from("visma_sync_logg").select("tid, ok, melding").order("id", { ascending: false }).limit(1);
       return r.data?.[0] ?? null;

@@ -1,3 +1,4 @@
+import { ProsjektForbruk } from "./ProsjektForbruk";
 import { useEffect, useMemo, useState } from "react";
 import { Dagslogg } from "./Dagslogg";
 import { Fordeling } from "./Fordeling";
@@ -112,6 +113,7 @@ export function Timer() {
               <button type="button" aria-pressed={f.prosjekt_id === ""} onClick={() => sett({ prosjekt_id: "" })}>Internt</button>
             </div>
           )}
+          {f.prosjekt_id && <ProsjektForbruk prosjektId={f.prosjekt_id} />}
           {f.prosjekt_id && (
             <label className="row small"><input type="checkbox" checked={f.fakturerbar} onChange={(e) => sett({ fakturerbar: e.target.checked })} /> Fakturerbart (faktureres kunden)</label>
           )}
