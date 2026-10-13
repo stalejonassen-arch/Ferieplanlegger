@@ -7,7 +7,7 @@ import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 
 const timerSiden = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
 const min = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
-const hilsen = (t: number) => (t < 10 ? "God morgen" : t < 17 ? "Hei" : "God kveld");
+const hilsen = (t: number) => (t < 5 ? "God natt" : t < 10 ? "God morgen" : t < 12 ? "God formiddag" : t < 17 ? "God ettermiddag" : t < 23 ? "God kveld" : "God natt");
 
 /** Dagen lagt ut på en tommestokk fra 06 til 18: hver økt er en bit, den pågående vokser mens du er inne. */
 function Dagstokk({ okter, navn }: { okter: { fra: string; til: string; prosjekt_id: string | null; pagar?: boolean }[]; navn: (id: string | null) => string }) {

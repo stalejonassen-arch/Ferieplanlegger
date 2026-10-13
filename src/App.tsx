@@ -23,6 +23,7 @@ import { Chat } from "./views/Chat";
 import { FerieOversikt } from "./views/FerieOversikt";
 import { LagreSomApp } from "./views/LagreSomApp";
 import { KampanjeKort, KampanjerAv } from "./views/Kampanjer";
+import { Vaer } from "./views/Vaer";
 
 export interface Ctx {
   d: Data;
@@ -261,7 +262,7 @@ export function App() {
           </nav>
         )}
 
-        {aktiv === "timer" && <><KampanjeKort /><Timer /><KampanjerAv /></>}
+        {aktiv === "timer" && <><Vaer /><KampanjeKort /><Timer /><KampanjerAv /></>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
