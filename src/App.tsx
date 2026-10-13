@@ -220,7 +220,7 @@ export function App() {
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
         <header className="top">
           <div className="brand"><small>{firma(d.bedrift).undertittel}</small>
-            <h1><svg className="hjelm" viewBox="0 0 48 40" aria-hidden="true"><path d="M6 30a18 18 0 0 1 36 0" /><path d="M20 13v-3h8v3M24 10v12" /><path d="M2 30h44v4H2z" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
+            <h1><svg className="hjelm" viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
           <div className="who">
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
             <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
