@@ -152,6 +152,8 @@ export function feiltekst(e: unknown): string {
 }
 
 function supabaseApi(sb: SupabaseClient): Api {
+  /** Brukes fila av et annet kurs/bevis? (felles kompetansebevis for flere klasser) */
+  const stiIBruk = async (sti: string) => ((await sb.from("kompetanse").select("id").eq("sti", sti).limit(1)).data ?? []).length > 0;
   const ok = <T>(r: { data: T; error: unknown }) => { if (r.error) throw r.error; return r.data; };
   /** Supabase gir maks 1000 rader per kall: hent side for side til alt er med */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -417,11 +419,12 @@ function supabaseApi(sb: SupabaseClient): Api {
       const r = id ? await sb.from("kompetanse").update({ ...rad, ...(sti ? { sti, filnavn } : {}) }).eq("id", id)
         : await sb.from("kompetanse").insert({ ...rad, ...(sti ? { sti, filnavn } : {}) });
       if (r.error) { if (sti) await sb.storage.from("dokumenter").remove([sti]); throw r.error; }
-      if (id && sti && k.sti) await sb.storage.from("dokumenter").remove([k.sti]);
+      if (id && sti && k.sti && !(await stiIBruk(k.sti))) await sb.storage.from("dokumenter").remove([k.sti]);
     },
     async slettKompetanse(id, sti) {
       ok(await sb.from("kompetanse").delete().eq("id", id));
-      if (sti) await sb.storage.from("dokumenter").remove([sti]);
+      // Et felles bevis (f.eks. ett kompetansebevis for flere kran-/truckklasser) slettes først når ingen bruker det
+      if (sti && !(await stiIBruk(sti))) await sb.storage.from("dokumenter").remove([sti]);
     },
     async utstyrBilde(id, fil, gammel) {
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;

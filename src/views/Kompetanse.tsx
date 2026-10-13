@@ -163,6 +163,9 @@ function Person({ ansattId, navn, kanEndre }: { ansattId: string; navn: string; 
                     <span className={`chip ${st === "gyldig" ? "godkjent" : st === "snart" ? "venter" : "avslatt"}`}>{STATUS_TEKST[st]}</span>
                     <span className="small">{k.gyldig_til ? `til ${kortDato(k.gyldig_til)}` : "uten utløp"}</span>
                   </div>
+                  {k.sti && liste.some((x) => x.id !== k.id && x.sti === k.sti) && (
+                    <div className="small muted" style={{ marginTop: 4 }}>Felles bevis med {liste.filter((x) => x.id !== k.id && x.sti === k.sti).map((x) => (x.type === "annet" && x.navn ? x.navn : x.navn || kursNavn(x.type)).split(" ")[0]).join(", ")}</div>
+                  )}
                 </div>
                 {kanEndre && (
                   <div className="acts">
