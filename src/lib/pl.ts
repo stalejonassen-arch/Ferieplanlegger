@@ -155,6 +155,8 @@ export const PL_TEKST: Record<string, string> = {
 "🔔 Slå på varsel når det kommer nye meldinger og prosjekter": "🔔 Włącz powiadomienia o nowych wiadomościach i projektach",
 "🔔 Varsler er på på denne enheten · ": "🔔 Powiadomienia są włączone na tym urządzeniu · ",
 "Slå av": "Wyłącz",
+"Opphold i dag": "Bez opadów dzisiaj",
+"Nå": "Teraz",
 "Avslutt demo": "Zakończ demo",
 "Ny rapport:": "Nowy raport:",
 "Les nå": "Czytaj teraz",
