@@ -251,7 +251,7 @@ export function App() {
         <LagreSomApp />
 
         {api.modus === "demo" && (
-          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg.</span>{import.meta.env.VITE_SUPABASE_URL && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
+          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg.</span>{import.meta.env.VITE_SUPABASE_URL && PROFIL.id === "austnes" && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
         {nyeRapporter[0] && aktiv !== "rapporter" && (

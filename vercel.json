@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/demo/:kode", "destination": "/index.html" }]
+}

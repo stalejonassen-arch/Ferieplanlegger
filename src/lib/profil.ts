@@ -1,5 +1,5 @@
 // Hvilken bedrift appen vises for. Den ekte appen er alltid N L Austnes; demoen kan vises i andre bedrifters drakt
-// (f.eks. ?demo=thaugland) for å vise fram ByggLogg til nye kunder. Bare utseende, navn og eksempeldata endres.
+// via en unik lenke (/demo/<kode>) for å vise fram ByggLogg til nye kunder. Bare utseende, navn og eksempeldata endres.
 import type { Tema } from "./ferie";
 
 export interface Profil {
@@ -32,12 +32,20 @@ const THAUGLAND: Profil = {
   snekkere: false,
 };
 
+/** Unike, delbare demo-adresser: /demo/<kode>. Koden er vanskelig å gjette, så bare de som får lenken ser drakten. */
+const DEMO_LENKER: Record<string, Profil> = { "thaugland-aoaidjjc": THAUGLAND };
+
+/** Demo-drakt fra adressen (/demo/<kode>), eller null */
+export function demoFraAdresse(): Profil | null {
+  const m = location.pathname.match(/^\/demo\/([a-z0-9-]+)\/?$/i);
+  return m ? DEMO_LENKER[m[1]!.toLowerCase()] ?? null : null;
+}
+
 function velg(): Profil {
   try {
-    // Lest før api.ts rydder adressen, så vi ser både ?demo=… og lagret valg
-    const q = new URLSearchParams(location.search).get("demo");
-    const valg = q ?? sessionStorage.getItem("bygglogg-demo");
-    return valg === "thaugland" ? THAUGLAND : AUSTNES;
+    const fraAdresse = demoFraAdresse();
+    if (fraAdresse) return fraAdresse;
+    return sessionStorage.getItem("bygglogg-demo") === "thaugland-aoaidjjc" ? THAUGLAND : AUSTNES;
   } catch { return AUSTNES; }
 }
 export const PROFIL: Profil = velg();

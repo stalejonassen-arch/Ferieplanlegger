@@ -533,6 +533,9 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 /** «?demo» i adressen gir en prøveversjon med eksempeldata – ingenting lagres i den ekte databasen. «?demo=av» går tilbake. */
 function demoValgt(): boolean {
   try {
+    // Delbar demo-lenke /demo/<kode>: alltid demo, og adressen beholdes så den kan deles videre
+    const m = location.pathname.match(/^\/demo\/([a-z0-9-]+)\/?$/i);
+    if (m) { sessionStorage.setItem("bygglogg-demo", m[1]!.toLowerCase()); return true; }
     const q = new URLSearchParams(location.search);
     if (q.has("demo")) {
       if (q.get("demo") === "av") sessionStorage.removeItem("bygglogg-demo"); else sessionStorage.setItem("bygglogg-demo", q.get("demo") || "1");
