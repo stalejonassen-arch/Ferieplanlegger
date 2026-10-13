@@ -408,7 +408,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   if (endre) return (
     <div className="adresse">
       <label className="field" style={{ flex: "1 1 260px" }}><span className="label">Adresse for utførelse</span>
-        <input type="text" value={ny} onChange={(e) => setNy(e.target.value)} placeholder="Gate 1, 6290 Haramsøy" autoFocus /></label>
+        <input type="text" value={ny} onChange={(e) => setNy(e.target.value)} placeholder="Gate 1, 1234 Sted" autoFocus /></label>
       <div className="row"><button className="btn primary sm" onClick={lagre}>Lagre</button><button className="btn sm" onClick={() => setEndre(false)}>Avbryt</button></div>
     </div>
   );

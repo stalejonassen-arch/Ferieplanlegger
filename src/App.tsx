@@ -24,7 +24,7 @@ import { FerieOversikt } from "./views/FerieOversikt";
 import { LagreSomApp } from "./views/LagreSomApp";
 import { KampanjeKort, KampanjerAv } from "./views/Kampanjer";
 import { Vaer } from "./views/Vaer";
-import { PROFIL } from "./lib/profil";
+import { firma, PROFIL } from "./lib/profil";
 import { VarselBanner } from "./views/Varsler";
 import { fornyPush } from "./lib/push";
 
@@ -124,12 +124,13 @@ export function App() {
   useEffect(() => { if (meg?.id) fornyPush(); }, [meg?.id]);
   // Den ansattes språk følger med fra databasen
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
-  const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id !== "austnes") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
-  useEffect(() => { if (meg?.tema) settTema(meg.tema); }, [meg?.tema]);
+  const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id === "thaugland") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
+  // Egen fargevalg vinner; ellers bedriftens standardfarger
+  useEffect(() => { const t = meg?.tema ?? d?.bedrift?.tema; if (t) settTema(t); }, [meg?.tema, d?.bedrift?.tema]);
   useEffect(() => {
     document.documentElement.dataset.tema = tema;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : tema === "byggfag" ? "#0B1F5C" : tema === "bfportal" ? "#F8F9FA" : tema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
-    if (PROFIL.id === "austnes") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
+    if (PROFIL.id !== "thaugland") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
   }, [tema]);
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
@@ -218,7 +219,7 @@ export function App() {
         <div className="toppfelt">
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
         <header className="top">
-          <div className="brand"><small>{PROFIL.undertittel}</small>
+          <div className="brand"><small>{firma(d.bedrift).undertittel}</small>
             <h1><svg className="hjelm" viewBox="0 0 48 40" aria-hidden="true"><path d="M6 30a18 18 0 0 1 36 0" /><path d="M20 13v-3h8v3M24 10v12" /><path d="M2 30h44v4H2z" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
           <div className="who">
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
@@ -228,7 +229,7 @@ export function App() {
             </select>
             <select aria-label="Farger" className="temavalg" value={tema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              {PROFIL.id === "thaugland" && <option value="thaugland">Thaugland</option>}<option value="byggfag">Byggfag-blå</option><option value="bfportal">BFportal</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}<option value="byggfag">Byggfag-blå</option><option value="bfportal">BFportal</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
@@ -251,7 +252,7 @@ export function App() {
         <LagreSomApp />
 
         {api.modus === "demo" && (
-          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg.</span>{import.meta.env.VITE_PLATTFORM_SUPABASE_URL && PROFIL.id === "austnes" && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
+          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg.</span>{import.meta.env.VITE_PLATTFORM_SUPABASE_URL && PROFIL.id !== "thaugland" && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
         {nyeRapporter[0] && aktiv !== "rapporter" && (

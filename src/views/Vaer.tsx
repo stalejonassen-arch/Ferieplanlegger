@@ -25,7 +25,7 @@ function stemning(symbol: string): string {
   return "sky";
 }
 
-/** Dagens vær for Haramsøy øverst på startsiden: nå, resten av dagen time for time, og varsel ved kuling/mye nedbør */
+/** Dagens vær for bedriftens sted øverst på startsiden: nå, resten av dagen time for time, og varsel ved kuling/mye nedbør */
 export function Vaer() {
   const { d } = useApp();
   const b = d.bedrift;

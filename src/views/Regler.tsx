@@ -1,5 +1,5 @@
 const REGLER: [string, string, string][] = [
-  ["§ 5", "Hvor mye ferie", "Loven gir 25 virkedager (lørdag teller), altså 4 uker og 1 dag. Hos N L Austnes teller vi feriedager mandag–fredag, og de ansatte har 25 feriedager, altså 5 uker. Ansatte som fyller 60 år i løpet av ferieåret får én uke ekstra."],
+  ["§ 5", "Hvor mye ferie", "Loven gir 25 virkedager (lørdag teller), altså 4 uker og 1 dag. Hos oss teller vi feriedager mandag–fredag, og de ansatte har 25 feriedager, altså 5 uker. Ansatte som fyller 60 år i løpet av ferieåret får én uke ekstra."],
   ["§ 6", "Hvem bestemmer tidspunktet", "Arbeidsgiver fastsetter ferien etter å ha drøftet den med den ansatte eller tillitsvalgt. Den ansatte har rett til å få vite tidspunktet senest 2 måneder før ferien starter, med mindre noe annet er avtalt."],
   ["§ 7", "Hovedferie om sommeren", "Den ansatte kan kreve 3 uker sammenhengende ferie i perioden 1. juni til 30. september (18 virkedager etter loven, 15 feriedager mandag–fredag)."],
   ["§ 7", "Restferien", "Restferien kan kreves gitt samlet i løpet av ferieåret."],

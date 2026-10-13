@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useApp } from "../App";
+import { firma } from "../lib/profil";
 import { api } from "../lib/api";
 import { sorterAnsatte, type Ansatt } from "../lib/ferie";
 import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
 import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, lesXlsx, svennBildetekst, svennProsjekter, type Kobling, type SvennFil, type SvennProsjekt, type SvennRad } from "../lib/svenn";
 import type { SvennResultat } from "../lib/api";
 import { KampanjeOppsett } from "./Kampanjer";
+import { Bedriftsprofil, PlattformAdmin } from "./Bedriftsprofil";
 
 export function Oppsett() {
   const { d, aar, kjor } = useApp();
@@ -26,6 +28,8 @@ export function Oppsett() {
 
   return (
     <>
+      <PlattformAdmin />
+      <Bedriftsprofil />
       <section className="panel">
         <h2>Ansatte</h2>
         <p className="small muted">Endringer lagres når du går ut av feltet. E-posten er den ansatte bruker for å logge inn. «Dager» er feriedager per år regnet mandag–fredag: 25 er 5 uker, 21 er lovens minimum. «Overført» er ferie avtalt flyttet fra {aar - 1} til {aar}.</p>
@@ -76,7 +80,7 @@ export function Oppsett() {
             <input type="text" id="ny-navn" value={nyNavn} onChange={(e) => setNyNavn(e.target.value)} placeholder="Navn" />
           </label>
           <label className="field"><span className="label">E-post</span>
-            <input type="email" id="ny-epost" value={nyEpost} onChange={(e) => setNyEpost(e.target.value)} placeholder="navn@austnes.no" />
+            <input type="email" id="ny-epost" value={nyEpost} onChange={(e) => setNyEpost(e.target.value)} placeholder="navn@firma.no" />
           </label>
           <label className="field"><span className="label">Avdeling</span>
             <select id="ny-avd" value={nyAvd} onChange={(e) => setNyAvd(Number(e.target.value))}>
@@ -202,7 +206,7 @@ function SvennImport() {
       const les = lesSvenn(await lesXlsx(await f.arrayBuffer()));
       if (!les.rader.length) throw new Error("Fant ingen timer i fila.");
       const lagret = new Map((await api.svennKoblinger()).map((k) => [k.nokkel, k]));
-      setKob(Object.fromEntries(svennProsjekter(les.rader).map((p) => [p.nokkel, foreslaKobling(p, d.prosjekter, lagret, "N L Austnes AS")])));
+      setKob(Object.fromEntries(svennProsjekter(les.rader).map((p) => [p.nokkel, foreslaKobling(p, d.prosjekter, lagret, firma(d.bedrift).navn)])));
       setFil({ navn: f.name, ...les });
     } catch (e) { setFeil(e instanceof Error ? e.message : String(e)); }
   };
@@ -309,7 +313,7 @@ function SvennDokumentasjon() {
       const lagret = new Map((await api.svennKoblinger()).map((k) => [k.nokkel, k]));
       const v: Record<string, string> = {}, n: Record<string, string> = {};
       for (const p of arkivProsjekter(nye)) {
-        const k = foreslaKobling(p, d.prosjekter, lagret, "N L Austnes AS");
+        const k = foreslaKobling(p, d.prosjekter, lagret, firma(d.bedrift).navn);
         v[p.nokkel] = k.prosjekt_id ?? (k.ny_navn != null ? "ny" : "hopp");
         n[p.nokkel] = k.ny_navn ?? p.navn;
       }

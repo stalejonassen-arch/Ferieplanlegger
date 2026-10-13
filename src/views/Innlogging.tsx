@@ -47,7 +47,7 @@ export function Innlogging() {
             <p>Skriv inn jobb-e-posten din. Du får en kode på e-post.</p>
             <label className="field">
               <span className="label">E-post</span>
-              <input id="epost" type="email" autoComplete="email" required value={epost} onChange={(e) => setEpost(e.target.value)} placeholder="navn@austnes.no" />
+              <input id="epost" type="email" autoComplete="email" required value={epost} onChange={(e) => setEpost(e.target.value)} placeholder="navn@firma.no" />
             </label>
             <div><button className="btn primary" disabled={jobber || !epost}>{jobber ? "Sender …" : "Send kode"}</button></div>
           </form>

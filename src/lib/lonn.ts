@@ -50,9 +50,9 @@ const celle = (v: string | number) => {
 /** Semikolon og BOM, så norsk Excel åpner filen riktig med æøå. */
 const csv = (rader: (string | number)[][]) => "﻿" + rader.map((r) => r.map(celle).join(";")).join("\r\n") + "\r\n";
 
-export function lonnCsv(rader: LonnRad[], aar: number, mnd: number) {
+export function lonnCsv(rader: LonnRad[], aar: number, mnd: number, firma: string) {
   return csv([
-    [`Ferie ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
+    [`Ferie ${MND[mnd - 1]} ${aar} – ${firma}`],
     ["Ansattnr", "Ansatt", "Avdeling", "Feriedager", "Perioder", "Venter godkjenning", "Feriedager hittil i år", "Over 60 (ekstra feriepenger)"],
     ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, r.avdeling, r.dager, r.perioder.join(", "), r.venter || "", r.hittil, r.ansatt.over60 ? "Ja" : ""]),
     ["", "Sum", "", rader.reduce((n, r) => n + r.dager, 0), "", rader.reduce((n, r) => n + r.venter, 0) || "", rader.reduce((n, r) => n + r.hittil, 0), ""],
@@ -60,11 +60,11 @@ export function lonnCsv(rader: LonnRad[], aar: number, mnd: number) {
 }
 
 /** Hele året: én rad per ansatt, én kolonne per måned (godkjente feriedager). */
-export function lonnAarCsv(d: Data, aar: number) {
+export function lonnAarCsv(d: Data, aar: number, firma: string) {
   const mnder = Array.from({ length: 12 }, (_, i) => lonnMaaned(d, aar, i + 1));
   const ansatte = mnder[0];
   return csv([
-    [`Godkjent ferie ${aar} per måned – N L Austnes AS`],
+    [`Godkjent ferie ${aar} per måned – ${firma}`],
     ["Ansattnr", "Ansatt", "Avdeling", ...MND.map((m) => m[0].toUpperCase() + m.slice(1, 3)), "Sum"],
     ...ansatte.map((r, i) => {
       const per = mnder.map((m) => m[i].dager);
@@ -92,9 +92,9 @@ export function lonnTimerMaaned(d: Data, aar: number, mnd: number): LonnTimer[] 
 
 const tall = (n: number) => (n ? String(Math.round(n * 100) / 100).replace(".", ",") : "");
 
-export function lonnTimerCsv(rader: LonnTimer[], aar: number, mnd: number) {
+export function lonnTimerCsv(rader: LonnTimer[], aar: number, mnd: number, firma: string) {
   return csv([
-    [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
+    [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – ${firma}`],
     ["Ansattnr", "Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer", "Egenmelding (arbeidsdager)", "Sykmelding (arbeidsdager)", "Sykt barn (arbeidsdager)"],
     ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || "", r.egenmelding || "", r.sykmelding || "", r.syktBarn || ""]),
   ]);

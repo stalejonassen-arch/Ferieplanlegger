@@ -21,9 +21,9 @@ function startdata(): Data {
   const a = (id: string, navn: string, avdeling_id: number, rekkefolge: number, x: Partial<Ansatt> = {}): Ansatt =>
     ({ id, navn, epost: `${id}@demo.no`, avdeling_id, rolle: "ansatt", dager: 25, over60: false, aktiv: true, rekkefolge, ...x });
   const ansatte = [
-    a("stale", "Ståle", 1, 1, { rolle: "leder" }), a("butikk2", "Butikk 2", 1, 2), a("karianne", "Karianne", 3, 1),
-    a("mads", "Mads Kjerstad", 2, 1), a("snekker2", "Snekker 2", 2, 2), a("snekker3", "Snekker 3", 2, 3),
-    a("snekker4", "Snekker 4", 2, 4), a("snekker5", "Snekker 5", 2, 5), a("jim", "Jim Kato", 4, 1),
+    a("stale", "Kari Hansen", 1, 1, { rolle: "leder" }), a("butikk2", "Per Moen", 1, 2), a("karianne", "Anne Dahl", 3, 1),
+    a("mads", "Ola Berg", 2, 1), a("snekker2", "Lars Strand", 2, 2), a("snekker3", "Piotr Kowalski", 2, 3),
+    a("snekker4", "Erik Vik", 2, 4), a("snekker5", "Tor Aas", 2, 5), a("jim", "Jon Lie", 4, 1),
   ];
   const s = (id: string, ansatt_id: string, fra: string, til: string, status: Soknad["status"]): Soknad =>
     ({ id, ansatt_id, fra: `${y}-${fra}`, til: `${y}-${til}`, status, merknad: "", kommentar: "", behandlet_av: null, behandlet_tid: null, opprettet: isoOf(new Date()) });
@@ -43,14 +43,14 @@ function startdata(): Data {
   for (const x of ansatte) if (["karianne", "jim", "snekker3", "snekker4", "snekker5"].includes(x.id)) Object.assign(x, { lunsjtrekk: true, lunsj_min: 30 });
   for (const x of ansatte) if (["snekker3", "snekker4", "snekker5"].includes(x.id)) x.normaltid_uke = 40;
   const kunder = [
-    { id: "k1", visma_nr: 10021, navn: "Merete Austnes", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+    { id: "k1", visma_nr: 10021, navn: "Merete Haugen", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
     { id: "k2", visma_nr: 10022, navn: "Jonas Haram", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
   ];
   const prosjekter = [
     { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "", estimert_timer: 38, start: null, slutt: null, aktiv: true },
     { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
   ];
-  // Forrige uke: Mads har litt overtid, Snekker 3 har glemt lunsj én dag
+  // Forrige uke: Ola har litt overtid, Piotr har glemt lunsj én dag
   const m0 = addDays(mandag(isoOf(new Date())), -7);
   const t = (id: string, ansatt_id: string, dag: number, fra: string, til: string, lunsj: number, prosjekt_id: string | null = "p1"): Time =>
     ({ id, ansatt_id, prosjekt_id, dato: addDays(m0, dag), fra, til, lunsj_min: lunsj, timer: varighet(fra, til, lunsj), lunsj_unntak: false, km: 12, reisetid: 0, beskrivelse: "", status: "levert" });
@@ -65,7 +65,7 @@ function startdata(): Data {
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
     kampanjer: demoKampanjer(),
     bedrift: {
-      id: 1, navn: PROFIL.firma, undertittel: PROFIL.undertittel, orgnr: "", adresse: "", postnr: "", poststed: "", telefon: "", epost: "",
+      id: 1, navn: PROFIL.firma, undertittel: PROFIL.undertittel, orgnr: PROFIL.orgnr, adresse: PROFIL.adresse, postnr: PROFIL.postnr, poststed: PROFIL.poststed, telefon: PROFIL.telefon, epost: "",
       sted_navn: PROFIL.sted.navn, sted_lat: PROFIL.sted.lat, sted_lon: PROFIL.sted.lon, tema: PROFIL.tema, kjede: "Byggfag", kampanje_tittel: PROFIL.kampanje,
     },
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },

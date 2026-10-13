@@ -220,3 +220,20 @@ begin
 end $$;
 revoke all on function public.sett_abonnement(smallint, boolean, date) from public, anon;
 grant execute on function public.sett_abonnement(smallint, boolean, date) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Farger: bedriften har standardfarger; den ansatte kan velge egne (null = følg bedriften)
+-- ---------------------------------------------------------------------------
+alter table public.ansatte alter column tema drop not null;
+alter table public.ansatte alter column tema set default null;
+alter table public.ansatte drop constraint if exists ansatte_tema_check;
+alter table public.ansatte add constraint ansatte_tema_check check (tema is null or tema in ('standard', 'byggfag', 'bfportal', 'fargerik', 'mork', 'thaugland'));
+alter table public.bedrifter drop constraint if exists bedrifter_tema_check;
+alter table public.bedrifter add constraint bedrifter_tema_check check (tema in ('standard', 'byggfag', 'bfportal', 'fargerik', 'mork', 'thaugland'));
+
+create or replace function public.sett_mitt_tema(tema text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if tema not in ('standard', 'byggfag', 'bfportal', 'fargerik', 'mork', 'thaugland') then raise exception 'Ukjent tema.' using errcode = 'P0001'; end if;
+  update public.ansatte set tema = sett_mitt_tema.tema where id = public.mitt_ansatt_id();
+end $$;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
-import { PROFIL } from "../lib/profil";
+import { firma } from "../lib/profil";
 import { api } from "../lib/api";
 import type { Kampanje } from "../lib/ferie";
 import { filerTilSider, kampanjePeriode, kampanjeStatus, MAKS_SIDER, synligeKampanjer } from "../lib/kampanje";
@@ -60,7 +60,7 @@ export function KampanjeKort() {
         <section key={k.id} className="panel kampanje" aria-label={`Kampanje: ${k.tittel}`}>
           <div className="kampanje-topp">
             <div>
-              <span className="chip kampanje-chip">{PROFIL.kampanje}</span>
+              <span className="chip kampanje-chip">{firma(d.bedrift).kampanje}</span>
               <h2>{k.tittel}</h2>
               <div className="small muted">Gjelder {kampanjePeriode(k.fra, k.til)}</div>
             </div>

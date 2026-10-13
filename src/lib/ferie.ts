@@ -4,7 +4,7 @@ import type { Stempling } from "./timer";
 import type { Fravaer } from "./fravaer";
 import type { Utstyr, UtstyrGrenser } from "./utstyr";
 import type { Kompetanse } from "./kompetanse";
-// Ferieregler for N L Austnes AS: datoer, helligdager, saldo og regelsjekk.
+// Ferieregler: datoer, helligdager, saldo og regelsjekk.
 // Rene funksjoner uten tilstand, så de kan testes og brukes overalt.
 
 import type { Kunde, Prosjekt, Time } from "./timer";
@@ -137,7 +137,7 @@ export function helligdager(y: number) {
 }
 export const helligdag = (iso: string) => helligdager(aarAv(iso)).get(iso);
 
-/** N L Austnes teller feriedager mandag–fredag: lørdag, søndag og helligdager trekkes ikke.
+/** Bedriften teller feriedager mandag–fredag: lørdag, søndag og helligdager trekkes ikke.
  *  (Ferieloven teller lørdag; 25 virkedager etter loven tilsvarer ca. 21 dager man–fre.) */
 export const erVirkedag = (iso: string) => ukedag(iso) !== 0 && ukedag(iso) !== 6 && !helligdag(iso);
 

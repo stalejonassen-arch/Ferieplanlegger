@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../App";
 import { MND, vd } from "../lib/ferie";
+import { firma } from "../lib/profil";
 import { lastNedCsv, lonnAarCsv, lonnCsv, lonnMaaned, lonnTimerCsv, lonnTimerMaaned } from "../lib/lonn";
 import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
@@ -61,7 +62,7 @@ export function Lonn() {
           </div>
         ) : <div className="empty">Ingen timer registrert i {mndNavn}.</div>}
         <div className="row">
-          <button className="btn primary" disabled={!harTimer} onClick={() => lastNedCsv(lonnTimerCsv(timer, aar, mnd), `timer-${aar}-${String(mnd).padStart(2, "0")}.csv`)}>Last ned lønnsgrunnlag {mndNavn} (Excel)</button>
+          <button className="btn primary" disabled={!harTimer} onClick={() => lastNedCsv(lonnTimerCsv(timer, aar, mnd, firma(d.bedrift).navn), `timer-${aar}-${String(mnd).padStart(2, "0")}.csv`)}>Last ned lønnsgrunnlag {mndNavn} (Excel)</button>
         </div>
       </section>
 
@@ -101,10 +102,10 @@ export function Lonn() {
         </div>
 
         <div className="row">
-          <button className="btn primary" onClick={() => lastNedCsv(lonnCsv(rader, aar, mnd), `ferie-${aar}-${String(mnd).padStart(2, "0")}.csv`)}>
+          <button className="btn primary" onClick={() => lastNedCsv(lonnCsv(rader, aar, mnd, firma(d.bedrift).navn), `ferie-${aar}-${String(mnd).padStart(2, "0")}.csv`)}>
             Last ned {mndNavn} (Excel)
           </button>
-          <button className="btn" onClick={() => lastNedCsv(lonnAarCsv(d, aar), `ferie-${aar}-hele-aaret.csv`)}>Last ned hele {aar}</button>
+          <button className="btn" onClick={() => lastNedCsv(lonnAarCsv(d, aar, firma(d.bedrift).navn), `ferie-${aar}-hele-aaret.csv`)}>Last ned hele {aar}</button>
         </div>
         <p className="small muted">Ansatte over 60 år har krav på 2,3 prosentpoeng ekstra feriepenger (ferieloven § 10 nr. 3).</p>
       </section>

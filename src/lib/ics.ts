@@ -17,7 +17,7 @@ export function lagIcs(soknader: Soknad[], navn: string, stempel = new Date()): 
   const naa = stempel.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
   const hendelser = soknader.map((s) => [
     "BEGIN:VEVENT",
-    `UID:ferie-${s.id}@ferieplanlegger.austnes.no`,
+    `UID:ferie-${s.id}@bygglogg.no`,
     `DTSTAMP:${naa}`,
     `DTSTART;VALUE=DATE:${dato(s.fra)}`,
     `DTEND;VALUE=DATE:${dato(addDays(s.til, 1))}`, // sluttdato er «til og med», så kalenderen trenger dagen etter
@@ -30,7 +30,7 @@ export function lagIcs(soknader: Soknad[], navn: string, stempel = new Date()): 
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//N L Austnes AS//Ferieplanlegger//NO",
+    "PRODID:-//ByggLogg//Ferie//NO",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     ...hendelser,
