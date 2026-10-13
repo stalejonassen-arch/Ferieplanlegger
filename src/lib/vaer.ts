@@ -1,7 +1,8 @@
 // Værmelding fra Meteorologisk institutt (api.met.no, samme data som Yr). Gratis, krever navngivning: «Data fra MET Norway».
 // Hentes rett fra nettleseren og huskes i 30 minutter, så vi ikke spør oftere enn nødvendig.
+import { PROFIL } from "./profil";
 
-export const STED = { navn: "Haramsøy", lat: 62.665, lon: 6.405 };
+export const STED = PROFIL.sted;
 
 export interface VaerTime {
   tid: string;            // ISO
@@ -13,7 +14,7 @@ export interface VaerTime {
   symbol: string;         // f.eks. "partlycloudy_day"
 }
 
-const NOKKEL = "vaer-haramsoy";
+const NOKKEL = `vaer-${STED.navn.toLowerCase()}`;
 const MAKS_ALDER = 30 * 60 * 1000;
 
 export async function hentVaer(): Promise<{ timer: VaerTime[]; hentet: number }> {

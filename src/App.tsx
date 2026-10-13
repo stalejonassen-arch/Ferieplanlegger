@@ -24,6 +24,7 @@ import { FerieOversikt } from "./views/FerieOversikt";
 import { LagreSomApp } from "./views/LagreSomApp";
 import { KampanjeKort, KampanjerAv } from "./views/Kampanjer";
 import { Vaer } from "./views/Vaer";
+import { PROFIL } from "./lib/profil";
 import { VarselBanner } from "./views/Varsler";
 import { fornyPush } from "./lib/push";
 
@@ -123,12 +124,12 @@ export function App() {
   useEffect(() => { if (meg?.id) fornyPush(); }, [meg?.id]);
   // Den ansattes språk følger med fra databasen
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
-  const [tema, settTema] = useState<Tema>(() => { try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
+  const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id !== "austnes") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
   useEffect(() => { if (meg?.tema) settTema(meg.tema); }, [meg?.tema]);
   useEffect(() => {
     document.documentElement.dataset.tema = tema;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : tema === "byggfag" ? "#0B1F5C" : tema === "bfportal" ? "#F8F9FA" : "#F6F2EB");
-    try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : tema === "byggfag" ? "#0B1F5C" : tema === "bfportal" ? "#F8F9FA" : tema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
+    if (PROFIL.id === "austnes") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
   }, [tema]);
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
@@ -217,7 +218,7 @@ export function App() {
         <div className="toppfelt">
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
         <header className="top">
-          <div className="brand"><small>Byggfag · N L Austnes AS</small>
+          <div className="brand"><small>{PROFIL.undertittel}</small>
             <h1><svg className="hjelm" viewBox="0 0 48 40" aria-hidden="true"><path d="M6 30a18 18 0 0 1 36 0" /><path d="M20 13v-3h8v3M24 10v12" /><path d="M2 30h44v4H2z" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
           <div className="who">
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
@@ -227,7 +228,7 @@ export function App() {
             </select>
             <select aria-label="Farger" className="temavalg" value={tema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              <option value="byggfag">Byggfag-blå</option><option value="bfportal">BFportal</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              {PROFIL.id === "thaugland" && <option value="thaugland">Thaugland</option>}<option value="byggfag">Byggfag-blå</option><option value="bfportal">BFportal</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
@@ -307,7 +308,7 @@ function Skall({ children, epost }: { children: React.ReactNode; epost?: string 
   return (
     <div className="wrap">
       <header className="top">
-        <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
+        <div className="brand"><small>{PROFIL.undertittel}</small><h1>ByggLogg</h1></div>
         {epost && <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>}
       </header>
       {children}

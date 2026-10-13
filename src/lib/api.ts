@@ -535,10 +535,10 @@ function demoValgt(): boolean {
   try {
     const q = new URLSearchParams(location.search);
     if (q.has("demo")) {
-      if (q.get("demo") === "av") sessionStorage.removeItem("bygglogg-demo"); else sessionStorage.setItem("bygglogg-demo", "1");
+      if (q.get("demo") === "av") sessionStorage.removeItem("bygglogg-demo"); else sessionStorage.setItem("bygglogg-demo", q.get("demo") || "1");
       history.replaceState(null, "", location.pathname + location.hash);
     }
-    return sessionStorage.getItem("bygglogg-demo") === "1";
+    return !!sessionStorage.getItem("bygglogg-demo");
   } catch { return false; }
 }
 

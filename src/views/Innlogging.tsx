@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { api, feiltekst } from "../lib/api";
+import { PROFIL } from "../lib/profil";
 
-const DEMO = [
-  ["stale@demo.no", "Ståle (leder)"], ["mads@demo.no", "Mads Kjerstad"], ["jim@demo.no", "Jim Kato"], ["karianne@demo.no", "Karianne"],
-];
+const DEMO = PROFIL.demoBrukere;
 
 export function Innlogging() {
   const [epost, setEpost] = useState("");
@@ -29,7 +28,7 @@ export function Innlogging() {
   return (
     <div className="wrap">
       <header className="top login-topp">
-        <div className="brand"><small>Byggfag · N L Austnes AS</small><h1>ByggLogg</h1></div>
+        <div className="brand"><small>{PROFIL.undertittel}</small><h1>ByggLogg</h1></div>
       </header>
       <div className="login panel">
         <h2 style={{ margin: 0 }}>Logg inn</h2>

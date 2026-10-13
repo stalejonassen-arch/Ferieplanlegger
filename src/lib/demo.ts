@@ -4,6 +4,7 @@ import type { Api, FdvDok, FdvVare } from "./api";
 import type { Lest, Melding } from "./chat";
 import type { Ansatt, Data, Soknad } from "./ferie";
 import { addDays, isoOf } from "./ferie";
+import { PROFIL } from "./profil";
 import { mandag, varighet, type Time } from "./timer";
 import { STANDARD_KVOTER, type Utstyr } from "./utstyr";
 
@@ -95,7 +96,7 @@ const vareEndring: Record<string, Partial<FdvVare>> = {};
 const demoDok: (FdvDok & { pid: string })[] = [];
 
 export function demoApi(): Api {
-  const d = startdata();
+  const d = PROFIL.id === "thaugland" ? thauglandDrakt(startdata()) : startdata();
   const svennFiler = new Set<number>();
   const svennKob = new Map<string, { nokkel: string; prosjekt_id: string | null; fakturerbar: boolean }>();
   let epost: string | null = null;
@@ -461,4 +462,33 @@ function demoKampanjer(): Data["kampanjer"] {
       side("Maling", [["Innendørs maling 9 L", "899,-", "1 199,-"], ["Grunning 3 L", "299,-", "399,-"], ["Rull og brett", "149,-", "219,-"]], "#F6F2EB"),
     ],
   }];
+}
+
+/** Demo i Thaugland-drakt: trelast- og byggevarehandel med tre avdelinger og uten egne snekkere */
+function thauglandDrakt(d: Data): Data {
+  d.avdelinger = [
+    { id: 1, navn: "Butikk", maks_borte: 1, rekkefolge: 1 },
+    { id: 2, navn: "Proffsalg", maks_borte: 1, rekkefolge: 2 },
+    { id: 3, navn: "Lager og levering", maks_borte: 2, rekkefolge: 3 },
+  ];
+  const navn: Record<string, [string, number]> = {
+    stale: ["Kari Thorsen", 2], butikk2: ["Ole Hansen", 1], karianne: ["Ingrid Berg", 1],
+    mads: ["Martin Lie", 2], snekker2: ["Sara Nilsen", 2],
+    snekker3: ["Tomasz Nowak", 3], snekker4: ["Jonas Bakke", 3], snekker5: ["Ali Hassan", 3], jim: ["Erik Dahl", 3],
+  };
+  for (const a of d.ansatte) { const n = navn[a.id]; if (n) { a.navn = n[0]; a.avdeling_id = n[1]; } a.tema = "thaugland"; }
+  d.kunder = [
+    { id: "k1", visma_nr: 20311, navn: "Byggmester Hansen AS", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+    { id: "k2", visma_nr: 20348, navn: "Snekker Olsen AS", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+  ];
+  const p = d.prosjekter;
+  if (p[0]) Object.assign(p[0], { navn: "Rekkehus Grefsen – leveranser", adresse: "Grefsenveien 12, 0482 Oslo", estimert_timer: 40 });
+  if (p[1]) Object.assign(p[1], { navn: "Enebolig Nittedal – materialpakke", adresse: "Hagan, 1480 Slattum", estimert_timer: 60 });
+  if (d.avvik[0]) Object.assign(d.avvik[0], { tittel: "Skadet pall ved lossing", beskrivelse: "En pall med gips ble skadet ved lossing hos kunden. Tre plater knust." });
+  if (d.dagbok[0]) Object.assign(d.dagbok[0], { tekst: "Levert to billass trelast og gips. Kunden kvitterte, resten leveres torsdag." });
+  d.maal = 5000;
+  d.maalOmsetning = 120000000;
+  d.omsetning = (d.omsetning ?? []).map((o) => ({ ...o, belop: o.belop * 4 }));
+  if (d.kampanjer?.[0]) Object.assign(d.kampanjer[0], { tittel: "Månedens tilbud (eksempel)", tekst: "Eksempel på hvordan kampanjene vises for de ansatte. Tips kundene om tilbudene!" });
+  return d;
 }

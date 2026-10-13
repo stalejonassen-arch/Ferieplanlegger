@@ -1160,3 +1160,57 @@ header.top select.temavalg option { color: #10162E; }
   .vaer-timer { margin: 12px -16px 0; padding: 2px 16px 6px; }
   .vaer-time { width: 50px; }
 }
+
+/* =================================================================================================
+   Tema «Thaugland» (demo-drakt): svart og ravgult som thaugland.no, Poppins, lys grå bunn.
+   ================================================================================================= */
+:root[data-tema="thaugland"] {
+  --bg: #F6F6F6; --surface: #FFFFFF; --sunk: #EFEFEF; --fg: #222222; --muted: #5F6166; --line: #DADADA; --line-soft: #EAEAEA;
+  --accent: #A86F00; --accent-ink: #FFFFFF; --sel: #FFB300; --sel-ink: #1D1D1B;
+  --approved: #1E7B45; --pending: #FFB300; --pending-ink: #1D1D1B; --pending-text: #8A5A00; --warn: #C62828; --info: #3D3D3D; --hatch: #E3E3E3;
+  --bf-blue: #1D1D1B; --bf-blue-dark: #000000; --bf-yellow: #FFB300; --navy: #1D1D1B; --navy-2: #3B3B38;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 26px -18px rgba(0, 0, 0, .35);
+  --f-display: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --stokk: repeating-linear-gradient(90deg, #1D1D1B 0 2px, transparent 2px 50px) left top / 100% 9px no-repeat,
+           repeating-linear-gradient(90deg, #1D1D1B 0 1px, transparent 1px 10px) left top / 100% 5px no-repeat,
+           #FFB300;
+  color-scheme: light;
+}
+:root[data-tema="thaugland"] body { background: var(--bg); font-size: 15px; }
+:root[data-tema="thaugland"] :is(h1, h2, h3) { font-style: normal; letter-spacing: -.01em; }
+:root[data-tema="thaugland"] h2 { font-weight: 700; }
+:root[data-tema="thaugland"] .toppfelt { background: radial-gradient(640px 240px at 88% 0%, rgba(255, 179, 0, .28), transparent 62%), linear-gradient(135deg, #2B2B29 0%, #1D1D1B 60%, #0E0E0D 100%);
+  box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .7); }
+:root[data-tema="thaugland"] header.top h1 { font-style: normal; font-weight: 800; letter-spacing: -.03em; text-transform: uppercase; }
+:root[data-tema="thaugland"] header.top h1 .ord span { color: #FFB300; }
+:root[data-tema="thaugland"] .brand small { color: #FFB300; font-weight: 600; letter-spacing: .02em; }
+:root[data-tema="thaugland"] header.top .btn:hover:not(:disabled) { background: #000000; }
+:root[data-tema="thaugland"] .toppfelt nav.tabs.hoved button[aria-selected=true] { background: #FFB300; color: #1D1D1B; }
+:root[data-tema="thaugland"] .btn { border-radius: 6px; font-weight: 600; }
+:root[data-tema="thaugland"] .btn.primary { background: #FFB300; color: #1D1D1B; border-color: #FFB300; }
+:root[data-tema="thaugland"] .btn.gul { background: #FFB300; color: #1D1D1B; border-color: #FFB300; }
+:root[data-tema="thaugland"] .panel { border-radius: 12px; border-color: var(--line-soft); }
+:root[data-tema="thaugland"] .stempel { background: #1D1D1B; box-shadow: 0 14px 30px -18px rgba(0, 0, 0, .7); }
+:root[data-tema="thaugland"] .klokke, :root[data-tema="thaugland"] .stempel .tid { font-weight: 800; letter-spacing: -.03em; }
+:root[data-tema="thaugland"] .chip.demo { border-color: #FFB300; }
+:root[data-tema="thaugland"] .banner { border-left-color: #FFB300; }
+:root[data-tema="thaugland"] .kampanje { border-top-color: #FFB300; }
+:root[data-tema="thaugland"] .kampanje-chip, :root[data-tema="thaugland"] .varsel-ikon { background: #FFB300; color: #1D1D1B; }
+:root[data-tema="thaugland"] :is(select, input, textarea):focus { border-color: #FFB300; box-shadow: 0 0 0 2px rgba(255, 179, 0, .3); outline: none; }
+@media (max-width: 640px) {
+  :root[data-tema="thaugland"] nav.tabs.hoved button[aria-selected=true] { background: rgba(255, 179, 0, .22); color: #1D1D1B; }
+  :root[data-tema="thaugland"] nav.tabs.hoved button[aria-selected=true] .ikon { color: #1D1D1B; }
+}
+:root[data-tema="thaugland"] :is(.brand small, .toppfelt nav.tabs.hoved button, .panel.prosjekthode h2, .seksjoner button) { font-style: normal; }
+:root[data-tema="thaugland"] .toppfelt nav.tabs.hoved button { font-weight: 600; font-size: 16px; }
+:root[data-tema="thaugland"][data-tema="thaugland"][data-tema="thaugland"] .ferie-flate {
+  --fg: #222222; --muted: #5F6166; --surface: #FFFFFF; --sunk: #F2F2F2; --line: #E0E0E0; --line-soft: #EBEBEB; --hatch: #E6E6E6;
+  --accent: #1D1D1B; --accent-ink: #FFFFFF; --sel: #1D1D1B; --sel-ink: #FFFFFF;
+  --approved: #1E7B45; --pending: #FFB300; --pending-ink: #1D1D1B; --pending-text: #8A5A00; --warn: #C62828; --info: #5F6166;
+  background: #FFFFFF; border-color: #ECECEC;
+}
+:root[data-tema="thaugland"][data-tema="thaugland"][data-tema="thaugland"] .ferie-flate .btn.primary { background: #FFB300; color: #1D1D1B; border-color: #FFB300; }
+:root[data-tema="thaugland"] header.top { background: radial-gradient(500px 200px at 90% 0%, rgba(255, 179, 0, .25), transparent 62%), linear-gradient(135deg, #2B2B29, #1D1D1B 60%, #0E0E0D); box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .7); }
+:root[data-tema="thaugland"] .toppfelt header.top { background: none; box-shadow: none; }

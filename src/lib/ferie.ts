@@ -12,7 +12,7 @@ import type { Avvik, Bilde, Dagbok, Tillegg } from "./hms";
 
 export type Status = "venter" | "godkjent" | "avslatt";
 export type Rolle = "ansatt" | "leder";
-export type Tema = "standard" | "byggfag" | "bfportal" | "fargerik" | "mork";
+export type Tema = "standard" | "byggfag" | "bfportal" | "fargerik" | "mork" | "thaugland";
 
 export interface Avdeling { id: number; navn: string; maks_borte: number; rekkefolge: number }
 export interface Ansatt {
