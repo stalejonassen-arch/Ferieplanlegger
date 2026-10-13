@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { hentVaer, STED, vaerTekst, vindNavn, vindRetning, type VaerTime } from "../lib/vaer";
+import { hentVaer, vaerTekst, vindNavn, vindRetning, type Sted, type VaerTime } from "../lib/vaer";
+import { useApp } from "../App";
+import { PROFIL } from "../lib/profil";
 
 const kl = (iso: string) => new Date(iso).toLocaleTimeString("nb-NO", { hour: "2-digit" });
 const grader = (t: number) => `${Math.round(t)}°`;
@@ -25,6 +27,9 @@ function stemning(symbol: string): string {
 
 /** Dagens vær for Haramsøy øverst på startsiden: nå, resten av dagen time for time, og varsel ved kuling/mye nedbør */
 export function Vaer() {
+  const { d } = useApp();
+  const b = d.bedrift;
+  const STED: Sted = b && b.sted_lat != null && b.sted_lon != null ? { navn: b.sted_navn || b.navn, lat: b.sted_lat, lon: b.sted_lon } : PROFIL.sted;
   const [timer, setTimer] = useState<VaerTime[] | null>(null);
   const [feil, setFeil] = useState(false);
   const [skjult, setSkjult] = useState(() => { try { return localStorage.getItem("vaer-skjult") === "1"; } catch { return false; } });
@@ -32,13 +37,13 @@ export function Vaer() {
 
   useEffect(() => {
     let aktiv = true;
-    const last = () => hentVaer().then((v) => { if (aktiv) { setTimer(v.timer); setFeil(false); } }).catch(() => { if (aktiv) setFeil(true); });
+    const last = () => hentVaer(STED).then((v) => { if (aktiv) { setTimer(v.timer); setFeil(false); } }).catch(() => { if (aktiv) setFeil(true); });
     last();
     const id = window.setInterval(last, 30 * 60 * 1000);
     const synlig = () => { if (document.visibilityState === "visible") last(); };
     document.addEventListener("visibilitychange", synlig);
     return () => { aktiv = false; clearInterval(id); document.removeEventListener("visibilitychange", synlig); };
-  }, []);
+  }, [STED.lat, STED.lon]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kommende = (timer ?? []).filter((t) => new Date(t.tid).getTime() + 3600e3 > Date.now());
   const denne = kommende[0];

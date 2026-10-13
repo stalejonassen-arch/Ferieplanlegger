@@ -1,8 +1,6 @@
 // Værmelding fra Meteorologisk institutt (api.met.no, samme data som Yr). Gratis, krever navngivning: «Data fra MET Norway».
 // Hentes rett fra nettleseren og huskes i 30 minutter, så vi ikke spør oftere enn nødvendig.
-import { PROFIL } from "./profil";
-
-export const STED = PROFIL.sted;
+export type Sted = { navn: string; lat: number; lon: number };
 
 export interface VaerTime {
   tid: string;            // ISO
@@ -14,10 +12,10 @@ export interface VaerTime {
   symbol: string;         // f.eks. "partlycloudy_day"
 }
 
-const NOKKEL = `vaer-${STED.navn.toLowerCase()}`;
 const MAKS_ALDER = 30 * 60 * 1000;
 
-export async function hentVaer(): Promise<{ timer: VaerTime[]; hentet: number }> {
+export async function hentVaer(STED: Sted): Promise<{ timer: VaerTime[]; hentet: number }> {
+  const NOKKEL = `vaer-${STED.lat.toFixed(2)},${STED.lon.toFixed(2)}`;
   try {
     const lagret = JSON.parse(localStorage.getItem(NOKKEL) || "null") as { timer: VaerTime[]; hentet: number } | null;
     if (lagret && Date.now() - lagret.hentet < MAKS_ALDER && lagret.timer.length) return lagret;

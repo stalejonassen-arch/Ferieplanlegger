@@ -75,6 +75,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0037_omsetning.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0038_kampanjer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0040_flere_bedrifter.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -556,5 +557,41 @@ describe("push-varsler", () => {
     expect(r.rows.map((x: any) => x.endpoint)).toEqual(["https://push.example/abc", "https://push.example/def"]);
     // Ny melding fyrer utløseren uten feil (pg_net finnes ikke i testen)
     await as(JIM, "insert into public.meldinger (kanal, tekst) values ('felles', 'Test varsel')");
+  });
+});
+
+describe("flere bedrifter", () => {
+  const ANNEN = "leder@annen.no";
+  it("plattform-admin oppretter bedrift; bedriftene ser ikke hverandres data", async () => {
+    // Ikke plattform-admin ennå
+    await expect(as(STALE, "select public.opprett_bedrift('Annen Bygg AS', '999', 'Anne Leder', $1)", [ANNEN])).rejects.toThrow();
+    await db.exec(`insert into public.plattform_admin values ('${STALE}')`);
+    const [r] = await as(STALE, "select public.opprett_bedrift('Annen Bygg AS', '999', 'Anne Leder', $1, array['Butikk','Lager']) as id", [ANNEN]);
+    expect(Number(r.id)).toBeGreaterThan(1);
+    // Ny leder ser bare sin egen bedrift
+    const ans = await as(ANNEN, "select navn from public.ansatte");
+    expect(ans.map((x: any) => x.navn)).toEqual(["Anne Leder"]);
+    expect((await as(ANNEN, "select navn from public.avdelinger order by rekkefolge")).map((x: any) => x.navn)).toEqual(["Butikk", "Lager"]);
+    expect(await as(ANNEN, "select id from public.soknader")).toHaveLength(0);
+    expect(await as(ANNEN, "select id from public.meldinger")).toHaveLength(0);
+    // Austnes ser ikke den nye bedriftens ansatte
+    expect((await as(JIM, "select navn from public.ansatte")).some((x: any) => x.navn === "Anne Leder")).toBe(false);
+    // Ny ansatt havner i lederens bedrift, selv om bedrift_id sendes inn
+    const [avd] = await as(ANNEN, "select id from public.avdelinger where navn = 'Lager'");
+    await as(ANNEN, "insert into public.ansatte (navn, epost, avdeling_id, bedrift_id) values ('Lars Lager', 'lars@annen.no', $1, 1)", [avd.id]);
+    const [lars] = await db.query<any>("select bedrift_id from public.ansatte where epost = 'lars@annen.no'").then((x) => x.rows);
+    expect(Number(lars.bedrift_id)).toBe(Number(r.id));
+    // Kan ikke bruke en avdeling fra en annen bedrift
+    const [austAvd] = await db.query<any>("select id from public.avdelinger where bedrift_id = 1 limit 1").then((x) => x.rows);
+    await expect(as(ANNEN, "insert into public.ansatte (navn, avdeling_id) values ('Feil', $1)", [austAvd.id])).rejects.toThrow();
+    // Leder i én bedrift kan ikke endre ansatte i en annen
+    await as(ANNEN, "update public.ansatte set navn = 'Hack' where epost = $1", [JIM]);
+    expect((await as(STALE, "select navn from public.ansatte where epost = $1", [JIM]))[0].navn).not.toBe("Hack");
+    // Stengt bedrift: ingen tilgang
+    await as(STALE, "select public.sett_abonnement($1::smallint, false)", [r.id]);
+    expect(await as(ANNEN, "select navn from public.ansatte")).toHaveLength(0);
+    await as(STALE, "select public.sett_abonnement($1::smallint, true)", [r.id]);
+    expect((await as(STALE, "select * from public.plattform_oversikt()")).length).toBe(2);
+    expect(await as(JIM, "select * from public.plattform_oversikt()")).toHaveLength(0);
   });
 });

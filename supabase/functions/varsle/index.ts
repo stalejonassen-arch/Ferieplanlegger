@@ -8,7 +8,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const APP_URL = Deno.env.get("APP_URL") ?? "";
-const FRA = Deno.env.get("VARSEL_FRA") ?? "Ferieplanlegger <ferie@austnes.no>";
+const FRA = Deno.env.get("VARSEL_FRA") ?? "ByggLogg <varsel@bygglogg.no>";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const dato = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${d}.${m}.${y}`; };
@@ -17,7 +17,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 async function send(to: string[], subject: string, avsnitt: string[], lenke = APP_URL, lenketekst = "Åpne ByggLogg") {
   if (!to.length) return;
   const html = avsnitt.map((a) => `<p>${a}</p>`).join("") +
-    `<p><a href="${lenke}">${lenketekst}</a></p><p style="color:#666">Hilsen N L Austnes AS</p>`;
+    `<p><a href="${lenke}">${lenketekst}</a></p><p style="color:#666">Sendt fra ByggLogg</p>`;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`, "Content-Type": "application/json" },
@@ -57,12 +57,12 @@ Deno.serve(async (req) => {
 
   const { data: s } = await sb.from("soknader").select("id, ansatt_id, fra, til, merknad, status, kommentar, behandlet_tid").eq("id", id).maybeSingle();
   if (!s) return new Response("finnes ikke", { status: 404 });
-  const { data: ansatt } = await sb.from("ansatte").select("navn, epost").eq("id", s.ansatt_id).single();
+  const { data: ansatt } = await sb.from("ansatte").select("navn, epost, bedrift_id").eq("id", s.ansatt_id).single();
   const periode = s.fra === s.til ? dato(s.fra) : `${dato(s.fra)}–${dato(s.til)}`;
 
   if (hendelse === "ny" && s.status === "venter") {
     if (!(await forsteGang(s.id, "ny"))) return new Response("allerede sendt");
-    const { data: ledere } = await sb.from("ansatte").select("epost").eq("rolle", "leder").eq("aktiv", true).not("epost", "is", null);
+    const { data: ledere } = await sb.from("ansatte").select("epost").eq("bedrift_id", ansatt?.bedrift_id ?? -1).eq("rolle", "leder").eq("aktiv", true).not("epost", "is", null);
     await send((ledere ?? []).map((l) => l.epost as string), `Ny feriesøknad fra ${ansatt?.navn ?? "en ansatt"}`, [
       `<b>${esc(ansatt?.navn ?? "")}</b> har søkt ferie <b>${periode}</b>.`,
       ...(s.merknad ? [`Merknad: ${esc(s.merknad)}`] : []),

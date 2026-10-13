@@ -28,23 +28,25 @@ Deno.serve(async (req) => {
 
   const { data: tok } = await sb.from("kalender_tokens").select("ansatt_id").eq("token", token).maybeSingle();
   if (!tok) return new Response("Ugyldig lenke", { status: 404 });
-  const { data: meg } = await sb.from("ansatte").select("id, navn, rolle, aktiv").eq("id", tok.ansatt_id).single();
+  const { data: meg } = await sb.from("ansatte").select("id, navn, rolle, aktiv, bedrift_id").eq("id", tok.ansatt_id).single();
+  const { data: bedrift } = await sb.from("bedrifter").select("navn").eq("id", meg?.bedrift_id ?? -1).maybeSingle();
   if (!meg?.aktiv) return new Response("Ugyldig lenke", { status: 404 });
 
   const alle = url.searchParams.get("alle") === "1" && meg.rolle === "leder";
   const fraDato = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
 
+  // Bare ansatte i samme bedrift
+  const { data: ansatte } = await sb.from("ansatte").select("id, navn").eq("bedrift_id", meg.bedrift_id);
   let q = sb.from("soknader").select("id, ansatt_id, fra, til, merknad").eq("status", "godkjent").gte("til", fraDato);
-  if (!alle) q = q.eq("ansatt_id", meg.id);
+  q = alle ? q.in("ansatt_id", (ansatte ?? []).map((a) => a.id)) : q.eq("ansatt_id", meg.id);
   const { data: soknader } = await q;
-  const { data: ansatte } = await sb.from("ansatte").select("id, navn");
   const navn = new Map((ansatte ?? []).map((a) => [a.id, a.navn]));
 
   const naa = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
   const linjer = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//N L Austnes AS//Ferieplanlegger//NO",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ByggLogg//Ferie//NO",
     "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    `X-WR-CALNAME:${tekst(alle ? "Ferie N L Austnes" : `Ferie – ${meg.navn}`)}`,
+    `X-WR-CALNAME:${tekst(alle ? `Ferie ${bedrift?.navn ?? ""}`.trim() : `Ferie – ${meg.navn}`)}`,
     "X-WR-TIMEZONE:Europe/Oslo",
     "REFRESH-INTERVAL;VALUE=DURATION:PT6H", "X-PUBLISHED-TTL:PT6H",
   ];

@@ -64,6 +64,10 @@ function startdata(): Data {
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
     kampanjer: demoKampanjer(),
+    bedrift: {
+      id: 1, navn: PROFIL.firma, undertittel: PROFIL.undertittel, orgnr: "", adresse: "", postnr: "", poststed: "", telefon: "", epost: "",
+      sted_navn: PROFIL.sted.navn, sted_lat: PROFIL.sted.lat, sted_lon: PROFIL.sted.lon, tema: PROFIL.tema, kjede: "Byggfag", kampanje_tittel: PROFIL.kampanje,
+    },
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
     utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) } };
 }
@@ -413,6 +417,11 @@ export function demoApi(): Api {
     },
     async slettKampanje(id) { d.kampanjer = (d.kampanjer ?? []).filter((x) => x.id !== id); endret(); },
     async lagrePush() { /* ikke i demo */ },
+    async lagreBedriftsprofil(p) { if (!leder()) throw new Error("Bare leder kan endre bedriftens profil."); d.bedrift = { ...d.bedrift!, ...p }; endret(); },
+    async erPlattformAdmin() { return false; },
+    async plattformOversikt() { return []; },
+    async opprettBedrift() { throw new Error("Ikke i demo."); },
+    async settAbonnement() { /* ikke i demo */ },
     async slettPush() { /* ikke i demo */ },
     async settVisKampanjer(vis) { const m = meg(); if (m) m.vis_kampanjer = vis; endret(); },
     async skjulKampanje(id) { const m = meg(); if (m) m.skjulte_kampanjer = [...(m.skjulte_kampanjer ?? []), id]; endret(); },

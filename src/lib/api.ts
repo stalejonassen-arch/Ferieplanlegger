@@ -1,7 +1,7 @@
 // Datalaget. Med Supabase-nøkler i .env brukes ekte database; uten nøkler
 // starter appen i demomodus med eksempeldata, så den kan prøves uten oppsett.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Ansatt, Avdeling, Data, Kampanje, Soknad, Status, Tema } from "./ferie";
+import type { Ansatt, Avdeling, Bedrift, Data, Kampanje, Soknad, Status, Tema } from "./ferie";
 import { demoApi } from "./demo";
 import type { NyTime, Prosjekt } from "./timer";
 import type { NyRapport } from "./rapport";
@@ -22,6 +22,9 @@ export interface FdvDok { id: string; navn: string; sti: string; storrelse: numb
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
 export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string; svenn_id?: number; opprettet?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
+
+/** En kunde sett fra plattform-admin */
+export interface PlattformBedrift { id: number; navn: string; orgnr: string; aktiv: boolean; abonnement_til: string | null; visma_firma_nr: number | null; ansatte: number; ledere: string; sist_aktiv: string | null; opprettet: string }
 
 /** Svar fra importen av Svenn-timer */
 export interface SvennResultat { importert: number; timer: number; fakturerbart: number; internt: number; fra: string; til: string; nye_prosjekter: number; ukjente_ansattnr: string[] }
@@ -63,6 +66,13 @@ export interface Api {
   /** Leder: lagre kampanje (DM). nyeSider legges til bak eksisterende, fjern = stier som tas bort. */
   lagreKampanje(k: Partial<Kampanje> & { tittel: string; fra: string; til: string }, nyeSider?: Blob[], fjern?: string[]): Promise<void>;
   slettKampanje(id: string, sider: string[]): Promise<void>;
+  /** Leder: bedriftens profil (navn, adresse, sted for været, farger, kampanjetittel) */
+  lagreBedriftsprofil(p: Partial<Bedrift>): Promise<void>;
+  /** Plattform-admin (den som selger ByggLogg) */
+  erPlattformAdmin(): Promise<boolean>;
+  plattformOversikt(): Promise<PlattformBedrift[]>;
+  opprettBedrift(b: { navn: string; orgnr: string; leder_navn: string; leder_epost: string; avdelinger: string[]; visma_firma_nr: number | null }): Promise<number>;
+  settAbonnement(id: number, aktiv: boolean, til: string | null): Promise<void>;
   /** Push-varsler: meld på/av denne enheten */
   lagrePush(endpoint: string, p256dh: string, auth: string): Promise<void>;
   slettPush(endpoint: string): Promise<void>;
@@ -224,6 +234,12 @@ function supabaseApi(sb: SupabaseClient): Api {
         kompetanse: kompetanse.error ? [] : kompetanse.data,
         omsetning: omsetning.error ? [] : (omsetning.data as any[]).map((x) => ({ ...x, belop: Number(x.belop) })),
         maalOmsetning: b0.maal_omsetning_aar == null ? null : Number(b0.maal_omsetning_aar),
+        bedrift: b0.id == null ? undefined : {
+          id: Number(b0.id), navn: b0.navn ?? "", undertittel: b0.undertittel ?? "", orgnr: b0.orgnr ?? "", adresse: b0.adresse ?? "", postnr: b0.postnr ?? "",
+          poststed: b0.poststed ?? "", telefon: b0.telefon ?? "", epost: b0.epost ?? "", sted_navn: b0.sted_navn ?? "",
+          sted_lat: b0.sted_lat == null ? null : Number(b0.sted_lat), sted_lon: b0.sted_lon == null ? null : Number(b0.sted_lon),
+          tema: (b0.tema ?? "byggfag") as Tema, kjede: b0.kjede ?? "", kampanje_tittel: b0.kampanje_tittel ?? "Kampanje fra Byggfag",
+        },
         kampanjer: kampanjer.error ? [] : kampanjer.data,
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
@@ -481,6 +497,11 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (sider.length) await sb.storage.from("bilder").remove(sider);
     },
     async settVisKampanjer(vis) { ok(await sb.rpc("sett_vis_kampanjer", { vis })); },
+    async lagreBedriftsprofil(p) { ok(await sb.rpc("lagre_bedriftsprofil", { p })); },
+    async erPlattformAdmin() { const r = await sb.rpc("er_plattform_admin"); return r.data === true; },
+    async plattformOversikt() { return ((ok(await sb.rpc("plattform_oversikt")) as any[]) ?? []).map((x) => ({ ...x, id: Number(x.id), ansatte: Number(x.ansatte) })); },
+    async opprettBedrift(b) { return Number(ok(await sb.rpc("opprett_bedrift", { navn: b.navn, orgnr: b.orgnr, leder_navn: b.leder_navn, leder_epost: b.leder_epost, avdelinger: b.avdelinger, visma_firma_nr: b.visma_firma_nr }))); },
+    async settAbonnement(id, aktiv, til) { ok(await sb.rpc("sett_abonnement", { bedrift: id, aktiv, til })); },
     async lagrePush(endpoint, p256dh, auth) { ok(await sb.rpc("lagre_push", { endpoint, p256dh, auth })); },
     async slettPush(endpoint) { ok(await sb.rpc("slett_push", { endpoint })); },
     async skjulKampanje(kampanje) { ok(await sb.rpc("skjul_kampanje", { kampanje })); },
@@ -527,8 +548,9 @@ function supabaseApi(sb: SupabaseClient): Api {
   };
 }
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// Plattform-versjonen har sin egen database. Egne variabelnavn gjør at den aldri kobler seg til N L Austnes sin database ved en feil.
+const url = import.meta.env.VITE_PLATTFORM_SUPABASE_URL as string | undefined;
+const key = import.meta.env.VITE_PLATTFORM_SUPABASE_ANON_KEY as string | undefined;
 
 /** «?demo» i adressen gir en prøveversjon med eksempeldata – ingenting lagres i den ekte databasen. «?demo=av» går tilbake. */
 function demoValgt(): boolean {

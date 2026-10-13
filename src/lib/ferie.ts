@@ -47,6 +47,13 @@ export interface Soknad {
 /** Kampanje fra Byggfag (DM). sider = bildestier (én per side). */
 export interface Kampanje { id: string; tittel: string; tekst: string; fra: string; til: string; lenke: string | null; sider: string[]; opprettet: string }
 
+/** Bedriften (kunden) – profil som vises i appen */
+export interface Bedrift {
+  id: number; navn: string; undertittel: string; orgnr: string; adresse: string; postnr: string; poststed: string;
+  telefon: string; epost: string; sted_navn: string; sted_lat: number | null; sted_lon: number | null;
+  tema: Tema; kjede: string; kampanje_tittel: string;
+}
+
 export interface Data {
   avdelinger: Avdeling[]; ansatte: Ansatt[]; ferieaar: Ferieaar[]; soknader: Soknad[];
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
@@ -66,6 +73,8 @@ export interface Data {
   /** Omsetning per måned fra Visma (bare leder) og omsetningsmål for året */
   omsetning?: { aar: number; mnd: number; belop: number; oppdatert: string }[];
   maalOmsetning?: number | null;
+  /** Bedriftens profil */
+  bedrift?: Bedrift;
   /** Kampanjer fra Byggfag (DM) */
   kampanjer?: Kampanje[];
   /** Arbeid-linjer fra Visma (bare leder) */

@@ -54,32 +54,37 @@ Deno.serve(async (req) => {
     if (error) return new Response("allerede sendt denne måneden");
   }
 
-  const { data: ansatte } = await sb.from("ansatte").select("id, navn, epost, rolle").eq("aktiv", true);
-  const { data: soknader } = await sb.from("soknader").select("ansatt_id, fra, til, status")
-    .neq("status", "avslatt").lte("fra", `${y}-09-30`).gte("til", `${y}-06-01`);
+  const { data: bedrifter } = await sb.from("bedrifter").select("id, navn").eq("aktiv", true);
+  let totalt = 0;
+  for (const b of bedrifter ?? []) {
+    const { data: ansatte } = await sb.from("ansatte").select("id, navn, epost, rolle").eq("aktiv", true).eq("bedrift_id", b.id);
+    const { data: soknader } = await sb.from("soknader").select("ansatt_id, fra, til, status")
+      .neq("status", "avslatt").lte("fra", `${y}-09-30`).gte("til", `${y}-06-01`);
 
-  const mangler = (ansatte ?? []).map((a) => {
-    const dager = (soknader ?? []).filter((s) => s.ansatt_id === a.id).reduce((n, s) => n + hovedferieDager(s.fra, s.til, y), 0);
-    return { ...a, dager };
-  }).filter((a) => a.dager < HOVEDFERIE);
+    const mangler = (ansatte ?? []).map((a) => {
+      const dager = (soknader ?? []).filter((s) => s.ansatt_id === a.id).reduce((n, s) => n + hovedferieDager(s.fra, s.til, y), 0);
+      return { ...a, dager };
+    }).filter((a) => a.dager < HOVEDFERIE);
 
-  if (!tvungen) {
-    for (const a of mangler) {
-      if (!a.epost) continue;
-      await send([a.epost], `Har du planlagt sommerferien ${y}?`,
-        `<p>Hei ${a.navn.split(" ")[0]}</p>` +
-        `<p>Du har søkt om <b>${a.dager} av ${HOVEDFERIE}</b> dager hovedferie (1. juni–30. september) for ${y}.</p>` +
-        `<p>Søk gjerne snart, så vi får lagt sommerplanen i god tid.</p>` +
-        `<p><a href="${APP_URL}">Søk ferie i Ferieplanlegger</a></p><p style="color:#666">Hilsen N L Austnes AS</p>`);
+    if (!tvungen) {
+      for (const a of mangler) {
+        if (!a.epost) continue;
+        await send([a.epost], `Har du planlagt sommerferien ${y}?`,
+          `<p>Hei ${a.navn.split(" ")[0]}</p>` +
+          `<p>Du har søkt om <b>${a.dager} av ${HOVEDFERIE}</b> dager hovedferie (1. juni–30. september) for ${y}.</p>` +
+          `<p>Søk gjerne snart, så vi får lagt sommerplanen i god tid.</p>` +
+          `<p><a href="${APP_URL}">Søk ferie i ByggLogg</a></p><p style="color:#666">Hilsen ${b.navn}</p>`);
+      }
     }
-  }
 
-  const ledere = (ansatte ?? []).filter((a) => a.rolle === "leder" && a.epost).map((a) => a.epost as string);
-  const liste = mangler.length
-    ? `<ul>${mangler.map((a) => `<li>${a.navn}: ${a.dager} av ${HOVEDFERIE} dager${a.epost ? "" : " (mangler e-post, fikk ikke påminnelse)"}</li>`).join("")}</ul>`
-    : "<p>Alle har søkt om hovedferie.</p>";
-  await send(ledere, `${tvungen ? "[TEST] " : ""}Sommerferie ${y}: ${mangler.length} har ikke søkt ferdig`,
-    `<p>Status for hovedferie ${y} (minst ${HOVEDFERIE} dager mellom 1. juni og 30. september):</p>${liste}` +
-    `<p>Husk at de ansatte har krav på å få vite ferietidspunktet senest 2 måneder før.</p><p><a href="${APP_URL}">Åpne Ferieplanlegger</a></p>`);
-  return new Response(`sendt, ${mangler.length} mangler`);
+    const ledere = (ansatte ?? []).filter((a) => a.rolle === "leder" && a.epost).map((a) => a.epost as string);
+    const liste = mangler.length
+      ? `<ul>${mangler.map((a) => `<li>${a.navn}: ${a.dager} av ${HOVEDFERIE} dager${a.epost ? "" : " (mangler e-post, fikk ikke påminnelse)"}</li>`).join("")}</ul>`
+      : "<p>Alle har søkt om hovedferie.</p>";
+    await send(ledere, `${tvungen ? "[TEST] " : ""}Sommerferie ${y}: ${mangler.length} har ikke søkt ferdig`,
+      `<p>Status for hovedferie ${y} (minst ${HOVEDFERIE} dager mellom 1. juni og 30. september):</p>${liste}` +
+      `<p>Husk at de ansatte har krav på å få vite ferietidspunktet senest 2 måneder før.</p><p><a href="${APP_URL}">Åpne ByggLogg</a></p>`);
+    totalt += mangler.length;
+  }
+  return new Response(`sendt, ${totalt} mangler`);
 });
