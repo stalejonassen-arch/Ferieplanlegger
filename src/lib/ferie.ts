@@ -29,6 +29,8 @@ export interface Ansatt {
   tema?: Tema;
   /** Får push-varsel om nye prosjekter */
   varsel_prosjekt?: boolean;
+  /** Push-varsel når den ansatte har vært stemplet inn så mange minutter (null = av) */
+  varsel_stemplet_min?: number | null;
   /** Vis kampanjer fra Byggfag (DM) i appen */
   vis_kampanjer?: boolean;
   /** Kampanjer den ansatte har skjult */
