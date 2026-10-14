@@ -29,12 +29,5 @@ export async function finnPunkt(adresse: string, matrikkel?: { kommunenr?: strin
   return p;
 }
 
-/** Kart til innebygging (OpenStreetMap), med nål på stedet */
-export function kartInnebygd(p: Punkt, zoom: "naer" | "omrade" = "naer"): string {
-  const dx = zoom === "naer" ? 0.006 : 0.03, dy = zoom === "naer" ? 0.0025 : 0.012;
-  const bbox = [p.lon - dx, p.lat - dy, p.lon + dx, p.lat + dy].map((x) => x.toFixed(5)).join(",");
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${p.lat.toFixed(6)},${p.lon.toFixed(6)}`;
-}
-
 /** Telefonnummer til tel:-lenke (fjerner mellomrom, beholder +) */
 export const telLenke = (nr: string) => "tel:" + nr.replace(/[^\d+]/g, "");

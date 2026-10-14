@@ -13,7 +13,8 @@ import { Dokumenter, Statistikk } from "./ProsjektDeler";
 import { Traad } from "./Chat";
 import { prosjektKanal, uleste as ulesteChat } from "../lib/chat";
 import { dagHendelser, lokalDato } from "../lib/dag";
-import { finnPunkt, kartInnebygd, telLenke, type Punkt } from "../lib/kart";
+import { finnPunkt, telLenke, type Punkt } from "../lib/kart";
+import { Kart } from "./Kart";
 
 type Del = "oversikt" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
@@ -450,8 +451,8 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
       </div>
       {adr && punkt && (
         <div className="prosjektkart" style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)" }}>
-          <iframe title={`Kart over ${adr}`} src={kartInnebygd(punkt)} loading="lazy" style={{ display: "block", width: "100%", height: stortKart ? 420 : 200, border: 0 }} />
-          <div className="row" style={{ position: "absolute", right: 8, bottom: 8, gap: 6 }}>
+          <Kart punkt={punkt} hoyde={stortKart ? 420 : 220} tittel={`Kart over ${adr}`} />
+          <div className="row" style={{ position: "absolute", right: 8, bottom: 22, gap: 6, zIndex: 500 }}>
             <button className="btn sm" onClick={() => setStortKart((x) => !x)}>{stortKart ? "Mindre kart" : "Større kart"}</button>
             <a className="btn sm" href={`https://www.google.com/maps/search/?api=1&query=${maal}`} target="_blank" rel="noreferrer">Åpne i kart</a>
           </div>
