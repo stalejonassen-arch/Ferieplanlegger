@@ -593,6 +593,9 @@ describe("varsel når noen fortsatt er stemplet inn", () => {
   it("de polske får 9 t 15 min som standard", async () => {
     const r = await db.query<any>("select navn, varsel_stemplet_min from public.ansatte where sprak = 'pl'");
     for (const a of r.rows) expect(a.varsel_stemplet_min).toBe(555);
+  });
+});
+
 describe("koble app-prosjekt til Visma-prosjekt", () => {
   it("flytter timer, dagbok, avvik og chat, tar med opplysninger og sletter app-prosjektet", async () => {
     const jim = await idOf("Jim Kato");
