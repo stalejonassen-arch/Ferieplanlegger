@@ -49,6 +49,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         </div>
         <TimerStatus p={p} />
         <Adresse p={p} adr={adr} />
+        {leder && p.visma_nr == null && <KobleVisma p={p} tilbake={tilbake} />}
       </section>
       <nav className="seksjoner" aria-label="Deler av prosjektet">
         {deler.map(([x, t, n]) => (
@@ -449,3 +450,49 @@ function TimerStatus({ p }: { p: Prosjekt }) {
   );
 }
 
+
+/** Ord i et navn, for å foreslå hvilket Visma-prosjekt et app-prosjekt hører til */
+const ord = (s: string) => new Set(s.toLowerCase().split(/[^a-zæøå0-9]+/).filter((w) => w.length > 2));
+
+/** Leder: prosjektet er laget i appen. Når det er opprettet i Visma, kobles alt over dit. */
+function KobleVisma({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
+  const { d, kjor } = useApp();
+  const [til, setTil] = useState("");
+  const [sikker, setSikker] = useState(false);
+  const mine = ord(p.navn);
+  const treff = (x: Prosjekt) => (x.kunde_id && x.kunde_id === p.kunde_id ? 10 : 0) + [...ord(x.navn)].filter((w) => mine.has(w)).length;
+  const valg = d.prosjekter.filter((x) => x.visma_nr != null && x.aktiv && x.id !== p.id)
+    .sort((a, b) => treff(b) - treff(a) || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
+  const forslag = valg.filter((x) => treff(x) > 0).slice(0, 5);
+  const resten = valg.filter((x) => !forslag.includes(x));
+  const mal = valg.find((x) => x.id === til);
+  const koble = async () => {
+    if (!mal) return;
+    const ok = await kjor(() => api.kobleProsjekt(p.id, mal.id), `Koblet til ${mal.visma_nr} ${mal.navn}`);
+    if (ok) tilbake();
+  };
+  return (
+    <div className="koble-visma" style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+      <p className="small muted" style={{ margin: 0 }}>Laget i appen, finnes ikke i Visma. Når prosjektet er opprettet i Visma og dukker opp her, kobler du det til. Da flyttes timer, stempling, dagbok, bilder, avvik, tillegg, dokumenter og chat over dit.</p>
+      {!sikker ? (
+        <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+          <label className="field" style={{ flex: "1 1 260px" }}><span className="label">Visma-prosjekt</span>
+            <select value={til} onChange={(e) => setTil(e.target.value)}>
+              <option value="">Velg prosjekt fra Visma …</option>
+              {forslag.length > 0 && <optgroup label="Forslag">{forslag.map((x) => <option key={x.id} value={x.id}>{x.visma_nr} {x.navn}</option>)}</optgroup>}
+              <optgroup label={forslag.length ? "Alle" : "Prosjekter fra Visma"}>{resten.map((x) => <option key={x.id} value={x.id}>{x.visma_nr} {x.navn}</option>)}</optgroup>
+            </select></label>
+          <button className="btn" disabled={!mal} onClick={() => setSikker(true)}>Koble til Visma-prosjekt</button>
+        </div>
+      ) : mal && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <p className="small" style={{ margin: 0 }}>Alt på «{p.navn}» flyttes til <b>{mal.visma_nr} {mal.navn}</b>, og «{p.navn}» blir borte fra listen. Dette kan ikke angres.</p>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn primary" onClick={koble}>Ja, koble til {mal.visma_nr}</button>
+            <button className="btn" onClick={() => setSikker(false)}>Avbryt</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -51,6 +51,8 @@ export interface Api {
   /** Leder: godta en dag uten lunsjtrekk */
   lunsjUnntak(id: string, unntak: boolean): Promise<void>;
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
+  /** Leder: slå et prosjekt laget i appen sammen med prosjektet fra Visma (alt flyttes, app-prosjektet slettes) */
+  kobleProsjekt(fra: string, til: string): Promise<void>;
   /** Leder: merk prosjektet som fastpris (holdes utenfor sammenligning av fakturerte timer) */
   settFastpris(id: string, fastpris: boolean): Promise<void>;
   /** Leder: merk prosjektet som ferdig fakturert (alle fakturerbare timer teller som fakturert) */
@@ -517,6 +519,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async settFakturertFull(id, full) { ok(await sb.from("prosjekter").update({ fakturert_full: full }).eq("id", id)); },
     async lagreEiendom(id, e) { ok(await sb.from("prosjekter").update(e).eq("id", id)); },
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },
+    async kobleProsjekt(fra, til) { ok(await sb.rpc("koble_prosjekt", { fra, til })); },
     async lagreProsjekt(p, nyKunde) {
       // Kunden røres bare hvis den er oppgitt (eller en ny kunde opprettes) – ellers beholdes den
       const kunde: { kunde_id?: string | null } = "kunde_id" in p ? { kunde_id: p.kunde_id ?? null } : {};

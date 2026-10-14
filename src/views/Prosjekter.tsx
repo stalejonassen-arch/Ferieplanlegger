@@ -75,7 +75,7 @@ export function Prosjekter() {
                   const b = brukt.get(p.id) ?? 0, est = p.estimert_timer ? Number(p.estimert_timer) : null;
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
-                      <td className="n">{p.visma_nr ?? "–"}</td>
+                      <td className="n">{p.visma_nr ?? (leder ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
                       <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
                         {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id); const a = p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
@@ -105,7 +105,7 @@ export function Prosjekter() {
       {leder && (
         <form className="panel" onSubmit={leggTil}>
           <h2>Nytt prosjekt</h2>
-          <p className="small muted">Bruk dette bare for prosjekter som ikke finnes i Visma.</p>
+          <p className="small muted">For prosjekter som ikke er opprettet i Visma ennå. Når prosjektet er laget i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over.</p>
           <div className="row">
             <label className="field"><span className="label">Prosjektnavn</span>
               <input type="text" value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="F.eks. Skifte vindu" required /></label>
