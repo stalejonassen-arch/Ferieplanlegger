@@ -77,6 +77,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0040_stemplet_varsel.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0041_koble_prosjekt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0042_ansatte_nytt_prosjekt.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -181,7 +182,7 @@ describe("timer og prosjekter", () => {
     const [k] = await as<any>(STALE, "insert into public.kunder (visma_nr, navn) values (1001, 'Merete Austnes') returning id");
     await as(STALE, "insert into public.prosjekter (visma_nr, navn, kunde_id, estimert_timer) values (5001, 'Skifte vindu', $1, 38)", [k.id]);
     expect(await as(JIM, "select navn from public.prosjekter")).toEqual([{ navn: "Skifte vindu" }]);
-    await expect(as(JIM, "insert into public.prosjekter (navn) values ('Eget')")).rejects.toThrow();
+    await expect(as(JIM, "insert into public.prosjekter (visma_nr, navn) values (9999, 'Eget')")).rejects.toThrow();
     expect(await as("fremmed@example.no", "select * from public.prosjekter")).toHaveLength(0);
   });
 
@@ -626,5 +627,20 @@ describe("koble app-prosjekt til Visma-prosjekt", () => {
     const [v] = await q("select adresse, estimert_timer, notat, visma_nr, navn from public.prosjekter where id = $1", [vis.id]);
     expect(v).toMatchObject({ adresse: "Gate 1, 6290 Haramsøy", notat: "Fliser fra butikken", visma_nr: 7001, navn: "Bad Hansen" });
     expect(Number(v.estimert_timer)).toBe(40);
+  });
+});
+
+describe("ansatte oppretter prosjekt", () => {
+  it("ansatt kan lage prosjekt og kunde uten Visma-nr, men ikke endre eller slette", async () => {
+    const [k] = await as<any>(JIM, "insert into public.kunder (navn) values ('Kunde fra Jim') returning id");
+    const [p] = await as<any>(JIM, "insert into public.prosjekter (navn, kunde_id) values ('Jims prosjekt', $1) returning id, navn", [k.id]);
+    expect(p.navn).toBe("Jims prosjekt");
+    await expect(as(JIM, "insert into public.prosjekter (navn, fastpris) values ('Fastpris', true)")).rejects.toThrow();
+    await expect(as(JIM, "insert into public.kunder (visma_nr, navn) values (4242, 'Falsk')")).rejects.toThrow();
+    expect(await as(JIM, "update public.prosjekter set navn = 'Endret' where id = $1 returning id", [p.id])).toHaveLength(0);
+    expect(await as(JIM, "delete from public.prosjekter where id = $1 returning id", [p.id])).toHaveLength(0);
+    await expect(as("fremmed@example.no", "insert into public.prosjekter (navn) values ('Fremmed')")).rejects.toThrow();
+    await db.query("delete from public.prosjekter where id = $1", [p.id]);
+    await db.query("delete from public.kunder where id = $1", [k.id]);
   });
 });

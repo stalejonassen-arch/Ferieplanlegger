@@ -433,7 +433,7 @@ export function demoApi(): Api {
       endret();
     },
     async lagreProsjekt(p, nyKunde) {
-      if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      if (!leder() && (p.id || p.visma_nr != null)) throw new Error("Du har ikke tilgang til å gjøre dette.");
       let kunde_id = p.kunde_id ?? null;
       if (nyKunde?.trim()) { kunde_id = nyId(); d.kunder.push({ id: kunde_id, visma_nr: null, navn: nyKunde.trim(), adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true }); }
       const gammel = p.id ? d.prosjekter.find((x) => x.id === p.id) : undefined;

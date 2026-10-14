@@ -49,12 +49,12 @@ export function Prosjekter() {
 
   return (
     <>
-      {leder && (
+      {(
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button className={`btn ${nyApen ? "" : "primary"}`} aria-expanded={nyApen} onClick={() => setNyApen((x) => !x)}>{nyApen ? "Lukk" : "+ Nytt prosjekt"}</button>
         </div>
       )}
-      {leder && nyApen && (
+      {nyApen && (
         <form className="panel" onSubmit={leggTil} style={{ gap: 10 }}>
           <h2 style={{ margin: 0 }}>Nytt prosjekt</h2>
           <div className="row">
@@ -70,7 +70,7 @@ export function Prosjekter() {
             <label className="field kort"><span className="label">Estimert (timer)</span>
               <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
           </div>
-          <p className="small muted" style={{ margin: 0 }}>Når prosjektet er opprettet i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over.</p>
+          <p className="small muted" style={{ margin: 0 }}>{leder ? "Når prosjektet er opprettet i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over." : "Prosjektet kan brukes med en gang. Leder kobler det til Visma-prosjektet senere, og da følger timer, bilder og dagbok med."}</p>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button>
             <button type="button" className="btn" onClick={() => setNyApen(false)}>Avbryt</button>
