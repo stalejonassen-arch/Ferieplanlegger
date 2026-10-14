@@ -85,8 +85,8 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
   const pf = `orgUnit${klasseNr}`;
   const pFelt = await felt(tok, "Product");
   const pInfo = velg(pFelt, ["eanItemNo", "webPage"]);
-  const linjeFelt = ["orderNo", "productNo", pf, ...velg(lf, ["description", "totalQuantity", "orderType"])];
-  const ekstra = [lf.has("joinup_Product") && pInfo.length ? `joinup_Product { ${pInfo.join(" ")} }` : "", lf.has("joinup_Unit") ? "joinup_Unit { description }" : ""].filter(Boolean);
+  const linjeFelt = ["orderNo", "productNo", pf, ...velg(lf, ["description", "totalQuantity", "orderType", "createdDate"])];
+  const ekstra = [lf.has("joinup_Product") && pInfo.length ? `joinup_Product { ${pInfo.join(" ")} }` : "", lf.has("joinup_Unit") ? "joinup_Unit { description }" : "", lf.has("joinup_Order") ? "joinup_Order { orderDate }" : ""].filter(Boolean);
   let linjer: Record<string, unknown>[];
   try { linjer = await alle(tok, b.visma_firma_nr, "orderLine", [...linjeFelt, ...ekstra], `{ ${pf}: { _gt: 0 } }`); }
   catch { linjer = await alle(tok, b.visma_firma_nr, "orderLine", linjeFelt, `{ ${pf}: { _gt: 0 } }`); }
@@ -95,7 +95,9 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
   const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
   // Summer per prosjekt, vare og ordretype. Samme vare kan ligge både på innkjøp og salg; da brukes den største summen.
   const sum = new Map<string, number>();
-  const per = new Map<string, { prosjekt_id: string; varenr: string; beskrivelse: string; antall: number; enhet: string }>();
+  const per = new Map<string, { prosjekt_id: string; varenr: string; beskrivelse: string; antall: number; enhet: string; sist_dato: string | null }>();
+  // Dato på ordrelinjen (ordredato, ellers når linjen ble laget), som «ÅÅÅÅ-MM-DD»
+  const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
   const varer = new Map<string, { varenr: string; beskrivelse: string; nobb_nr: string; ean: string }>();
   for (const l of linjer) {
     const vnr = s(l.productNo), p = pid.get(Number(l[pf]));
@@ -105,8 +107,10 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
     if (!nobb) continue; // fritekstlinjer (frakt, arbeid o.l.) har ikke FDV
     const key = `${p}|${vnr}`, tk = `${key}|${s(l.orderType)}`;
     sum.set(tk, (sum.get(tk) ?? 0) + (Number(l.totalQuantity) || 0));
-    const r = per.get(key) ?? { prosjekt_id: p, varenr: vnr, beskrivelse: s(l.description), antall: 0, enhet: s((l.joinup_Unit as Record<string, unknown> | null)?.description) };
+    const r = per.get(key) ?? { prosjekt_id: p, varenr: vnr, beskrivelse: s(l.description), antall: 0, enhet: s((l.joinup_Unit as Record<string, unknown> | null)?.description), sist_dato: null };
     r.antall = Math.max(r.antall, sum.get(tk)!);
+    const d = dato((l.joinup_Order as Record<string, unknown> | null)?.orderDate) ?? dato(l.createdDate);
+    if (d && (!r.sist_dato || d > r.sist_dato)) r.sist_dato = d;
     per.set(key, r);
     if (!varer.has(vnr)) varer.set(vnr, { varenr: vnr, beskrivelse: s(l.description), nobb_nr: nobb, ean: s(pr.eanItemNo) });
   }

@@ -97,15 +97,16 @@ const DEL_IKON: Record<string, React.ReactNode> = {
 function Materiell({ p }: { p: Prosjekt }) {
   const [varer, setVarer] = useState<FdvVare[] | null>(null);
   const [alle, setAlle] = useState(false);
-  useEffect(() => { api.fdv(p.id).then((x) => setVarer(x.varer)).catch(() => setVarer([])); }, [p.id]);
+  // Sist hentet øverst (varer uten dato til slutt)
+  useEffect(() => { api.fdv(p.id).then((x) => setVarer([...x.varer].sort((a, b) => (b.sist_dato ?? "").localeCompare(a.sist_dato ?? "") || a.beskrivelse.localeCompare(b.beskrivelse, "nb")))).catch(() => setVarer([])); }, [p.id]);
   if (!varer?.length) return null;
   const vis = alle ? varer : varer.slice(0, 15);
   return (
     <>
-      <h3 style={{ margin: "8px 0 0" }}>Materiell brukt <span className="small muted">({varer.length} varer fra Visma)</span></h3>
+      <h3 style={{ margin: "8px 0 0" }}>Materiell brukt <span className="small muted">({varer.length} varer fra Visma, sist hentet øverst)</span></h3>
       <div style={{ overflowX: "auto" }}>
-        <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th></tr></thead><tbody>
-          {vis.map((v) => <tr key={v.varenr}><td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td><td>{t2(v.antall)} {v.enhet.toLowerCase()}</td></tr>)}
+        <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th><th>Sist hentet</th></tr></thead><tbody>
+          {vis.map((v) => <tr key={v.varenr}><td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td><td>{t2(v.antall)} {v.enhet.toLowerCase()}</td><td className="small">{v.sist_dato ? kortDato(v.sist_dato) : "–"}</td></tr>)}
         </tbody></table>
       </div>
       {varer.length > 15 && <div><button className="btn sm" onClick={() => setAlle(!alle)}>{alle ? "Vis færre" : `Vis alle ${varer.length}`}</button></div>}

@@ -14,7 +14,7 @@ import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
 /** Vare brukt på prosjektet (fra Visma) med FDV-lenke */
-export interface FdvVare { varenr: string; beskrivelse: string; antall: number; enhet: string; nobb_nr: string; fdv_url: string; skjul: boolean }
+export interface FdvVare { varenr: string; beskrivelse: string; antall: number; enhet: string; nobb_nr: string; fdv_url: string; skjul: boolean; sist_dato?: string | null }
 /** Eget FDV-dokument lastet opp på prosjektet */
 export type DokKategori = "fdv" | "sjekkliste" | "tegning" | "kontrakt" | "annet";
 export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string; kategori?: DokKategori; ansatt_id?: string }
@@ -333,10 +333,10 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async fdv(prosjektId) {
       const [pv, dok] = await Promise.all([
-        sb.from("prosjekt_vare").select("varenr, beskrivelse, antall, enhet").eq("prosjekt_id", prosjektId).order("beskrivelse"),
+        sb.from("prosjekt_vare").select("varenr, beskrivelse, antall, enhet, sist_dato").eq("prosjekt_id", prosjektId).order("sist_dato", { ascending: false, nullsFirst: false }).order("beskrivelse"),
         sb.from("fdv_dok").select("*").eq("prosjekt_id", prosjektId).order("opprettet"),
       ]);
-      const rader = ok(pv) as { varenr: string; beskrivelse: string; antall: number; enhet: string }[];
+      const rader = ok(pv) as { varenr: string; beskrivelse: string; antall: number; enhet: string; sist_dato: string | null }[];
       const info = new Map<string, { nobb_nr: string; fdv_url: string; skjul: boolean; beskrivelse: string }>();
       for (let i = 0; i < rader.length; i += 200) {
         const r = ok(await sb.from("varer").select("varenr, nobb_nr, fdv_url, skjul, beskrivelse").in("varenr", rader.slice(i, i + 200).map((x) => x.varenr))) as ({ varenr: string; nobb_nr: string; fdv_url: string; skjul: boolean; beskrivelse: string })[];
