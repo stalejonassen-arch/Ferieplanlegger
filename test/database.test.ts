@@ -75,6 +75,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0037_omsetning.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0038_kampanjer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0040_stemplet_varsel.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -556,5 +557,40 @@ describe("push-varsler", () => {
     expect(r.rows.map((x: any) => x.endpoint)).toEqual(["https://push.example/abc", "https://push.example/def"]);
     // Ny melding fyrer utløseren uten feil (pg_net finnes ikke i testen)
     await as(JIM, "insert into public.meldinger (kanal, tekst) values ('felles', 'Test varsel')");
+  });
+});
+
+describe("varsel når noen fortsatt er stemplet inn", () => {
+  it("finner den som har passert grensen, én gang per dag, og bare tjenesten kan spørre", async () => {
+    const jim = await idOf("Jim Kato");
+    await db.query("delete from public.stempling where ansatt_id = $1", [jim]);
+    // Stemplet inn for 9 timer siden (norsk tid)
+    await db.query(`insert into public.stempling (ansatt_id, dato, fra)
+      select $1, ((now() at time zone 'Europe/Oslo') - interval '9 hours')::date, ((now() at time zone 'Europe/Oslo') - interval '9 hours')::time`, [jim]);
+    const finn = async () => (await db.query<any>("select * from public.stemplet_lenge() where ansatt_id = $1", [jim])).rows;
+    const [r] = await finn();
+    expect(r.minutter).toBeGreaterThanOrEqual(539);
+    await expect(as(JIM, "select * from public.stemplet_lenge()")).rejects.toThrow();
+
+    // Polske ansatte: 9 t 15 min er ikke passert ennå
+    await db.query("update public.ansatte set varsel_stemplet_min = 555 where id = $1", [jim]);
+    expect(await finn()).toHaveLength(0);
+    await db.query("update public.ansatte set varsel_stemplet_min = 495 where id = $1", [jim]);
+
+    // Allerede varslet i dag
+    await db.query("insert into public.push_logg (type, id) values ('stemplet:' || $2, $1)", [jim, r.dato.toISOString?.().slice(0, 10) ?? r.dato]);
+    expect(await finn()).toHaveLength(0);
+    await db.query("delete from public.push_logg where id = $1", [jim]);
+
+    // Slått av
+    await db.query("update public.ansatte set varsel_stemplet_min = null where id = $1", [jim]);
+    expect(await finn()).toHaveLength(0);
+    await db.query("update public.ansatte set varsel_stemplet_min = 495 where id = $1", [jim]);
+    await db.query("delete from public.stempling where ansatt_id = $1", [jim]);
+  });
+
+  it("de polske får 9 t 15 min som standard", async () => {
+    const r = await db.query<any>("select navn, varsel_stemplet_min from public.ansatte where sprak = 'pl'");
+    for (const a of r.rows) expect(a.varsel_stemplet_min).toBe(555);
   });
 });

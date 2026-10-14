@@ -1,5 +1,6 @@
 // Push-varsler for ByggLogg (Web Push), også når appen er lukket.
-// Kalles fra databasen (pg_net) med { type: "melding" | "prosjekt", id } når noe nytt legges inn.
+// Kalles fra databasen (pg_net) med { type: "melding" | "prosjekt", id } når noe nytt legges inn,
+// og med { type: "stemplet", id: ansatt } når noen har vært stemplet inn lenge (sjekkes hvert 5. minutt).
 // Funksjonen stoler ikke på innholdet i kallet: den leser meldingen/prosjektet selv, finner mottakerne,
 // og logger hvert varsel slik at det aldri går ut to ganger. Publiseres uten JWT-sjekk.
 // VAPID-nøklene ligger i tabellen push_noekler (bare tjenestenøkkelen kan lese den).
@@ -31,9 +32,34 @@ async function send(mottakere: Ansatt[], lag: (a: Ansatt) => Varsel) {
   return { sendt, fjernet };
 }
 
+const hm = (t: string) => t.slice(0, 5);
+const varighet = (min: number) => `${Math.floor(min / 60)} t${min % 60 ? ` ${min % 60} min` : ""}`;
+const varighetPl = (min: number) => `${Math.floor(min / 60)} godz.${min % 60 ? ` ${min % 60} min` : ""}`;
+
+/** Fortsatt stemplet inn etter grensen: databasen sjekker selv, så kallet kan ikke brukes til å sende falske varsler */
+async function stemplet(ansattId: string) {
+  const { data: rader } = await sb.rpc("stemplet_lenge");
+  const r = (rader as { ansatt_id: string; dato: string; start: string; minutter: number }[] | null)?.find((x) => x.ansatt_id === ansattId);
+  if (!r) return new Response("ikke aktuelt");
+  // Én gang per ansatt per dag
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `stemplet:${r.dato}`, id: ansattId });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: a } = await sb.from("ansatte").select("id, navn, sprak").eq("id", ansattId).maybeSingle();
+  if (!a) return new Response("finnes ikke", { status: 404 });
+  const res = await send([a], (x) => x.sprak === "pl"
+    ? { tittel: "Nadal zalogowany?", tekst: `Jesteś zalogowany od ${hm(r.start)} (${varighetPl(r.minutter)}). Pamiętaj, aby się wylogować, gdy kończysz pracę.`, url: "/#timer", tag: "stemplet" }
+    : { tittel: "Fortsatt stemplet inn?", tekst: `Du har vært stemplet inn siden ${hm(r.start)} (${varighet(r.minutter)}). Husk å stemple ut når du går for dagen.`, url: "/#timer", tag: "stemplet" });
+  return Response.json(res);
+}
+
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet"].includes(type)) return new Response("ugyldig", { status: 400 });
+
+  if (type === "stemplet") return stemplet(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });
