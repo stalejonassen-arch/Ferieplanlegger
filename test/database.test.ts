@@ -75,6 +75,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0037_omsetning.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0038_kampanjer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0041_koble_prosjekt.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -556,5 +557,38 @@ describe("push-varsler", () => {
     expect(r.rows.map((x: any) => x.endpoint)).toEqual(["https://push.example/abc", "https://push.example/def"]);
     // Ny melding fyrer utløseren uten feil (pg_net finnes ikke i testen)
     await as(JIM, "insert into public.meldinger (kanal, tekst) values ('felles', 'Test varsel')");
+  });
+});
+
+describe("koble app-prosjekt til Visma-prosjekt", () => {
+  it("flytter timer, dagbok, avvik og chat, tar med opplysninger og sletter app-prosjektet", async () => {
+    const jim = await idOf("Jim Kato");
+    const [app] = await as<any>(STALE, "insert into public.prosjekter (navn, adresse, estimert_timer, notat) values ('Nytt bad (app)', 'Gate 1, 6290 Haramsøy', 40, 'Fliser fra butikken') returning id");
+    const [vis] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (7001, 'Bad Hansen') returning id");
+    await as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, lunsj_min) values ($1, $2, '2027-09-06', '07:00', '15:00', 30)", [jim, app.id]);
+    await as(STALE, "update public.timer set status = 'godkjent' where prosjekt_id = $1", [app.id]);
+    await as(JIM, "insert into public.dagbok (prosjekt_id, tekst, vaer, ansatt_id) values ($1, 'Revet bad', 'Sol', $2)", [app.id, jim]);
+    await as(JIM, "insert into public.meldinger (kanal, tekst) values ($1, 'Fliser kommer i morgen')", ["p:" + app.id]);
+    await as(JIM, "select public.marker_kanal_lest($1)", ["p:" + app.id]);
+
+    // Bare leder, og bare fra app-prosjekt til Visma-prosjekt
+    await expect(as(JIM, "select public.koble_prosjekt($1, $2)", [app.id, vis.id])).rejects.toThrow(/leder/);
+    await expect(as(STALE, "select public.koble_prosjekt($1, $2)", [vis.id, app.id])).rejects.toThrow(/allerede fra Visma/);
+
+    const [r] = await as<any>(STALE, "select public.koble_prosjekt($1, $2) as n", [app.id, vis.id]);
+    expect(r.n).toBeGreaterThanOrEqual(3);
+    const q = async (sql: string, p: any[]) => (await db.query<any>(sql, p)).rows;
+    expect(await q("select * from public.prosjekter where id = $1", [app.id])).toHaveLength(0);
+    const [t] = await q("select status, timer from public.timer where prosjekt_id = $1", [vis.id]);
+    expect(t.status).toBe("godkjent");
+    expect(await q("select * from public.dagbok where prosjekt_id = $1", [vis.id])).toHaveLength(1);
+    const [m] = await q("select tekst, endret from public.meldinger where kanal = $1", ["p:" + vis.id]);
+    expect(m.tekst).toBe("Fliser kommer i morgen");
+    expect(m.endret).toBeNull();
+    expect(await q("select * from public.kanal_lest where kanal = $1", ["p:" + vis.id])).toHaveLength(1);
+    expect(await q("select * from public.kanal_lest where kanal = $1", ["p:" + app.id])).toHaveLength(0);
+    const [v] = await q("select adresse, estimert_timer, notat, visma_nr, navn from public.prosjekter where id = $1", [vis.id]);
+    expect(v).toMatchObject({ adresse: "Gate 1, 6290 Haramsøy", notat: "Fliser fra butikken", visma_nr: 7001, navn: "Bad Hansen" });
+    expect(Number(v.estimert_timer)).toBe(40);
   });
 });

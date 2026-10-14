@@ -419,6 +419,19 @@ export function demoApi(): Api {
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },
     async lagreEiendom(id, e) { const p = d.prosjekter.find((x) => x.id === id); if (p) Object.assign(p, e); endret(); },
     async settFastpris(id, fastpris) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fastpris = fastpris; endret(); },
+    async kobleProsjekt(fra, til) {
+      if (!leder()) throw new Error("Bare leder kan koble prosjekter.");
+      const a = d.prosjekter.find((x) => x.id === fra), b = d.prosjekter.find((x) => x.id === til);
+      if (!a || !b) throw new Error("Fant ikke prosjektet.");
+      if (a.visma_nr != null) throw new Error("Prosjektet kommer allerede fra Visma.");
+      if (b.visma_nr == null) throw new Error("Velg et prosjekt som kommer fra Visma.");
+      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? []] as { prosjekt_id?: string | null }[][])
+        for (const x of liste) if (x.prosjekt_id === fra) x.prosjekt_id = til;
+      if (!b.adresse && a.adresse) b.adresse = a.adresse;
+      if (b.estimert_timer == null && a.estimert_timer != null) b.estimert_timer = a.estimert_timer;
+      d.prosjekter = d.prosjekter.filter((x) => x.id !== fra);
+      endret();
+    },
     async lagreProsjekt(p, nyKunde) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       let kunde_id = p.kunde_id ?? null;
