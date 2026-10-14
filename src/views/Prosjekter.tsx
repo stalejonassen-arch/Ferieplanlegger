@@ -20,6 +20,7 @@ export function Prosjekter() {
   const [nyKunde, setNyKunde] = useState("");
   const [estimat, setEstimat] = useState("");
   const [valgt, setValgt] = useState<string | null>(null);
+  const [nyApen, setNyApen] = useState(false);
   const brukt = prosjektTimer(d);
   const fakt = leder && (d.fakturerteTimer ?? []).length ? prosjektFakturering(d) : null;
   const [visma, setVisma] = useState<{ tid: string; ok: boolean; melding: string } | null>(null);
@@ -40,7 +41,7 @@ export function Prosjekter() {
     if (!navn.trim()) return;
     const ok = await kjor(() => api.lagreProsjekt({ navn: navn.trim(), kunde_id: kundeId || null, estimert_timer: Number(estimat.replace(",", ".")) || null }, kundeId ? undefined : nyKunde),
       `Prosjektet «${navn.trim()}» er lagt til`);
-    if (ok) { setNavn(""); setKundeId(""); setNyKunde(""); setEstimat(""); }
+    if (ok) { setNavn(""); setKundeId(""); setNyKunde(""); setEstimat(""); setNyApen(false); }
   };
 
   const vp = valgt ? d.prosjekter.find((p) => p.id === valgt) : undefined;
@@ -48,6 +49,34 @@ export function Prosjekter() {
 
   return (
     <>
+      {leder && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button className={`btn ${nyApen ? "" : "primary"}`} aria-expanded={nyApen} onClick={() => setNyApen((x) => !x)}>{nyApen ? "Lukk" : "+ Nytt prosjekt"}</button>
+        </div>
+      )}
+      {leder && nyApen && (
+        <form className="panel" onSubmit={leggTil} style={{ gap: 10 }}>
+          <h2 style={{ margin: 0 }}>Nytt prosjekt</h2>
+          <div className="row">
+            <label className="field"><span className="label">Prosjektnavn</span>
+              <input type="text" value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="F.eks. Skifte vindu" required autoFocus /></label>
+            <label className="field"><span className="label">Kunde</span>
+              <select value={kundeId} onChange={(e) => setKundeId(e.target.value)}>
+                <option value="">Ny kunde …</option>
+                {d.kunder.map((k) => <option key={k.id} value={k.id}>{k.navn}</option>)}
+              </select></label>
+            {!kundeId && <label className="field"><span className="label">Navn på ny kunde</span>
+              <input type="text" value={nyKunde} onChange={(e) => setNyKunde(e.target.value)} placeholder="Valgfritt" /></label>}
+            <label className="field kort"><span className="label">Estimert (timer)</span>
+              <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
+          </div>
+          <p className="small muted" style={{ margin: 0 }}>Når prosjektet er opprettet i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over.</p>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button>
+            <button type="button" className="btn" onClick={() => setNyApen(false)}>Avbryt</button>
+          </div>
+        </form>
+      )}
       {leder && <Omsetning />}
       {leder && <Maal />}
       {leder && <Fordeling />}
@@ -102,26 +131,6 @@ export function Prosjekter() {
         ) : <div className="empty">{q ? "Ingen prosjekter passer søket." : "Ingen prosjekter ennå."}</div>}
       </section>
 
-      {leder && (
-        <form className="panel" onSubmit={leggTil}>
-          <h2>Nytt prosjekt</h2>
-          <p className="small muted">For prosjekter som ikke er opprettet i Visma ennå. Når prosjektet er laget i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over.</p>
-          <div className="row">
-            <label className="field"><span className="label">Prosjektnavn</span>
-              <input type="text" value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="F.eks. Skifte vindu" required /></label>
-            <label className="field"><span className="label">Kunde</span>
-              <select value={kundeId} onChange={(e) => setKundeId(e.target.value)}>
-                <option value="">Ny kunde …</option>
-                {d.kunder.map((k) => <option key={k.id} value={k.id}>{k.navn}</option>)}
-              </select></label>
-            {!kundeId && <label className="field"><span className="label">Navn på ny kunde</span>
-              <input type="text" value={nyKunde} onChange={(e) => setNyKunde(e.target.value)} placeholder="Valgfritt" /></label>}
-            <label className="field"><span className="label">Estimert (timer)</span>
-              <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
-          </div>
-          <div><button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button></div>
-        </form>
-      )}
     </>
   );
 }
