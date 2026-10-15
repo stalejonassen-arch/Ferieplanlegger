@@ -37,7 +37,7 @@ export function Vilkar({ lukk, tilPersonvern, sprak = "nb" }: { lukk?: () => voi
         <li>Pris: 249 kr per aktiv bruker per måned, eks. mva. En bruker er aktiv når vedkommende kan logge inn. Minst 5 brukere per bedrift.</li>
         <li>Faktureres månedlig forskuddsvis, 14 dagers betalingsfrist.</li>
         <li>Prisen kan justeres med 30 dagers varsel, tidligst 12 måneder etter oppstart.</li>
-        <li>Tillegg for kobling mot Visma Business NXT: 490 kr per bedrift per måned, og 2 500 kr i oppstart (engangsbeløp).</li>
+        <li>Tillegg for kobling mot Visma Business NXT eller Tripletex: 490 kr per bedrift per måned, og 2 500 kr i oppstart (engangsbeløp).</li>
         <li>Ved forsinket betaling kan tilgangen stenges etter skriftlig varsel og 14 dagers frist. Dataene slettes ikke ved stenging.</li>
       </ul></Punkt>
       <Punkt nr={4} tittel="Varighet og oppsigelse"><ul>

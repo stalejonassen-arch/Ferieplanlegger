@@ -6,7 +6,7 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:title" content="ByggLogg">
-<meta property="og:description" content="Appen for byggefirma: stempling, timer, prosjekter, dokumentasjon, ferie og chat – koblet til Visma Business NXT.">
+<meta property="og:description" content="Appen for byggefirma: stempling, timer, prosjekter, dokumentasjon, ferie og chat – koblet til Visma Business NXT og Tripletex.">
 <meta property="og:image" content="https://bygglogg.app/icon-512.png">
 <title>ByggLogg</title>
 <meta name="description" content="ByggLogg er appen for byggefirma: stempling, timer, prosjekter, dokumentasjon, ferie og chat – koblet til Visma Business NXT.">
@@ -106,6 +106,16 @@ section { padding-block: 80px; }
 @media (max-width: 920px) { .funk { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .funk { grid-template-columns: 1fr; } }
 
+/* Regnskapssystemer og tilpasning */
+.systemer { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.system { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 10px 14px; font-size: 15px; color: var(--muted); min-width: 0; }
+.system b { color: var(--fg); font-size: 16px; }
+.system i { font-style: normal; font-weight: 700; font-size: 12px; background: var(--yellow); color: var(--yellow-ink); border-radius: 99px; padding: 1px 8px; }
+.tilpass { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 48px; }
+.tilpass h3 { margin-bottom: 10px; }
+.tilpass ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); }
+.tilpass .small { margin-top: 14px; color: var(--muted); font-size: 15px; }
+@media (max-width: 760px) { .tilpass { grid-template-columns: 1fr; } }
 /* Visma-flyt */
 .visma { background: var(--surface); border-block: 1px solid var(--line); }
 .flyt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; counter-reset: steg; }
@@ -188,7 +198,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     <div>
       <p class="eyebrow">For byggefirma og håndverkere</p>
       <h1>Hele byggeplassen <em>i lomma.</em></h1>
-      <p class="lead">ByggLogg samler stempling, timer, prosjekter, bilder, avvik, ferie og chat i én app på telefonen. Prosjektene kommer rett fra Visma Business NXT, og lønnsgrunnlaget er klart når måneden er slutt.</p>
+      <p class="lead">ByggLogg samler stempling, timer, prosjekter, bilder, avvik, ferie og chat i én app på telefonen. Prosjektene kommer rett fra Visma Business NXT eller Tripletex, og lønnsgrunnlaget er klart når måneden er slutt.</p>
       <div class="knapper">
         <a class="btn gul" href="/?demo" target="_blank" rel="noopener">Prøv demoen →</a>
         <a class="btn strek" href="#kontakt">Snakk med oss</a>
@@ -237,7 +247,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
         <h3>Prosjekter</h3>
         <p>Adresse med kart, kjøreavstand, kontaktperson, selger og snekker på hvert prosjekt.</p>
-        <ul><li>Hentes fra Visma Business NXT</li><li>Nye prosjekter kan opprettes ute</li><li>Materiell som er hentet ut</li></ul>
+        <ul><li>Hentes fra Visma eller Tripletex</li><li>Nye prosjekter kan opprettes ute</li><li>Materiell som er hentet ut</li></ul>
       </article>
       <article>
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2.5h5L16 6"/></svg></div>
@@ -270,13 +280,17 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
 <section class="visma">
   <div class="wrap">
     <div class="seksjon-topp">
-      <p class="eyebrow">Visma Business NXT</p>
+      <p class="eyebrow">Regnskap og lønn</p>
       <h2>Ingen dobbeltføring</h2>
-      <p class="lead">ByggLogg henter prosjekter, kunder og materiell fra Visma automatisk. Det de ansatte registrerer ute, går tilbake som grunnlag for faktura og lønn.</p>
+      <p class="lead">ByggLogg henter prosjekter og kunder automatisk fra regnskapssystemet dere allerede bruker. Det de ansatte registrerer ute, går tilbake som grunnlag for faktura og lønn.</p>
+      <div class="systemer">
+        <span class="system"><b>Visma Business NXT</b> Prosjekter, kunder, materiell og fakturerte timer</span>
+        <span class="system"><b>Tripletex</b><i>Nyhet</i> Prosjekter, kunder og ansatte inn, godkjente timer ut</span>
+      </div>
     </div>
     <ol class="flyt">
       <li><h3>Prosjektet opprettes</h3><p>Kontoret lager ordren i Visma, eller snekkeren oppretter prosjektet i appen når jobben starter før papirene er klare.</p></li>
-      <li><h3>Jobben gjøres</h3><p>Timer, bilder, avvik og materiell registreres på prosjektet. Prosjekter laget i appen kobles til Visma-ordren når den kommer.</p></li>
+      <li><h3>Jobben gjøres</h3><p>Timer, bilder, avvik og materiell registreres på prosjektet. Prosjekter laget i appen kobles til prosjektet i regnskapet når det kommer.</p></li>
       <li><h3>Grunnlaget er klart</h3><p>Leder ser timer klare til fakturering og lønnsgrunnlaget for måneden, uten å skrive noe av på nytt.</p></li>
     </ol>
   </div>
@@ -291,11 +305,42 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     </div>
     <div class="tjenester">
       <div class="tjeneste"><span class="nr">1</span><h3>Oppsett og import</h3><p>Vi legger inn ansatte, satser, regler for overtid og tillegg, og importerer prosjekter og kunder.</p></div>
-      <div class="tjeneste"><span class="nr">2</span><h3>Kobling til Visma</h3><p>Vi kobler ByggLogg til Visma Business NXT, slik at prosjekter og materiell oppdateres av seg selv.</p></div>
+      <div class="tjeneste"><span class="nr">2</span><h3>Kobling til regnskap</h3><p>Vi kobler ByggLogg til Visma Business NXT eller Tripletex, slik at prosjekter og kunder oppdateres av seg selv og timene går rett til lønn.</p></div>
       <div class="tjeneste"><span class="nr">3</span><h3>Opplæring</h3><p>Kort gjennomgang med de ansatte på morgenmøtet, og egen opplæring for leder og kontor.</p></div>
       <div class="tjeneste"><span class="nr">4</span><h3>Egen profil</h3><p>Firmanavn og logo i appen, i rapportene og i sluttdokumentasjonen dere sender kunden.</p></div>
       <div class="tjeneste"><span class="nr">5</span><h3>Brukerstøtte</h3><p>Svar på norsk fra folk som kjenner byggebransjen. Feil rettes fortløpende.</p></div>
       <div class="tjeneste"><span class="nr">6</span><h3>Videreutvikling</h3><p>Nye funksjoner kommer jevnlig, og mange av dem starter som ønsker fra kundene.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="tilpass">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Tilpass ByggLogg</p>
+      <h2>Satt opp etter hvordan dere jobber</h2>
+      <p class="lead">Hver bedrift er forskjellig. Det meste stilles inn av leder i appen, og resten hjelper vi dere med.</p>
+    </div>
+    <div class="tilpass">
+      <div><h3>Tilpasses per bedrift</h3><ul>
+        <li>Firmanavn, logo og farger i appen og i dokumentene til kunden</li>
+        <li>Avdelinger og hvor mange som kan ha ferie samtidig</li>
+        <li>Normaltid, lunsjtrekk og overtid per ansatt</li>
+        <li>Feriedager etter avtale, med ekstra uke over 60 år</li>
+        <li>Varsel når noen har glemt å stemple ut, med egen grense per ansatt</li>
+        <li>Kvoter for arbeidstøy, verktøy og verneutstyr</li>
+        <li>Kampanjer fra kjeden på startsiden</li>
+        <li>Norsk eller polsk for hver ansatt</li>
+      </ul></div>
+      <div><h3>Andre koblinger</h3><ul>
+        <li>Kart og kjøreavstand til prosjektet fra Kartverket</li>
+        <li>Sluttdokumentasjon og FDV klar for Boligmappa</li>
+        <li>Ferie og fravær rett i kalenderen på mobilen</li>
+        <li>Værmelding fra Meteorologisk institutt</li>
+        <li>Push-varsler for chat, nye prosjekter og stempling</li>
+        <li>Import av timer fra Svenn ved bytte av system</li>
+      </ul>
+      <p class="small">Trenger dere en kobling vi ikke har? Si fra. Mange av funksjonene i ByggLogg startet som ønsker fra kundene.</p></div>
     </div>
   </div>
 </section>
@@ -314,7 +359,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <span class="merk">eks. mva. · minst 5 brukere</span>
       </div>
       <div>
-        <span class="navn">Tillegg: kobling til Visma Business NXT</span>
+        <span class="navn">Tillegg: kobling til Visma Business NXT eller Tripletex</span>
         <span class="belop">490<small>kr per bedrift / mnd</small></span>
         <span class="merk">eks. mva. · 2 500 kr i oppstart</span>
       </div>
