@@ -77,10 +77,6 @@ export function Prosjekter() {
           </div>
         </form>
       )}
-      {leder && <Omsetning />}
-      {leder && <Maal />}
-      {leder && <Fordeling />}
-      {leder && <Fakturering />}
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Prosjekter</h2>
@@ -130,7 +126,10 @@ export function Prosjekter() {
           </div>
         ) : <div className="empty">{q ? "Ingen prosjekter passer søket." : "Ingen prosjekter ennå."}</div>}
       </section>
-
+      {leder && <Omsetning />}
+      {leder && <Maal />}
+      {leder && <Fordeling />}
+      {leder && <Fakturering />}
     </>
   );
 }
