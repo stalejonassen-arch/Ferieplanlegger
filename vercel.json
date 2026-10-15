@@ -1,3 +1,18 @@
 {
-  "rewrites": [{ "source": "/demo/:kode", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/demo/:kode", "destination": "/index.html" }],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "bygglogg.app" }],
+      "missing": [{ "type": "query", "key": "demo" }],
+      "destination": "/?demo",
+      "permanent": false
+    },
+    {
+      "source": "/:sti*",
+      "has": [{ "type": "host", "value": "www.bygglogg.app" }],
+      "destination": "https://bygglogg.app/:sti*",
+      "permanent": true
+    }
+  ]
 }
