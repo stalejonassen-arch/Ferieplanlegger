@@ -142,20 +142,25 @@ drop trigger if exists kunder_tripletex_lest on public.kunder;
 create trigger kunder_tripletex_lest before update on public.kunder for each row execute function public.tripletex_lest();
 
 -- ---------------------------------------------------------------------------
--- Henting hvert kvarter, kl. 06–22 norsk tid. Adressen til funksjonen settes per Supabase-prosjekt:
---   alter database postgres set bygglogg.functions_url = 'https://<prosjekt>.supabase.co/functions/v1';
+-- Henting hvert kvarter, kl. 06–22 norsk tid. Adressen til edge-funksjonene ligger i plattform_oppsett,
+-- så samme migrering virker i alle Supabase-prosjekter:
+--   insert into public.plattform_oppsett values ('functions_url', 'https://<prosjekt>.supabase.co/functions/v1');
 -- ---------------------------------------------------------------------------
+create table if not exists public.plattform_oppsett (nokkel text primary key, verdi text not null);
+alter table public.plattform_oppsett enable row level security;
+revoke all on public.plattform_oppsett from anon, authenticated;
+
 do $$
 begin
   if exists (select 1 from pg_namespace where nspname = 'cron') then
     perform cron.schedule('tripletex-sync', '*/15 4-20 * * *', $c$
       select net.http_post(
-        url := current_setting('bygglogg.functions_url') || '/tripletex-sync',
+        url := o.verdi || '/tripletex-sync',
         body := '{}'::jsonb,
         headers := '{"Content-Type": "application/json"}'::jsonb,
         timeout_milliseconds := 120000)
-      where coalesce(current_setting('bygglogg.functions_url', true), '') <> ''
-        and exists (select 1 from public.tripletex_tilgang)
+      from public.plattform_oppsett o
+      where o.nokkel = 'functions_url' and exists (select 1 from public.tripletex_tilgang)
     $c$);
   end if;
 end $$;
