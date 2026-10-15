@@ -81,6 +81,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0043_prosjekt_kontakt.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0044_prosjekt_vare_dato.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0045_prosjekt_selger_snekker.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0046_adresse_manuell.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -645,5 +646,18 @@ describe("ansatte oppretter prosjekt", () => {
     await expect(as("fremmed@example.no", "insert into public.prosjekter (navn) values ('Fremmed')")).rejects.toThrow();
     await db.query("delete from public.prosjekter where id = $1", [p.id]);
     await db.query("delete from public.kunder where id = $1", [k.id]);
+  });
+});
+
+describe("adresse lagt inn i appen", () => {
+  it("overskrives ikke av Visma-synken, men leder kan endre den", async () => {
+    await db.exec("create role service_role nologin; grant all on public.prosjekter to service_role;").catch(() => {});
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn, adresse) values (7777, 'Adressetest', 'Fra Visma 1') returning id");
+    await as(STALE, "update public.prosjekter set adresse = 'Riktig vei 2', adresse_manuell = true where id = $1", [p.id]);
+    await db.exec(`set role service_role; update public.prosjekter set adresse = 'Fra Visma 1' where visma_nr = 7777; reset role;`);
+    expect((await db.query<any>("select adresse from public.prosjekter where id = $1", [p.id])).rows[0].adresse).toBe("Riktig vei 2");
+    await as(STALE, "update public.prosjekter set adresse = 'Ny vei 3' where id = $1", [p.id]);
+    expect((await db.query<any>("select adresse from public.prosjekter where id = $1", [p.id])).rows[0].adresse).toBe("Ny vei 3");
+    await db.query("delete from public.prosjekter where id = $1", [p.id]);
   });
 });

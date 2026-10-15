@@ -426,7 +426,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   const q = encodeURIComponent(adr);
   const maal = punkt ? `${punkt.lat},${punkt.lon}` : q;
   const lagre = async () => {
-    if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.adresse.trim(), kontakt_navn: ny.navn.trim(), kontakt_telefon: ny.tlf.trim(), selger_id: ny.selger || null, snekker_id: ny.snekker || null }), "Lagret")) setEndre(false);
+    if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.adresse.trim(), adresse_manuell: ny.adresse.trim() !== "", kontakt_navn: ny.navn.trim(), kontakt_telefon: ny.tlf.trim(), selger_id: ny.selger || null, snekker_id: ny.snekker || null }), "Lagret")) setEndre(false);
   };
 
   if (endre) return (
