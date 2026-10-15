@@ -28,6 +28,18 @@ async function gql(tok: string, query: string, variables: Record<string, unknown
   return j.data;
 }
 
+/**
+ * Visma-prosjektnr → prosjekt i ByggLogg. Et prosjekt som er slått sammen med et annet i appen
+ * peker på prosjektet det ble slått inn i, så ordre, varer og fakturerte timer havner der.
+ */
+async function prosjektKart(bedriftId: number) {
+  let r = await sb.from("prosjekter").select("id, visma_nr, slatt_sammen_med").eq("bedrift_id", bedriftId).not("visma_nr", "is", null);
+  // Eldre database uten sammenslåing
+  if (r.error) r = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", bedriftId).not("visma_nr", "is", null) as typeof r;
+  if (r.error) throw r.error;
+  return new Map((r.data ?? []).map((x) => [Number(x.visma_nr), ((x as { slatt_sammen_med?: string | null }).slatt_sammen_med ?? x.id) as string]));
+}
+
 /** Feltene som finnes på en tabelltype, så vi bare spør etter felt som eksisterer. */
 async function felt(tok: string, type: string) {
   const d = await gql(tok, `query($n: String!) { __type(name: $n) { fields { name } } }`, { n: type });
@@ -91,8 +103,7 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
   try { linjer = await alle(tok, b.visma_firma_nr, "orderLine", [...linjeFelt, ...ekstra], `{ ${pf}: { _gt: 0 } }`); }
   catch { linjer = await alle(tok, b.visma_firma_nr, "orderLine", linjeFelt, `{ ${pf}: { _gt: 0 } }`); }
 
-  const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
-  const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
+  const pid = await prosjektKart(b.id);
   // Summer per prosjekt, vare og ordretype. Samme vare kan ligge både på innkjøp og salg; da brukes den største summen.
   const sum = new Map<string, number>();
   const per = new Map<string, { prosjekt_id: string; varenr: string; beskrivelse: string; antall: number; enhet: string; sist_dato: string | null }>();
@@ -186,8 +197,7 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
     ["orderNo", "lineNo", "productNo", pf, "totalQuantity", "finished", "unrealisedQuantity", "priceInCurrency", "finishDate", "invoiceNo",
       `joinup_Order { orderDate customerNo transactionType orderType ${pf} }`],
     `{ productNo: { _in: [${varenr.map((v) => JSON.stringify(v)).join(",")}] } }`);
-  const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
-  const pid = new Map((pmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
+  const pid = await prosjektKart(b.id);
   const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
   const kid = new Map((kmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
   const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
@@ -308,8 +318,7 @@ Deno.serve(async (req) => {
         const pf = `orgUnit${pk.nr}`;
         const ofelter = ["orderNo", pf, ...velg(oFelt, ["orderDate", "orderType", "transactionType", "name", "customerNo", "orderSumNetDomestic", "incurredCostTotalDomestic", "grossProfitTotalDomestic", "invoicedAmountTotalDomestic", "finishDate"])];
         const ordrer = await alle(tok, b.visma_firma_nr, "order", ofelter, `{ ${pf}: { _gt: 0 } }`);
-        const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
-        const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
+        const pid = await prosjektKart(b.id);
         const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
         const n = (v: unknown) => Number(v) || 0;
         const rader2 = ordrer.filter((o) => pid.has(Number(o[pf]))).map((o) => ({

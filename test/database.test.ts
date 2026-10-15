@@ -82,6 +82,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0044_prosjekt_vare_dato.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0045_prosjekt_selger_snekker.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0046_adresse_manuell.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0047_slaa_sammen_prosjekter.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -631,6 +632,56 @@ describe("koble app-prosjekt til Visma-prosjekt", () => {
     const [v] = await q("select adresse, estimert_timer, notat, visma_nr, navn from public.prosjekter where id = $1", [vis.id]);
     expect(v).toMatchObject({ adresse: "Gate 1, 6290 Haramsøy", notat: "Fliser fra butikken", visma_nr: 7001, navn: "Bad Hansen" });
     expect(Number(v.estimert_timer)).toBe(40);
+  });
+});
+
+describe("slå sammen prosjekter", () => {
+  const q = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("to Visma-prosjekter: alt flyttes, det ene blir skjult og forblir skjult når Visma oppdaterer det", async () => {
+    const jim = await idOf("Jim Kato");
+    const [k] = await as<any>(STALE, "insert into public.kunder (navn) values ('Hansen') returning id");
+    const [a] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn, kunde_id, adresse) values (8001, 'Bad Hansen', $1, 'Vegen 2') returning id", [k.id]);
+    const [b] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn, estimert_timer) values (8002, 'Hansen bad og vaskerom', 30) returning id");
+    await as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, lunsj_min) values ($1, $2, '2027-10-04', '07:00', '15:00', 30)", [jim, a.id]);
+    await as(JIM, "insert into public.dagbok (prosjekt_id, tekst, vaer, ansatt_id) values ($1, 'Membran', 'Regn', $2)", [a.id, jim]);
+    await db.query("insert into public.prosjekt_vare (prosjekt_id, varenr, antall) values ($1, 'V1', 2), ($1, 'V2', 1), ($2, 'V1', 5)", [a.id, b.id]);
+
+    await expect(as(JIM, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id])).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.slaa_sammen_prosjekter($1, $1)", [a.id])).rejects.toThrow(/annet prosjekt/);
+    await expect(as(STALE, "update public.prosjekter set slatt_sammen_med = $2 where id = $1 returning slatt_sammen_med", [a.id, b.id]))
+      .resolves.toEqual([{ slatt_sammen_med: null }]);
+
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id]);
+    expect(await q("select * from public.timer where prosjekt_id = $1", [b.id])).toHaveLength(1);
+    expect(await q("select * from public.dagbok where prosjekt_id = $1", [b.id])).toHaveLength(1);
+    expect((await q("select varenr, antall from public.prosjekt_vare where prosjekt_id = $1 order by varenr", [b.id])).map((x) => [x.varenr, Number(x.antall)]))
+      .toEqual([["V1", 5], ["V2", 1]]);
+    const [gammel] = await q("select aktiv, slatt_sammen_med from public.prosjekter where id = $1", [a.id]);
+    expect(gammel).toEqual({ aktiv: false, slatt_sammen_med: b.id });
+    const [ny] = await q("select kunde_id, adresse, estimert_timer, navn from public.prosjekter where id = $1", [b.id]);
+    expect(ny).toMatchObject({ kunde_id: k.id, adresse: "Vegen 2", navn: "Hansen bad og vaskerom" });
+
+    // Visma-hentingen oppdaterer det skjulte prosjektet: det forblir skjult og inaktivt
+    await db.exec(`update public.prosjekter set aktiv = true, navn = 'Bad Hansen (Visma)', slatt_sammen_med = null where visma_nr = 8001`);
+    expect((await q("select aktiv, slatt_sammen_med from public.prosjekter where id = $1", [a.id]))[0]).toEqual({ aktiv: false, slatt_sammen_med: b.id });
+    // Kan ikke slås sammen på nytt
+    await expect(as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id])).rejects.toThrow(/allerede slått sammen/);
+  });
+  it("app-prosjekt slås inn i et annet app-prosjekt og slettes; tidligere sammenslåtte peker videre", async () => {
+    const [x] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Garasje Olsen') returning id");
+    const [y] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Olsen garasje tak') returning id");
+    const [v] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (8003, 'Olsen') returning id");
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [v.id, x.id]);
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [x.id, y.id]);
+    expect(await q("select * from public.prosjekter where id = $1", [x.id])).toHaveLength(0);
+    expect((await q("select slatt_sammen_med from public.prosjekter where id = $1", [v.id]))[0].slatt_sammen_med).toBe(y.id);
+  });
+  it("utstyrskontoer kan ikke slås sammen", async () => {
+    const [u] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (8004, 'Utstyr Jim') returning id");
+    const [z] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Noe annet') returning id");
+    await db.query("update public.ansatte set utstyr_prosjekt_id = $1 where navn = 'Jim Kato'", [u.id]);
+    await expect(as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [z.id, u.id])).rejects.toThrow(/Utstyrskontoer/);
+    await db.query("update public.ansatte set utstyr_prosjekt_id = null where navn = 'Jim Kato'");
   });
 });
 
