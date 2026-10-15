@@ -76,6 +76,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0038_kampanjer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0050_flere_bedrifter.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0051_tripletex.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -593,5 +594,42 @@ describe("flere bedrifter", () => {
     await as(STALE, "select public.sett_abonnement($1::smallint, true)", [r.id]);
     expect((await as(STALE, "select * from public.plattform_oversikt()")).length).toBe(2);
     expect(await as(JIM, "select * from public.plattform_oversikt()")).toHaveLength(0);
+  });
+});
+
+describe("tripletex", () => {
+  it("leder kobler til, nøkkelen kan aldri leses tilbake, og bare leder ser status", async () => {
+    await expect(as(JIM, "select public.koble_tripletex('nokkel-som-er-lang-nok')")).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.koble_tripletex('kort')")).rejects.toThrow(/hele ansattnøkkelen/);
+    await as(STALE, "select public.koble_tripletex('  ansattnokkel-1234567890  ')");
+    const [t] = await db.query<any>("select ansattnokkel from public.tripletex_tilgang where bedrift_id = 1").then((x) => x.rows);
+    expect(t.ansattnokkel).toBe("ansattnokkel-1234567890");
+    await expect(as(STALE, "select ansattnokkel from public.tripletex_tilgang")).rejects.toThrow();
+    await expect(as(JIM, "select ansattnokkel from public.tripletex_tilgang")).rejects.toThrow();
+    const [st] = await as(STALE, "select public.tripletex_status() as s");
+    expect(st.s).toMatchObject({ aktiv: true, har_nokkel: true, send_timer: true });
+    expect(JSON.stringify(st.s)).not.toMatch(/ansattnokkel-1234567890/);
+    expect((await as(JIM, "select public.tripletex_status() as s"))[0].s).toBeNull();
+    await as(STALE, "select public.tripletex_innstillinger(false, 42)");
+    expect((await as(STALE, "select public.tripletex_status() as s"))[0].s).toMatchObject({ send_timer: false, aktivitet_id: 42 });
+    await as(STALE, "select public.koble_fra_tripletex()");
+    expect((await as(STALE, "select public.tripletex_status() as s"))[0].s).toMatchObject({ aktiv: false, har_nokkel: false });
+  });
+  it("prosjekter fra Tripletex beholder Tripletex-ID når de endres i appen", async () => {
+    await db.exec("insert into public.prosjekter (bedrift_id, navn, tripletex_id, tripletex_nr) values (1, 'Tx-prosjekt', 555, '24-1')");
+    await as(STALE, "update public.prosjekter set navn = 'Nytt navn', tripletex_id = null, tripletex_nr = '' where tripletex_id = 555");
+    const [p] = await db.query<any>("select navn, tripletex_id, tripletex_nr from public.prosjekter where navn = 'Nytt navn'").then((x) => x.rows);
+    expect(p).toMatchObject({ tripletex_id: 555, tripletex_nr: "24-1" });
+  });
+  it("sendte timer og synklogg er bare synlige i egen bedrift", async () => {
+    const [p] = await db.query<any>("select id from public.prosjekter where tripletex_id = 555").then((x) => x.rows);
+    const jim = await idOf("Jim Kato");
+    await db.exec(`insert into public.tripletex_timer (ansatt_id, prosjekt_id, dato, bedrift_id, tripletex_id, timer) values ('${jim}', '${p.id}', '2026-10-12', 1, 9001, 7.5)`);
+    await db.exec("insert into public.tripletex_logg (bedrift_id, ok, melding) values (1, true, 'ok')");
+    expect(await as(STALE, "select tripletex_id from public.tripletex_timer")).toHaveLength(1);
+    expect(await as(JIM, "select tripletex_id from public.tripletex_timer")).toHaveLength(1);
+    expect(await as(MADS, "select tripletex_id from public.tripletex_timer")).toHaveLength(0);
+    expect(await as(STALE, "select id from public.tripletex_logg")).toHaveLength(1);
+    expect(await as(JIM, "select id from public.tripletex_logg")).toHaveLength(0);
   });
 });

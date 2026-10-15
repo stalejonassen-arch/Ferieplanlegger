@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
-import { api, type PlattformBedrift } from "../lib/api";
+import { api, type PlattformBedrift, type TripletexStatus } from "../lib/api";
 import type { Bedrift, Tema } from "../lib/ferie";
 
 const TEMA: [Tema, string][] = [["byggfag", "Byggfag-blå"], ["bfportal", "BFportal"], ["standard", "Skandinavisk"], ["fargerik", "Fargerik"], ["mork", "Mørk"], ["thaugland", "Rød og grå"]];
@@ -81,6 +81,77 @@ export function Bedriftsprofil() {
           <button className="btn primary" disabled={!endret}>Lagre bedriftsprofil</button>
         </div>
       </form>
+    </section>
+  );
+}
+
+/** Leder: koble bedriften til Tripletex med en ansattnøkkel. Prosjekter, kunder og ansatte hentes derfra, og godkjente timer sendes tilbake. */
+export function Tripletex() {
+  const { kjor } = useApp();
+  const [st, setSt] = useState<TripletexStatus | null>(null);
+  const [nokkel, setNokkel] = useState("");
+  const [vis, setVis] = useState(false);
+  const [melding, setMelding] = useState("");
+  const [jobber, setJobber] = useState(false);
+  const last = () => api.tripletexStatus().then(setSt).catch(() => setSt(null));
+  useEffect(() => { last(); }, []);
+  if (!st) return null;
+
+  const koble = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const ok = await kjor(() => api.kobleTripletex(nokkel), "Koblet til Tripletex");
+    if (ok) { setNokkel(""); setVis(false); await last(); hentNa(); }
+  };
+  const hentNa = async () => {
+    setJobber(true); setMelding("");
+    try { setMelding(await api.tripletexHentNa()); } catch (e) { setMelding(e instanceof Error ? e.message : String(e)); }
+    finally { setJobber(false); last(); }
+  };
+  const koblet = st.aktiv && st.har_nokkel;
+
+  return (
+    <section className="panel">
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ margin: 0 }}>Tripletex</h2>
+        <span className={`chip ${koblet ? "godkjent" : "demo"}`}>{koblet ? "Koblet til" : "Ikke koblet til"}</span>
+      </div>
+      <p className="small muted">Bruker bedriften Tripletex til regnskap og lønn, hentes prosjekter, kunder og ansatte derfra hvert kvarter. Godkjente timer sendes tilbake som timeføringer på prosjektet, så lønn og fakturering kan gjøres i Tripletex uten å skrive noe av på nytt.</p>
+      {koblet ? (
+        <>
+          <dl className="small" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 14px", margin: 0 }}>
+            <dt className="muted">Sist hentet</dt><dd style={{ margin: 0 }}>{st.sist ? new Date(st.sist).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" }) : "Ikke ennå"}</dd>
+            <dt className="muted">Status</dt><dd style={{ margin: 0 }}>{st.status || "–"}</dd>
+            <dt className="muted">Timeføringer sendt</dt><dd style={{ margin: 0 }}>{st.sendt_timer}</dd>
+          </dl>
+          <label className="row small" style={{ gap: 8 }}>
+            <input type="checkbox" id="tx-send-timer" checked={st.send_timer}
+              onChange={(e) => kjor(() => api.tripletexInnstillinger(e.target.checked, st.aktivitet_id), e.target.checked ? "Godkjente timer sendes til Tripletex" : "Timer sendes ikke lenger til Tripletex").then(last)} />
+            Send godkjente timer til Tripletex
+          </label>
+          {melding && <p className="small">{melding}</p>}
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <button className="btn" disabled={jobber} onClick={hentNa}>{jobber ? "Henter …" : "Hent nå"}</button>
+            <button className="btn" onClick={() => setVis((x) => !x)}>Bytt nøkkel</button>
+            <button className="btn" onClick={() => kjor(() => api.kobleFraTripletex(), "Koblet fra Tripletex").then(last)}>Koble fra</button>
+          </div>
+        </>
+      ) : (
+        <ol className="small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
+          <li>Logg inn i Tripletex som administrator.</li>
+          <li>Gå til brukermenyen øverst til høyre og velg <b>API-tilgang</b>.</li>
+          <li>Lag en ny <b>ansattnøkkel</b> for applikasjonen «ByggLogg» og kopier den.</li>
+          <li>Lim den inn her og trykk «Koble til».</li>
+        </ol>
+      )}
+      {(!koblet || vis) && (
+        <form onSubmit={koble} className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+          <label className="field" style={{ flex: 1, minWidth: 220 }}><span className="label">Ansattnøkkel fra Tripletex</span>
+            <input id="tx-nokkel" type="password" autoComplete="off" value={nokkel} onChange={(e) => setNokkel(e.target.value)} placeholder="Lim inn nøkkelen" />
+          </label>
+          <button className="btn primary" disabled={nokkel.trim().length < 10}>Koble til</button>
+        </form>
+      )}
+      <p className="small muted" style={{ margin: 0 }}>Nøkkelen lagres på serveren og kan ikke leses av noen i appen, heller ikke av leder. Ansatte kobles på e-post eller ansattnummer, så bruk samme e-post i ByggLogg og Tripletex.</p>
     </section>
   );
 }

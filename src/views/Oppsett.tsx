@@ -7,7 +7,7 @@ import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
 import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, lesXlsx, svennBildetekst, svennProsjekter, type Kobling, type SvennFil, type SvennProsjekt, type SvennRad } from "../lib/svenn";
 import type { SvennResultat } from "../lib/api";
 import { KampanjeOppsett } from "./Kampanjer";
-import { Bedriftsprofil, PlattformAdmin } from "./Bedriftsprofil";
+import { Bedriftsprofil, PlattformAdmin, Tripletex } from "./Bedriftsprofil";
 
 export function Oppsett() {
   const { d, aar, kjor } = useApp();
@@ -30,6 +30,7 @@ export function Oppsett() {
     <>
       <PlattformAdmin />
       <Bedriftsprofil />
+      <Tripletex />
       <section className="panel">
         <h2>Ansatte</h2>
         <p className="small muted">Endringer lagres når du går ut av feltet. E-posten er den ansatte bruker for å logge inn. «Dager» er feriedager per år regnet mandag–fredag: 25 er 5 uker, 21 er lovens minimum. «Overført» er ferie avtalt flyttet fra {aar - 1} til {aar}.</p>

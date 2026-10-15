@@ -98,6 +98,7 @@ const demoVarer: FdvVare[] = [
 ];
 const vareEndring: Record<string, Partial<FdvVare>> = {};
 const demoDok: (FdvDok & { pid: string })[] = [];
+const txDemo = { aktiv: false, sist: null as string | null, status: "", send_timer: true, aktivitet_id: null as number | null, har_nokkel: false, sendt_timer: 0 };
 
 export function demoApi(): Api {
   const d = PROFIL.id === "thaugland" ? thauglandDrakt(startdata()) : startdata();
@@ -419,6 +420,11 @@ export function demoApi(): Api {
     async lagrePush() { /* ikke i demo */ },
     async lagreBedriftsprofil(p) { if (!leder()) throw new Error("Bare leder kan endre bedriftens profil."); d.bedrift = { ...d.bedrift!, ...p }; endret(); },
     async erPlattformAdmin() { return false; },
+    async tripletexStatus() { return { ...txDemo }; },
+    async kobleTripletex(nokkel) { if (nokkel.trim().length < 10) throw new Error("Lim inn hele ansattnøkkelen fra Tripletex."); Object.assign(txDemo, { aktiv: true, har_nokkel: true, status: "Koblet til (demo). I den ekte appen hentes prosjekter og kunder nå." }); endret(); },
+    async kobleFraTripletex() { Object.assign(txDemo, { aktiv: false, har_nokkel: false, status: "Koblet fra." }); endret(); },
+    async tripletexInnstillinger(sendTimer, aktivitetId) { Object.assign(txDemo, { send_timer: sendTimer, aktivitet_id: aktivitetId }); },
+    async tripletexHentNa() { txDemo.sist = new Date().toISOString(); return "Demo: i den ekte appen hentes prosjekter, kunder og ansatte fra Tripletex nå, og godkjente timer sendes dit."; },
     async plattformOversikt() { return []; },
     async opprettBedrift() { throw new Error("Ikke i demo."); },
     async settAbonnement() { /* ikke i demo */ },

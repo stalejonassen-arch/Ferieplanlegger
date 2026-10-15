@@ -24,6 +24,8 @@ export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null;
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 /** En kunde sett fra plattform-admin */
+/** Tripletex-koblingen for lederens bedrift (nøkkelen vises aldri) */
+export interface TripletexStatus { aktiv: boolean; sist: string | null; status: string; send_timer: boolean; aktivitet_id: number | null; har_nokkel: boolean; sendt_timer: number }
 export interface PlattformBedrift { id: number; navn: string; orgnr: string; aktiv: boolean; abonnement_til: string | null; visma_firma_nr: number | null; ansatte: number; ledere: string; sist_aktiv: string | null; opprettet: string }
 
 /** Svar fra importen av Svenn-timer */
@@ -146,6 +148,12 @@ export interface Api {
   settOmsetningsmaal(belop: number | null): Promise<void>;
   /** Leder: siste henting fra Visma */
   vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
+  /** Tripletex: status, koble til med ansattnøkkel, koble fra, innstillinger og «hent nå» */
+  tripletexStatus(): Promise<TripletexStatus | null>;
+  kobleTripletex(nokkel: string): Promise<void>;
+  kobleFraTripletex(): Promise<void>;
+  tripletexInnstillinger(sendTimer: boolean, aktivitetId: number | null): Promise<void>;
+  tripletexHentNa(): Promise<string>;
 }
 
 /** Gjør databasefeil om til tekst som gir mening for brukeren. */
@@ -497,6 +505,20 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (sider.length) await sb.storage.from("bilder").remove(sider);
     },
     async settVisKampanjer(vis) { ok(await sb.rpc("sett_vis_kampanjer", { vis })); },
+    async tripletexStatus() { const r = await sb.rpc("tripletex_status"); return (r.data as TripletexStatus | null) ?? null; },
+    async kobleTripletex(nokkel) { ok(await sb.rpc("koble_tripletex", { nokkel })); },
+    async kobleFraTripletex() { ok(await sb.rpc("koble_fra_tripletex")); },
+    async tripletexInnstillinger(sendTimer, aktivitetId) { ok(await sb.rpc("tripletex_innstillinger", { send_timer: sendTimer, aktivitet_id: aktivitetId })); },
+    async tripletexHentNa() {
+      const t = (await sb.auth.getSession()).data.session?.access_token;
+      const r = await fetch(`${url}/functions/v1/tripletex-sync`, { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: "{}" });
+      if (!r.ok) throw new Error(r.status === 403 ? "Bare leder kan hente fra Tripletex." : `Tripletex-henting feilet (${r.status}).`);
+      const j = await r.json() as { feil?: string; prosjekter?: number; kunder?: number; sendt?: number; oppdatert?: number }[];
+      const x = j[0];
+      if (!x) return "Tripletex er ikke koblet til.";
+      if (x.feil) throw new Error(x.feil);
+      return `Hentet ${x.prosjekter ?? 0} prosjekter og ${x.kunder ?? 0} kunder. ${(x.sendt ?? 0) + (x.oppdatert ?? 0)} timeføringer sendt.`;
+    },
     async lagreBedriftsprofil(p) { ok(await sb.rpc("lagre_bedriftsprofil", { p })); },
     async erPlattformAdmin() { const r = await sb.rpc("er_plattform_admin"); return r.data === true; },
     async plattformOversikt() { return ((ok(await sb.rpc("plattform_oversikt")) as any[]) ?? []).map((x) => ({ ...x, id: Number(x.id), ansatte: Number(x.ansatte) })); },
