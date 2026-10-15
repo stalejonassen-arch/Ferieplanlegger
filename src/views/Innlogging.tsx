@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, feiltekst } from "../lib/api";
 import { PROFIL } from "../lib/profil";
+import { Personvern } from "./Personvern";
 
 const DEMO = PROFIL.demoBrukere;
 
@@ -9,6 +10,7 @@ export function Innlogging() {
   const [kode, setKode] = useState("");
   const [steg, setSteg] = useState<"epost" | "kode">("epost");
   const [jobber, setJobber] = useState(false);
+  const [visPersonvern, setVisPersonvern] = useState(() => location.hash === "#personvern");
   const [feil, setFeil] = useState<string | null>(null);
 
   const send = async (e: React.FormEvent) => {
@@ -65,7 +67,9 @@ export function Innlogging() {
           </form>
         )}
         {feil && <p style={{ color: "var(--warn)" }}>{feil}</p>}
+        <div className="small"><button type="button" className="linkbtn" onClick={() => setVisPersonvern((x) => !x)}>{visPersonvern ? "Skjul personvern" : "Personvern – slik behandler vi opplysningene dine"}</button></div>
       </div>
+      {visPersonvern && <Personvern lukk={() => setVisPersonvern(false)} />}
     </div>
   );
 }
