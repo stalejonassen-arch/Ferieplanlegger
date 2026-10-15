@@ -8,6 +8,7 @@ import { Kalender } from "./views/Kalender";
 import { Soknader } from "./views/Soknader";
 import { Regler } from "./views/Regler";
 import { Personvern } from "./views/Personvern";
+import { Vilkar } from "./views/Vilkar";
 import { Oppsett } from "./views/Oppsett";
 import { Lonn } from "./views/Lonn";
 import { Timer } from "./views/Timer";
@@ -70,10 +71,10 @@ const SKYLINE = (
 );
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "chat" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern";
+type Fane = "timer" | "chat" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern" | "vilkar";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "chat", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "chat", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern", "vilkar"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -204,7 +205,7 @@ export function App() {
   const faner: [Fane, string][] = [["timer", "Timer"], ["chat", "Chat"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
-  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" || fane === "personvern" ? fane : "timer";
+  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" || fane === "personvern" || fane === "vilkar" ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
   const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
   const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
@@ -299,9 +300,12 @@ export function App() {
         )}
         {aktiv === "lonn" && <Lonn />}
         {aktiv === "oppsett" && <Oppsett />}
-        {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} />}
+        {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
+        {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}
         <div className="small muted" style={{ textAlign: "center", margin: "18px 0 90px" }}>
           <a href="#personvern" onClick={(e) => { e.preventDefault(); velg("personvern"); window.scrollTo(0, 0); }}>Personvern</a>
+          {" · "}<a href="#vilkar" onClick={(e) => { e.preventDefault(); velg("vilkar"); window.scrollTo(0, 0); }}>Avtalevilkår</a>
+          {" · "}ByggLogg fra Jonassen AS
         </div>
       </div>
       {toast && <div className={`toast${toast.feil ? " feil" : ""}`} role="status">{toast.t}</div>}

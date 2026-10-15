@@ -19,7 +19,7 @@ function Norsk() {
   return (
     <>
       <h2 style={{ margin: 0 }}>Personvern i ByggLogg</h2>
-      <p><b>{FIRMA.navn}</b>{FIRMA.orgnr && ` (org.nr. ${FIRMA.orgnr})`} bruker ByggLogg til timeføring, ferie og fravær, prosjekter og intern kommunikasjon. {FIRMA.navn} er behandlingsansvarlig for opplysningene om deg.</p>
+      <p><b>{FIRMA.navn}</b>{FIRMA.orgnr && ` (org.nr. ${FIRMA.orgnr})`} bruker ByggLogg til timeføring, ferie og fravær, prosjekter og intern kommunikasjon. {FIRMA.navn} er behandlingsansvarlig for opplysningene om deg. ByggLogg leveres av Jonassen AS (org.nr. 919 665 319), som behandler opplysningene bare på våre vegne etter en databehandleravtale.</p>
       <h3>Hva vi registrerer</h3>
       <p>Navn, e-post, telefon, ansattnummer, timer og stemplinger, ferie og fravær, kjøring, utstyr og arbeidstøy, kurs og kompetansebevis, og meldinger og bilder du legger inn selv. Ved sykdom registreres bare typen fravær (egenmelding, sykmelding, sykt barn), aldri diagnose.</p>
       <h3>Hvorfor</h3>
@@ -44,7 +44,7 @@ function Polsk() {
   return (
     <>
       <h2 style={{ margin: 0 }}>Ochrona danych osobowych w ByggLogg</h2>
-      <p><b>{FIRMA.navn}</b>{FIRMA.orgnr && ` (nr org. ${FIRMA.orgnr})`} używa ByggLogg do rejestracji czasu pracy, urlopów i nieobecności, projektów i komunikacji wewnętrznej. {FIRMA.navn} jest administratorem Twoich danych osobowych.</p>
+      <p><b>{FIRMA.navn}</b>{FIRMA.orgnr && ` (nr org. ${FIRMA.orgnr})`} używa ByggLogg do rejestracji czasu pracy, urlopów i nieobecności, projektów i komunikacji wewnętrznej. {FIRMA.navn} jest administratorem Twoich danych osobowych. ByggLogg dostarcza Jonassen AS (nr org. 919 665 319), która przetwarza dane wyłącznie w naszym imieniu na podstawie umowy powierzenia przetwarzania danych.</p>
       <h3>Co rejestrujemy</h3>
       <p>Imię i nazwisko, e-mail, telefon, numer pracownika, godziny pracy i odbicia, urlopy i nieobecności, przejazdy, narzędzia i odzież roboczą, kursy i uprawnienia oraz wiadomości i zdjęcia, które sam dodajesz. W przypadku choroby zapisywany jest tylko rodzaj nieobecności (zgłoszenie własne, zwolnienie lekarskie, chore dziecko), nigdy diagnoza.</p>
       <h3>Dlaczego</h3>
@@ -66,7 +66,7 @@ function Polsk() {
 }
 
 /** Personvernerklæringen, med valg mellom norsk og polsk */
-export function Personvern({ sprak = "nb", lukk }: { sprak?: "nb" | "pl"; lukk?: () => void }) {
+export function Personvern({ sprak = "nb", lukk, tilVilkar }: { sprak?: "nb" | "pl"; lukk?: () => void; tilVilkar?: () => void }) {
   const [s, setS] = useState<"nb" | "pl">(sprak);
   return (
     <section className="panel personvern" data-ikke-oversett style={{ gap: 6, lineHeight: 1.5 }}>
@@ -78,6 +78,7 @@ export function Personvern({ sprak = "nb", lukk }: { sprak?: "nb" | "pl"; lukk?:
         {lukk && <button className="btn sm" onClick={lukk}>{s === "pl" ? "Zamknij" : "Lukk"}</button>}
       </div>
       {s === "pl" ? <Polsk /> : <Norsk />}
+      {tilVilkar && <p className="small"><button type="button" className="linkbtn" onClick={tilVilkar}>{s === "pl" ? "Warunki umowy ByggLogg (po norwesku)" : "Avtalevilkår for ByggLogg"}</button></p>}
       <p className="small muted" style={{ marginTop: 8 }}>{s === "pl" ? "Ostatnia aktualizacja: 15 października 2026" : "Sist oppdatert 15. oktober 2026"}</p>
     </section>
   );
