@@ -6,6 +6,7 @@ import { lastNedCsv, lonnAarCsv, lonnCsv, lonnMaaned, lonnTimerCsv, lonnTimerMaa
 import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { t2 } from "../lib/timer";
+import { LonnOverforing } from "./LonnOverforing";
 
 export function Lonn() {
   const { d, aar, idag, kjor } = useApp();
@@ -65,6 +66,8 @@ export function Lonn() {
           <button className="btn primary" disabled={!harTimer} onClick={() => lastNedCsv(lonnTimerCsv(timer, aar, mnd, firma(d.bedrift).navn), `timer-${aar}-${String(mnd).padStart(2, "0")}.csv`)}>Last ned lønnsgrunnlag {mndNavn} (Excel)</button>
         </div>
       </section>
+
+      <LonnOverforing timer={timer} ferie={rader} aar={aar} mnd={mnd} />
 
       <section className="panel">
         <div className="cal-head">

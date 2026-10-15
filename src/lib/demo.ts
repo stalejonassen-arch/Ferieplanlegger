@@ -98,6 +98,7 @@ const demoVarer: FdvVare[] = [
 ];
 const vareEndring: Record<string, Partial<FdvVare>> = {};
 const demoDok: (FdvDok & { pid: string })[] = [];
+const lonnDemo: { system: "excel" | "visma_lonn" | "tripletex"; arter: Record<string, string> } = { system: "excel", arter: {} };
 const txDemo = { aktiv: false, sist: null as string | null, status: "", send_timer: true, aktivitet_id: null as number | null, har_nokkel: false, sendt_timer: 0 };
 
 export function demoApi(): Api {
@@ -425,6 +426,22 @@ export function demoApi(): Api {
     async kobleFraTripletex() { Object.assign(txDemo, { aktiv: false, har_nokkel: false, status: "Koblet fra." }); endret(); },
     async tripletexInnstillinger(sendTimer, aktivitetId) { Object.assign(txDemo, { send_timer: sendTimer, aktivitet_id: aktivitetId }); },
     async tripletexHentNa() { txDemo.sist = new Date().toISOString(); return "Demo: i den ekte appen hentes prosjekter, kunder og ansatte fra Tripletex nå, og godkjente timer sendes dit."; },
+    async lonnOppsett() { return leder() ? { system: lonnDemo.system, arter: { ...lonnDemo.arter } } : null; },
+    async lagreLonnOppsett(system, arter) { if (!leder()) throw new Error("Bare leder kan endre lønnsoppsettet."); Object.assign(lonnDemo, { system, arter: { ...arter } }); },
+    async tripletexLonnsarter() {
+      if (!txDemo.aktiv) throw new Error("Tripletex er ikke koblet til.");
+      return [
+        { id: 1, number: "1000", name: "Fastlønn", showInTimesheet: false },
+        { id: 2, number: "1020", name: "Timelønn", showInTimesheet: true },
+        { id: 3, number: "1050", name: "Overtid 50 %", showInTimesheet: true },
+        { id: 4, number: "1051", name: "Overtid 100 %", showInTimesheet: true },
+        { id: 5, number: "1300", name: "Kilometergodtgjørelse", showInTimesheet: true },
+      ];
+    },
+    async sendLonnTripletex(mnd, linjer) {
+      if (!txDemo.aktiv) throw new Error("Tripletex er ikke koblet til.");
+      return { mnd, sendt: linjer.length, oppdatert: 0, fjernet: 0, ikke_koblet: [], ukjente_lonnsarter: [], feil: [] };
+    },
     async plattformOversikt() { return []; },
     async opprettBedrift() { throw new Error("Ikke i demo."); },
     async settAbonnement() { /* ikke i demo */ },

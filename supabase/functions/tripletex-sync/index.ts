@@ -2,12 +2,13 @@
 // Henter kunder, prosjekter og ansatte fra Tripletex, og sender godkjente timer tilbake som timeføringer.
 // Kalles av pg_cron hvert kvarter (uten innlogging: alle koblede bedrifter), eller av en leder i appen
 // (med innlogging: bare lederens egen bedrift, for «Hent nå»). Publiseres uten JWT-sjekk.
+// Leder kan også sende månedens lønnsgrunnlag ({ handling: "lonn" }) og hente lønnsartene ({ handling: "lonnsarter" }).
 // Hemmeligheter: TRIPLETEX_CONSUMER_TOKEN (ByggLogg sin applikasjonsnøkkel fra Tripletex),
 // TRIPLETEX_URL (valgfri, standard https://tripletex.no/v2, testmiljø https://api-test.tripletex.tech/v2).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
-  koblAnsatte, plan, samleTimer, tilKunde, tilProsjekt, txFeil, velgAktivitet,
-  type TxAnsatt, type TxKunde, type TxProsjekt,
+  finnLonnsart, koblAnsatte, lonnPlan, plan, sisteDag, samleTimer, tilKunde, tilProsjekt, txFeil, velgAktivitet,
+  type LonnLinje, type TxAnsatt, type TxKunde, type TxProsjekt,
 } from "./logikk.ts";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -172,6 +173,73 @@ async function synkBedrift(b: Bedrift) {
   }
 }
 
+const ARTNAVN: Record<string, string> = {
+  normal: "Normaltid", ot50: "Overtid 50 %", ot100: "Overtid 100 %", km: "Kjøring", reisetid: "Reisetid",
+  ferie: "Ferie", egenmelding: "Egenmelding", sykmelding: "Sykmelding", syktBarn: "Sykt barn",
+};
+
+/** Lønnsartene i Tripletex (for å velge riktige nummer i ByggLogg) */
+async function lonnsarter(tx: Okt) {
+  const typer = await tx.alle<{ id: number; number: string; name: string; showInTimesheet: boolean }>("/salary/type?isInactive=false", "id,number,name,showInTimesheet");
+  return typer.sort((a, b) => String(a.number).localeCompare(String(b.number), "nb", { numeric: true }));
+}
+
+/** Sender månedens lønnslinjer til timelisten i Tripletex. Sendes måneden på nytt, oppdateres eller fjernes linjene. */
+async function sendLonn(tx: Okt, bedriftId: number, mnd: string, linjer: LonnLinje[]) {
+  const { data: ansatte } = await sb.from("ansatte").select("id, navn, tripletex_id").eq("bedrift_id", bedriftId);
+  const ans = new Map((ansatte ?? []).map((a) => [a.id as string, a as { id: string; navn: string; tripletex_id: number | null }]));
+  const ikkeKoblet = new Set<string>();
+  const gyldige = linjer.filter((l) => {
+    const a = ans.get(l.ansatt_id);
+    if (!a) return false;
+    if (!a.tripletex_id) { ikkeKoblet.add(a.navn); return false; }
+    return true;
+  });
+  const { data: tidligere } = await sb.from("tripletex_lonn").select("ansatt_id, art, tripletex_id, antall").eq("bedrift_id", bedriftId).eq("mnd", mnd);
+  const { nye, endret, slett } = lonnPlan(gyldige, (tidligere ?? []).map((t) => ({ ...t, tripletex_id: Number(t.tripletex_id), antall: Number(t.antall) })));
+
+  const typer = await lonnsarter(tx);
+  const dato = sisteDag(mnd);
+  const feil: string[] = [];
+  const ukjente = new Set<string>();
+  let ok = 0, opp = 0, fjernet = 0;
+  const tekst = (l: LonnLinje) => `ByggLogg ${mnd}: ${ARTNAVN[l.art] ?? l.art}`;
+
+  for (const l of nye) {
+    const type = finnLonnsart(typer, l.kode);
+    if (!type) { ukjente.add(l.kode); continue; }
+    try {
+      const r = await tx.kall<{ value: { id: number } }>("POST", "/timesheet/salaryTypeSpecification", {
+        employee: { id: Number(ans.get(l.ansatt_id)!.tripletex_id) }, salaryType: { id: type }, date: dato, count: l.antall, description: tekst(l),
+      });
+      await sb.from("tripletex_lonn").upsert({ ansatt_id: l.ansatt_id, mnd, art: l.art, bedrift_id: bedriftId, tripletex_id: r.value.id, antall: l.antall, sendt: new Date().toISOString() });
+      ok++;
+    } catch (e) { feil.push(`${ans.get(l.ansatt_id)!.navn}, ${ARTNAVN[l.art]}: ${(e as Error).message}`); }
+  }
+  for (const l of endret) {
+    const type = finnLonnsart(typer, l.kode);
+    if (!type) { ukjente.add(l.kode); continue; }
+    try {
+      const g = await tx.kall<{ value: { id: number; version: number } }>("GET", `/timesheet/salaryTypeSpecification/${l.tripletex_id}?fields=id,version`);
+      await tx.kall("PUT", `/timesheet/salaryTypeSpecification/${l.tripletex_id}`, {
+        id: l.tripletex_id, version: g.value.version, salaryType: { id: type }, count: l.antall, description: tekst(l),
+      });
+      await sb.from("tripletex_lonn").update({ antall: l.antall, sendt: new Date().toISOString() }).eq("ansatt_id", l.ansatt_id).eq("mnd", mnd).eq("art", l.art);
+      opp++;
+    } catch (e) { feil.push(`${ans.get(l.ansatt_id)!.navn}, ${ARTNAVN[l.art]}: ${(e as Error).message}`); }
+  }
+  for (const l of slett) {
+    try {
+      await tx.kall("DELETE", `/timesheet/salaryTypeSpecification/${l.tripletex_id}`).catch((e) => { if (!/ 404/.test((e as Error).message)) throw e; });
+      await sb.from("tripletex_lonn").delete().eq("ansatt_id", l.ansatt_id).eq("mnd", mnd).eq("art", l.art);
+      fjernet++;
+    } catch (e) { feil.push(`${ans.get(l.ansatt_id)?.navn ?? "Ansatt"}, ${ARTNAVN[l.art]}: ${(e as Error).message}`); }
+  }
+  const resultat = { mnd, sendt: ok, oppdatert: opp, fjernet, ikke_koblet: [...ikkeKoblet], ukjente_lonnsarter: [...ukjente], feil: feil.slice(0, 10) };
+  await sb.from("tripletex_logg").insert({ bedrift_id: bedriftId, ok: !feil.length && !ukjente.size, melding: JSON.stringify({ lonn: resultat }) });
+  return resultat;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   // Leder i appen: bare egen bedrift. Ellers (cron): alle koblede bedrifter.
@@ -184,6 +252,22 @@ Deno.serve(async (req) => {
     const { data: a } = await sb.from("ansatte").select("bedrift_id, rolle, aktiv").ilike("epost", epost).maybeSingle();
     if (!a?.aktiv || a.rolle !== "leder") return new Response("bare leder", { status: 403, headers: CORS });
     bare = a.bedrift_id;
+  }
+  const body = await req.json().catch(() => ({})) as { handling?: string; mnd?: string; linjer?: LonnLinje[] };
+  if (body.handling === "lonn" || body.handling === "lonnsarter") {
+    if (!bare) return new Response("bare leder", { status: 403, headers: CORS });
+    const { data: t } = await sb.from("tripletex_tilgang").select("ansattnokkel").eq("bedrift_id", bare).maybeSingle();
+    if (!t) return Response.json({ feil: "Tripletex er ikke koblet til." }, { status: 400, headers: CORS });
+    try {
+      const tx = await okt(t.ansattnokkel);
+      if (body.handling === "lonnsarter") return Response.json(await lonnsarter(tx), { headers: CORS });
+      if (!/^\d{4}-\d{2}$/.test(body.mnd ?? "") || !Array.isArray(body.linjer) || body.linjer.length > 5000) {
+        return Response.json({ feil: "Ugyldig lønnsgrunnlag." }, { status: 400, headers: CORS });
+      }
+      return Response.json(await sendLonn(tx, bare, body.mnd!, body.linjer), { headers: CORS });
+    } catch (e) {
+      return Response.json({ feil: (e as Error).message }, { status: 502, headers: CORS });
+    }
   }
   let q = sb.from("bedrifter").select("id, tripletex_aktivitet_id, tripletex_send_timer").eq("tripletex_aktiv", true).eq("aktiv", true);
   if (bare) q = q.eq("id", bare);

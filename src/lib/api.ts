@@ -10,6 +10,7 @@ import { STANDARD_KVOTER, type Kvoter, type Utstyr } from "./utstyr";
 import type { Kompetanse } from "./kompetanse";
 import type { Lest, Melding } from "./chat";
 import type { Kobling, importRader } from "./svenn";
+import type { Linje, LonnOppsett, Lonnsarter, LonnSystem } from "./lonnsystem";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -25,6 +26,8 @@ export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: strin
 
 /** En kunde sett fra plattform-admin */
 /** Tripletex-koblingen for lederens bedrift (nøkkelen vises aldri) */
+export interface TxLonnsart { id: number; number: string; name: string; showInTimesheet: boolean }
+export interface LonnSendt { mnd: string; sendt: number; oppdatert: number; fjernet: number; ikke_koblet: string[]; ukjente_lonnsarter: string[]; feil: string[] }
 export interface TripletexStatus { aktiv: boolean; sist: string | null; status: string; send_timer: boolean; aktivitet_id: number | null; har_nokkel: boolean; sendt_timer: number }
 export interface PlattformBedrift { id: number; navn: string; orgnr: string; aktiv: boolean; abonnement_til: string | null; visma_firma_nr: number | null; ansatte: number; ledere: string; sist_aktiv: string | null; opprettet: string }
 
@@ -154,6 +157,13 @@ export interface Api {
   kobleFraTripletex(): Promise<void>;
   tripletexInnstillinger(sendTimer: boolean, aktivitetId: number | null): Promise<void>;
   tripletexHentNa(): Promise<string>;
+  /** Lønnssystem og lønnsarter for lederens bedrift */
+  lonnOppsett(): Promise<LonnOppsett | null>;
+  lagreLonnOppsett(system: LonnSystem, arter: Lonnsarter): Promise<void>;
+  /** Lønnsartene som finnes i Tripletex */
+  tripletexLonnsarter(): Promise<TxLonnsart[]>;
+  /** Sender månedens lønnslinjer («YYYY-MM») til timelisten i Tripletex */
+  sendLonnTripletex(mnd: string, linjer: Linje[]): Promise<LonnSendt>;
 }
 
 /** Gjør databasefeil om til tekst som gir mening for brukeren. */
@@ -187,6 +197,15 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (!r.data || r.data.length < 1000) break;
     }
     return { data: ut, error: null };
+  };
+  /** Kall til Tripletex-funksjonen som innlogget leder */
+  const tripletexKall = async (body: unknown): Promise<unknown> => {
+    const t = (await sb.auth.getSession()).data.session?.access_token;
+    const r = await fetch(`${url}/functions/v1/tripletex-sync`, { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.status === 403) throw new Error("Bare leder kan bruke Tripletex-koblingen.");
+    const j = await r.json().catch(() => null) as { feil?: string } | null;
+    if (!r.ok || !j) throw new Error(j?.feil ?? `Tripletex svarte ikke (${r.status}).`);
+    return j;
   };
   return {
     modus: "supabase",
@@ -518,6 +537,12 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (!x) return "Tripletex er ikke koblet til.";
       if (x.feil) throw new Error(x.feil);
       return `Hentet ${x.prosjekter ?? 0} prosjekter og ${x.kunder ?? 0} kunder. ${(x.sendt ?? 0) + (x.oppdatert ?? 0)} timeføringer sendt.`;
+    },
+    async lonnOppsett() { const r = await sb.rpc("lonn_oppsett"); return (r.data as LonnOppsett | null) ?? null; },
+    async lagreLonnOppsett(system, arter) { ok(await sb.rpc("lagre_lonn_oppsett", { system, arter })); },
+    async tripletexLonnsarter() { return (await tripletexKall({ handling: "lonnsarter" })) as TxLonnsart[]; },
+    async sendLonnTripletex(mnd, linjer) {
+      return (await tripletexKall({ handling: "lonn", mnd, linjer: linjer.map((l) => ({ ansatt_id: l.ansatt_id, art: l.art, kode: l.kode, antall: l.antall })) })) as LonnSendt;
     },
     async lagreBedriftsprofil(p) { ok(await sb.rpc("lagre_bedriftsprofil", { p })); },
     async erPlattformAdmin() { const r = await sb.rpc("er_plattform_admin"); return r.data === true; },

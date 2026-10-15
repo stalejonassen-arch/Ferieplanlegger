@@ -112,3 +112,42 @@ export function txFeil(status: number, body: unknown): string {
   if (status === 403) return "Nøkkelen mangler tilgang i Tripletex (prosjekt, kunder, ansatte og timer).";
   return `Tripletex svarte ${status}${b?.message ? `: ${b.message}` : ""}${v ? ` (${v})` : ""}`.slice(0, 500);
 }
+
+// ---------------------------------------------------------------------------
+// Lønn: lønnslinjer føres som lønnsarter i timelisten (timesheet/salaryTypeSpecification),
+// én per ansatt, måned og type, datert siste dag i måneden. Tripletex tar dem med når lønnen kjøres.
+// ---------------------------------------------------------------------------
+export const LONN_ARTER = ["normal", "ot50", "ot100", "km", "reisetid", "ferie", "egenmelding", "sykmelding", "syktBarn"] as const;
+export interface LonnLinje { ansatt_id: string; art: string; kode: string; antall: number }
+export interface SendtLonn { ansatt_id: string; art: string; tripletex_id: number; antall: number }
+
+/** Siste dag i måneden «YYYY-MM» */
+export function sisteDag(mnd: string) {
+  const [y, m] = mnd.split("-").map(Number);
+  return `${mnd}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Hva som må gjøres i Tripletex for at måneden skal stemme med ByggLogg: nye, endrede og linjer som skal bort. */
+export function lonnPlan(linjer: LonnLinje[], sendt: SendtLonn[]) {
+  const n = (l: { ansatt_id: string; art: string }) => `${l.ansatt_id}|${l.art}`;
+  const før = new Map(sendt.map((s) => [n(s), s]));
+  const nå = new Map<string, LonnLinje>();
+  for (const l of linjer) {
+    if (!(LONN_ARTER as readonly string[]).includes(l.art) || !l.kode?.trim() || !(Number(l.antall) > 0)) continue;
+    const x = nå.get(n(l));
+    nå.set(n(l), x ? { ...x, antall: Math.round((x.antall + Number(l.antall)) * 100) / 100 } : { ...l, antall: Math.round(Number(l.antall) * 100) / 100 });
+  }
+  const nye: LonnLinje[] = [], endret: (LonnLinje & { tripletex_id: number })[] = [], slett: SendtLonn[] = [];
+  for (const [k, l] of nå) {
+    const f = før.get(k);
+    if (!f) nye.push(l);
+    else if (Math.abs(f.antall - l.antall) > 0.001) endret.push({ ...l, tripletex_id: f.tripletex_id });
+  }
+  for (const [k, f] of før) if (!nå.has(k)) slett.push(f);
+  return { nye, endret, slett };
+}
+
+/** Finner lønnsarten med eksakt dette nummeret (søket i Tripletex er «inneholder»). */
+export function finnLonnsart(typer: { id: number; number?: string | null }[], kode: string) {
+  return typer.find((t) => s(t.number) === kode.trim())?.id ?? null;
+}

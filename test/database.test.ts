@@ -77,6 +77,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0039_push.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0050_flere_bedrifter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0051_tripletex.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0052_lonnsystem.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -631,5 +632,24 @@ describe("tripletex", () => {
     expect(await as(MADS, "select tripletex_id from public.tripletex_timer")).toHaveLength(0);
     expect(await as(STALE, "select id from public.tripletex_logg")).toHaveLength(1);
     expect(await as(JIM, "select id from public.tripletex_logg")).toHaveLength(0);
+  });
+});
+
+describe("lønnssystem", () => {
+  it("bare leder ser og endrer oppsettet, og ukjente eller tomme lønnsarter lagres ikke", async () => {
+    expect((await as(STALE, "select public.lonn_oppsett() as o"))[0].o).toEqual({ system: "excel", arter: {} });
+    expect((await as(JIM, "select public.lonn_oppsett() as o"))[0].o).toBeNull();
+    await expect(as(JIM, `select public.lagre_lonn_oppsett('tripletex', '{}'::jsonb)`)).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, `select public.lagre_lonn_oppsett('huldt', '{}'::jsonb)`)).rejects.toThrow(/Ukjent lønnssystem/);
+    await as(STALE, `select public.lagre_lonn_oppsett('visma_lonn', '{"ot50":" 1050 ","normal":"","hacker":"1","km":7}'::jsonb)`);
+    expect((await as(STALE, "select public.lonn_oppsett() as o"))[0].o).toEqual({ system: "visma_lonn", arter: { ot50: "1050" } });
+  });
+  it("sendte lønnslinjer er bare synlige for leder i egen bedrift", async () => {
+    const jim = await idOf("Jim Kato");
+    await db.exec(`insert into public.tripletex_lonn (ansatt_id, mnd, art, bedrift_id, tripletex_id, antall) values ('${jim}', '2026-10', 'ot50', 1, 77, 4.5)`);
+    await expect(db.exec(`insert into public.tripletex_lonn (ansatt_id, mnd, art, bedrift_id, tripletex_id, antall) values ('${jim}', 'okt', 'ot50', 1, 78, 1)`)).rejects.toThrow();
+    expect(await as(STALE, "select tripletex_id from public.tripletex_lonn")).toHaveLength(1);
+    expect(await as(JIM, "select tripletex_id from public.tripletex_lonn")).toHaveLength(0);
+    expect(await as(MADS, "select tripletex_id from public.tripletex_lonn")).toHaveLength(0);
   });
 });
