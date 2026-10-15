@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PROFIL } from "../lib/profil";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { sorterAnsatte, type Ansatt } from "../lib/ferie";
@@ -80,7 +81,7 @@ export function Oppsett() {
             <input type="text" id="ny-navn" value={nyNavn} onChange={(e) => setNyNavn(e.target.value)} placeholder="Navn" />
           </label>
           <label className="field"><span className="label">E-post</span>
-            <input type="email" id="ny-epost" value={nyEpost} onChange={(e) => setNyEpost(e.target.value)} placeholder="navn@austnes.no" />
+            <input type="email" id="ny-epost" value={nyEpost} onChange={(e) => setNyEpost(e.target.value)} placeholder={PROFIL.id === "austnes" ? "navn@austnes.no" : "navn@firma.no"} />
           </label>
           <label className="field"><span className="label">Avdeling</span>
             <select id="ny-avd" value={nyAvd} onChange={(e) => setNyAvd(Number(e.target.value))}>
@@ -211,7 +212,7 @@ function SvennImport() {
       const les = lesSvenn(await lesXlsx(await f.arrayBuffer()));
       if (!les.rader.length) throw new Error("Fant ingen timer i fila.");
       const lagret = new Map((await api.svennKoblinger()).map((k) => [k.nokkel, k]));
-      setKob(Object.fromEntries(svennProsjekter(les.rader).map((p) => [p.nokkel, foreslaKobling(p, d.prosjekter, lagret, "N L Austnes AS")])));
+      setKob(Object.fromEntries(svennProsjekter(les.rader).map((p) => [p.nokkel, foreslaKobling(p, d.prosjekter, lagret, PROFIL.firma)])));
       setFil({ navn: f.name, ...les });
     } catch (e) { setFeil(e instanceof Error ? e.message : String(e)); }
   };
@@ -318,7 +319,7 @@ function SvennDokumentasjon() {
       const lagret = new Map((await api.svennKoblinger()).map((k) => [k.nokkel, k]));
       const v: Record<string, string> = {}, n: Record<string, string> = {};
       for (const p of arkivProsjekter(nye)) {
-        const k = foreslaKobling(p, d.prosjekter, lagret, "N L Austnes AS");
+        const k = foreslaKobling(p, d.prosjekter, lagret, PROFIL.firma);
         v[p.nokkel] = k.prosjekt_id ?? (k.ny_navn != null ? "ny" : "hopp");
         n[p.nokkel] = k.ny_navn ?? p.navn;
       }

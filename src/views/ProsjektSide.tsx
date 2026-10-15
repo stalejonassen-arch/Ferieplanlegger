@@ -432,7 +432,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   if (endre) return (
     <div className="adresse" style={{ flexDirection: "column", alignItems: "stretch" }}>
       <label className="field"><span className="label">Adresse for utførelse</span>
-        <input type="text" value={ny.adresse} onChange={(e) => setNy({ ...ny, adresse: e.target.value })} placeholder="Gate 1, 6290 Haramsøy" autoFocus /></label>
+        <input type="text" value={ny.adresse} onChange={(e) => setNy({ ...ny, adresse: e.target.value })} placeholder={PROFIL.id === "austnes" ? "Gate 1, 6290 Haramsøy" : "Gate 1, 6005 Ålesund"} autoFocus /></label>
       <div className="row">
         <label className="field"><span className="label">Kontaktperson på stedet</span>
           <input type="text" value={ny.navn} onChange={(e) => setNy({ ...ny, navn: e.target.value })} placeholder="Navn" /></label>

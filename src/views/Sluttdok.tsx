@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api, nobbLenke, type FdvDok, type FdvVare } from "../lib/api";
 import { langDato } from "../lib/ferie";
+import { PROFIL } from "../lib/profil";
 import { t2, type Prosjekt } from "../lib/timer";
 import { delAdresse, eiendom, erSjekkliste, FAG, filnavn, klarForBoligmappa, lagZip, matrikkelTekst, sokKartverket, type BoligmappaEksport, type Eiendom, type KartverketTreff } from "../lib/boligmappa";
 
@@ -122,9 +123,9 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
         <header className="rp-topp">
           <div className="rp-merke">
             <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg>
-            <div><b>N L Austnes AS</b><span>Tømrer · Byggevarer · Kjøkken og interiør</span></div>
+            <div><b>{PROFIL.firma}</b><span>{PROFIL.bedrift.linje}</span></div>
           </div>
-          <div className="rp-firma">Larsnilsvegen 41, 6290 Haramsøy<br />Org.nr. 832 507 652<br />Tlf. 70 21 01 09</div>
+          <div className="rp-firma">{PROFIL.bedrift.adresse}{PROFIL.bedrift.orgnr && <><br />Org.nr. {PROFIL.bedrift.orgnr}</>}{PROFIL.bedrift.tlf && <><br />Tlf. {PROFIL.bedrift.tlf}</>}</div>
         </header>
 
         <div className="rp-tittel">
@@ -143,7 +144,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
             {k && <><dt>Kunde</dt><dd>{k.navn}{k.visma_nr ? <small> · kundenr. {k.visma_nr}</small> : null}</dd></>}
             {adr && <><dt>Adresse for utførelse</dt><dd>{adr}{e.bruksenhet ? `, bruksenhet ${e.bruksenhet}` : ""}</dd></>}
             {matrikkelTekst(e) && <><dt>Eiendom</dt><dd>{matrikkelTekst(e)}</dd></>}
-            <dt>Utførende</dt><dd>N L Austnes AS · {e.fag}</dd>
+            <dt>Utførende</dt><dd>{PROFIL.firma} · {e.fag}</dd>
             {datoer.length > 0 && <><dt>Utført</dt><dd>{langDato(datoer[0]!)} – {langDato(datoer[datoer.length - 1]!)}</dd></>}
             {medTimer && sumT > 0 && <><dt>Timer</dt><dd>{t2(sumT)} timer</dd></>}
             {tillegg.length > 0 && <><dt>Tilleggsarbeid</dt><dd>{tillegg.length} godkjent{tillegg.length === 1 ? "" : "e"}</dd></>}
@@ -221,12 +222,12 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
         </>); })()}
 
         <section className="rp-signatur">
-          <div><div className="rp-linje" /><small>Overlevert av – N L Austnes AS</small><small>{meg.navn}</small></div>
+          <div><div className="rp-linje" /><small>Overlevert av – {PROFIL.firma}</small><small>{meg.navn}</small></div>
           <div><div className="rp-linje" /><small>Mottatt av kunde</small><small>{k?.navn ?? ""}</small></div>
           <div><div className="rp-linje" /><small>Sted og dato</small></div>
         </section>
 
-        <footer className="rp-bunn">N L Austnes AS · Org.nr. 832 507 652 · Larsnilsvegen 41, 6290 Haramsøy · Tlf. 70 21 01 09 · Spørsmål om arbeidet? Ta gjerne kontakt.</footer>
+        <footer className="rp-bunn">{[PROFIL.firma, PROFIL.bedrift.orgnr && `Org.nr. ${PROFIL.bedrift.orgnr}`, PROFIL.bedrift.adresse, PROFIL.bedrift.tlf && `Tlf. ${PROFIL.bedrift.tlf}`].filter(Boolean).join(" · ")} · Spørsmål om arbeidet? Ta gjerne kontakt.</footer>
       </article>
     </>
   );
@@ -296,7 +297,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
       const a = delAdresse(adresse || adr);
       const meta: BoligmappaEksport = {
         format: "bygglogg-boligmappa", versjon: 1, laget: new Date().toISOString(),
-        utforende: { navn: "N L Austnes AS", orgnr: "832507652", fag: lagret.fag },
+        utforende: { navn: PROFIL.firma, orgnr: PROFIL.bedrift.orgnr.replace(/\s/g, ""), fag: lagret.fag },
         eiendom: { ...a, kommunenr: lagret.kommunenr, kommune: lagret.kommune, gnr: lagret.gnr, bnr: lagret.bnr, fnr: lagret.fnr, snr: lagret.snr, bruksenhet: lagret.bruksenhet, boligmappe_nr: lagret.boligmappe_nr },
         prosjekt: { navn: p.navn, visma_nr: p.visma_nr, kunde, fra, til, beskrivelse: [innledning, ...dagbok].filter(Boolean).join("\n") },
         dokumenter,
@@ -332,7 +333,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
         <>
           <label className="field"><span className="label">Adresse for utførelse</span>
             <div className="row" style={{ flexWrap: "nowrap" }}>
-              <input value={adresse} onChange={(x) => setAdresse(x.target.value)} placeholder="Gate 1, 6290 Haramsøy" style={{ flex: 1 }} />
+              <input value={adresse} onChange={(x) => setAdresse(x.target.value)} placeholder={PROFIL.id === "austnes" ? "Gate 1, 6290 Haramsøy" : "Gate 1, 6005 Ålesund"} style={{ flex: 1 }} />
               <button className="btn sm" disabled={soker || !adresse.trim()} onClick={sok}>{soker ? "Søker …" : "Hent fra Kartverket"}</button>
             </div></label>
           {treff && treff.length === 0 && <p className="small muted" style={{ margin: 0 }}>Fant ingen treff hos Kartverket. Fyll inn for hånd, eller prøv adressen uten postnummer.</p>}

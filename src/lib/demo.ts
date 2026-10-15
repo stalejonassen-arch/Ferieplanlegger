@@ -11,6 +11,9 @@ import { STANDARD_KVOTER, type Utstyr } from "./utstyr";
 const y0 = new Date().getFullYear();
 const y = y0 + 1;
 
+/** Oppdiktet e-post ut fra fornavnet, f.eks. «ola@demo.no» */
+const demoEpost = (navn: string) => `${navn.split(" ")[0]!.toLowerCase()}@demo.no`;
+
 function startdata(): Data {
   const avdelinger = [
     { id: 1, navn: "Butikk", maks_borte: 1, rekkefolge: 1 },
@@ -19,11 +22,11 @@ function startdata(): Data {
     { id: 4, navn: "Allround / lager", maks_borte: 1, rekkefolge: 4 },
   ];
   const a = (id: string, navn: string, avdeling_id: number, rekkefolge: number, x: Partial<Ansatt> = {}): Ansatt =>
-    ({ id, navn, epost: `${id}@demo.no`, avdeling_id, rolle: "ansatt", dager: 25, over60: false, aktiv: true, rekkefolge, ...x });
+    ({ id, navn, epost: demoEpost(navn), avdeling_id, rolle: "ansatt", dager: 25, over60: false, aktiv: true, rekkefolge, ...x });
   const ansatte = [
-    a("stale", "Ståle", 1, 1, { rolle: "leder" }), a("butikk2", "Butikk 2", 1, 2), a("karianne", "Karianne", 3, 1),
-    a("mads", "Mads Kjerstad", 2, 1), a("snekker2", "Snekker 2", 2, 2), a("snekker3", "Snekker 3", 2, 3),
-    a("snekker4", "Snekker 4", 2, 4), a("snekker5", "Snekker 5", 2, 5), a("jim", "Jim Kato", 4, 1),
+    a("stale", "Lars Berg", 1, 1, { rolle: "leder" }), a("butikk2", "Nina Solheim", 1, 2), a("karianne", "Kari Holm", 3, 1),
+    a("mads", "Ola Nordmann", 2, 1), a("snekker2", "Henrik Vik", 2, 2), a("snekker3", "Piotr Kowalski", 2, 3),
+    a("snekker4", "Marek Zielinski", 2, 4), a("snekker5", "Even Strand", 2, 5), a("jim", "Tomasz Nowak", 4, 1),
   ];
   const s = (id: string, ansatt_id: string, fra: string, til: string, status: Soknad["status"]): Soknad =>
     ({ id, ansatt_id, fra: `${y}-${fra}`, til: `${y}-${til}`, status, merknad: "", kommentar: "", behandlet_av: null, behandlet_tid: null, opprettet: isoOf(new Date()) });
@@ -43,14 +46,14 @@ function startdata(): Data {
   for (const x of ansatte) if (["karianne", "jim", "snekker3", "snekker4", "snekker5"].includes(x.id)) Object.assign(x, { lunsjtrekk: true, lunsj_min: 30 });
   for (const x of ansatte) if (["snekker3", "snekker4", "snekker5"].includes(x.id)) x.normaltid_uke = 40;
   const kunder = [
-    { id: "k1", visma_nr: 10021, navn: "Merete Austnes", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
-    { id: "k2", visma_nr: 10022, navn: "Jonas Haram", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+    { id: "k1", visma_nr: 10021, navn: "Merete Hansen", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+    { id: "k2", visma_nr: 10022, navn: "Jonas Lunde", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
   ];
   const prosjekter = [
-    { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "Larsnilsvegen 41, 6290 Haramsøy", kontakt_navn: "Merete", kontakt_telefon: "900 00 000", selger_id: "stale", snekker_id: "mads", estimert_timer: 38, start: null, slutt: null, aktiv: true },
+    { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "Keiser Wilhelms gate 22, 6003 Ålesund", kontakt_navn: "Merete", kontakt_telefon: "900 00 000", selger_id: "stale", snekker_id: "mads", estimert_timer: 38, start: null, slutt: null, aktiv: true },
     { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
   ];
-  // Forrige uke: Mads har litt overtid, Snekker 3 har glemt lunsj én dag
+  // Forrige uke: Ola har litt overtid, Snekker 3 har glemt lunsj én dag
   const m0 = addDays(mandag(isoOf(new Date())), -7);
   const t = (id: string, ansatt_id: string, dag: number, fra: string, til: string, lunsj: number, prosjekt_id: string | null = "p1"): Time =>
     ({ id, ansatt_id, prosjekt_id, dato: addDays(m0, dag), fra, til, lunsj_min: lunsj, timer: varighet(fra, til, lunsj), lunsj_unntak: false, km: 12, reisetid: 0, beskrivelse: "", status: "levert" });
@@ -258,8 +261,8 @@ export function demoApi(): Api {
     },
     async prosjektOrdre(pid) {
       return pid === "p2" ? [
-        { visma_ordrenr: 52011, ordredato: isoOf(new Date()), ordretype: 1, transaksjonstype: 1, navn: "Jonas Haram", sum_netto: 84500, kostnad: 61200, dekningsbidrag: 23300, fakturert: 0, ferdig: null },
-        { visma_ordrenr: 51876, ordredato: isoOf(new Date()), ordretype: 1, transaksjonstype: 1, navn: "Jonas Haram", sum_netto: 12900, kostnad: 8600, dekningsbidrag: 4300, fakturert: 12900, ferdig: isoOf(new Date()) },
+        { visma_ordrenr: 52011, ordredato: isoOf(new Date()), ordretype: 1, transaksjonstype: 1, navn: "Jonas Lunde", sum_netto: 84500, kostnad: 61200, dekningsbidrag: 23300, fakturert: 0, ferdig: null },
+        { visma_ordrenr: 51876, ordredato: isoOf(new Date()), ordretype: 1, transaksjonstype: 1, navn: "Jonas Lunde", sum_netto: 12900, kostnad: 8600, dekningsbidrag: 4300, fakturert: 12900, ferdig: isoOf(new Date()) },
       ] : [];
     },
     async slettTillegg(id) { d.tillegg = d.tillegg.filter((y) => y.id !== id); endret(); },
@@ -489,7 +492,7 @@ function thauglandDrakt(d: Data): Data {
     mads: ["Martin Lie", 2], snekker2: ["Sara Nilsen", 2],
     snekker3: ["Tomasz Nowak", 3], snekker4: ["Jonas Bakke", 3], snekker5: ["Ali Hassan", 3], jim: ["Erik Dahl", 3],
   };
-  for (const a of d.ansatte) { const n = navn[a.id]; if (n) { a.navn = n[0]; a.avdeling_id = n[1]; } a.tema = "thaugland"; }
+  for (const a of d.ansatte) { const n = navn[a.id]; if (n) { a.navn = n[0]; a.avdeling_id = n[1]; a.epost = demoEpost(n[0]); } a.tema = "thaugland"; }
   d.kunder = [
     { id: "k1", visma_nr: 20311, navn: "Byggmester Hansen AS", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
     { id: "k2", visma_nr: 20348, navn: "Snekker Olsen AS", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },

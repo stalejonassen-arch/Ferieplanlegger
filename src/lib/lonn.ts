@@ -1,6 +1,7 @@
 // Ferie i lønnskjøringen: godkjente feriedager per ansatt per måned, og CSV-fil for Excel.
 import { MND, sorterAnsatte, virkedager, type Ansatt, type Data } from "./ferie";
 import { lonnTimer, type LonnTimer } from "./timer";
+import { PROFIL } from "./profil";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const sisteDag = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -52,7 +53,7 @@ const csv = (rader: (string | number)[][]) => "﻿" + rader.map((r) => r.map(cel
 
 export function lonnCsv(rader: LonnRad[], aar: number, mnd: number) {
   return csv([
-    [`Ferie ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
+    [`Ferie ${MND[mnd - 1]} ${aar} – ${PROFIL.firma}`],
     ["Ansattnr", "Ansatt", "Avdeling", "Feriedager", "Perioder", "Venter godkjenning", "Feriedager hittil i år", "Over 60 (ekstra feriepenger)"],
     ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, r.avdeling, r.dager, r.perioder.join(", "), r.venter || "", r.hittil, r.ansatt.over60 ? "Ja" : ""]),
     ["", "Sum", "", rader.reduce((n, r) => n + r.dager, 0), "", rader.reduce((n, r) => n + r.venter, 0) || "", rader.reduce((n, r) => n + r.hittil, 0), ""],
@@ -64,7 +65,7 @@ export function lonnAarCsv(d: Data, aar: number) {
   const mnder = Array.from({ length: 12 }, (_, i) => lonnMaaned(d, aar, i + 1));
   const ansatte = mnder[0];
   return csv([
-    [`Godkjent ferie ${aar} per måned – N L Austnes AS`],
+    [`Godkjent ferie ${aar} per måned – ${PROFIL.firma}`],
     ["Ansattnr", "Ansatt", "Avdeling", ...MND.map((m) => m[0].toUpperCase() + m.slice(1, 3)), "Sum"],
     ...ansatte.map((r, i) => {
       const per = mnder.map((m) => m[i].dager);
@@ -94,7 +95,7 @@ const tall = (n: number) => (n ? String(Math.round(n * 100) / 100).replace(".", 
 
 export function lonnTimerCsv(rader: LonnTimer[], aar: number, mnd: number) {
   return csv([
-    [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – N L Austnes AS`],
+    [`Lønnsgrunnlag timer ${MND[mnd - 1]} ${aar} – ${PROFIL.firma}`],
     ["Ansattnr", "Ansatt", "Normaltid (1020 Timelønn)", "Overtid 50 %", "Overtid 100 %", "Kjøring km", "Reisetid", "Lunsjtrekk (timer)", "Dager med lunsjtrekk", "Ikke godkjente føringer", "Egenmelding (arbeidsdager)", "Sykmelding (arbeidsdager)", "Sykt barn (arbeidsdager)"],
     ...rader.map((r) => [r.ansatt.ansattnr ?? "", r.ansatt.navn, tall(r.normal), tall(r.ot50), tall(r.ot100), tall(r.km), tall(r.reisetid), tall(r.lunsjtrekk), r.avvik.map((x) => x.slice(8, 10) + "." + x.slice(5, 7) + ".").join(" "), r.ikkeGodkjent || "", r.egenmelding || "", r.sykmelding || "", r.syktBarn || ""]),
   ]);
