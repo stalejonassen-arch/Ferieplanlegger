@@ -2,7 +2,7 @@
 // Teksten følger dokumentet «ByggLogg – avtalevilkår og personvern (GDPR)». Avtalen er mellom Jonassen AS og bedriften,
 // så den finnes bare på norsk. Personvernerklæringen for de ansatte (Del 3) ligger i Personvern.tsx, på norsk og polsk.
 
-const LEVERANDOR = "Jonassen AS, org.nr. 919 665 319";
+const LEVERANDOR = "Jonassen AS, org.nr. 919 665 319, Lepsøyvegen 210, 6292 Kjerstad";
 const SUPPORT = "post@bygglogg.app";
 
 const UNDERDATABEHANDLERE: [string, string, string, string][] = [
