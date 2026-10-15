@@ -10,6 +10,9 @@ import { Maal } from "./Maal";
 import { Omsetning } from "./Omsetning";
 import { Fakturering } from "./Fakturering";
 import { liteFakturert, prosjektFakturering } from "../lib/faktura";
+import { PROFIL } from "../lib/profil";
+import { avstandTekst, telLenke } from "../lib/kart";
+import { useAvstander } from "../lib/useAvstander";
 
 export function Prosjekter() {
   const { d, meg, leder, kjor } = useApp();
@@ -35,6 +38,9 @@ export function Prosjekter() {
     .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q))
     .sort((a, b) => (sist.get(b.id) ?? "").localeCompare(sist.get(a.id) ?? "") || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
   const fraVisma = d.prosjekter.some((p) => p.visma_nr);
+  // Adresse for utførelse, ellers kundens adresse
+  const adresseFor = (p: (typeof d.prosjekter)[number]) => { const kk = d.kunder.find((x) => x.id === p.kunde_id); return p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", "); };
+  const avstand = useAvstander(PROFIL.base, d.prosjekter.filter((p) => p.aktiv).map((p) => ({ id: p.id, adresse: adresseFor(p), kommunenr: p.kommunenr, gnr: p.gnr, bnr: p.bnr })));
 
   const leggTil = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,8 +109,11 @@ export function Prosjekter() {
                       <td className="n">{p.visma_nr ?? (leder ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
                       <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
-                        {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id); const a = p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-                          return a ? <div className="small"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`} target="_blank" rel="noreferrer">{a}</a></div> : null; })()}
+                        {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id);
+                          const navn = p.kontakt_navn ?? "", tlf = p.kontakt_telefon || (p.kontakt_navn ? "" : kk?.telefon ?? "");
+                          return navn || tlf ? <div className="small">Kontakt: {navn && <b>{navn}</b>}{navn && tlf ? " · " : ""}{tlf && <a href={telLenke(tlf)}>{tlf}</a>}</div> : null; })()}
+                        {(() => { const a = adresseFor(p); const av = avstand.get(p.id);
+                          return a ? <div className="small"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`} target="_blank" rel="noreferrer">{a}</a>{av && <span className="muted" title={av.luftlinje ? "Fant ikke kjørerute – rett linje" : `Kjøreavstand fra ${PROFIL.firma}`}> · {avstandTekst(av)}</span>}</div> : null; })()}
                         {(() => { const f = fakt?.get(p.id); return f && liteFakturert(f) ? (
                           <div className="small" style={{ color: "var(--warn)" }} title="Registrerte fakturerbare timer mot «Arbeid» fakturert og på ordre i Visma (og beregnet fastpris)">
                             Lite fakturert: {t2(Math.round(f.fakturert + f.fastpris))} av {t2(Math.round(f.registrert))} t{f.aapent ? `, ${t2(Math.round(f.aapent))} t på åpen ordre` : ""}

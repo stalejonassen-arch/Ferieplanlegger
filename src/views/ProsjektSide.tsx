@@ -13,7 +13,8 @@ import { Dokumenter, Statistikk } from "./ProsjektDeler";
 import { Traad } from "./Chat";
 import { prosjektKanal, uleste as ulesteChat } from "../lib/chat";
 import { dagHendelser, lokalDato } from "../lib/dag";
-import { finnPunkt, telLenke, type Punkt } from "../lib/kart";
+import { avstandTekst, finnPunkt, kjoreavstander, telLenke, type Avstand, type Punkt } from "../lib/kart";
+import { PROFIL } from "../lib/profil";
 import { Kart } from "./Kart";
 
 type Del = "oversikt" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
@@ -46,9 +47,9 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         <h2 style={{ margin: 0 }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</h2>
         <div className="row small" style={{ gap: "4px 14px" }}>
           {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
-          {k?.telefon && <a href={`tel:${k.telefon.replace(/\s/g, "")}`}>{k.telefon}</a>}
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
         </div>
+        <Kontakt p={p} />
         <TimerStatus p={p} />
         <Adresse p={p} adr={adr} />
         {leder && p.visma_nr == null && <KobleVisma p={p} tilbake={tilbake} />}
@@ -402,9 +403,9 @@ function SignerDialog({ t, lukk }: { t: Tillegg; lukk: () => void }) {
 
 /** Adressen der jobben gjøres med kart, kontaktperson på stedet og knapper til veibeskrivelse og telefon. Leder kan rette den. */
 function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
-  const { d, leder, kjor } = useApp();
-  const k = d.kunder.find((x) => x.id === p.kunde_id);
+  const { leder, kjor } = useApp();
   const [endre, setEndre] = useState(false);
+  const [avstand, setAvstand] = useState<Avstand | null>(null);
   const [ny, setNy] = useState({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "" });
   const [punkt, setPunkt] = useState<Punkt | null | undefined>(undefined);
   const [stortKart, setStortKart] = useState(false);
@@ -412,7 +413,12 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   useEffect(() => {
     let aktiv = true;
     setPunkt(undefined);
-    finnPunkt(adr, { kommunenr: p.kommunenr, gnr: p.gnr, bnr: p.bnr }).then((x) => { if (aktiv) setPunkt(x); }).catch(() => { if (aktiv) setPunkt(null); });
+    setAvstand(null);
+    finnPunkt(adr, { kommunenr: p.kommunenr, gnr: p.gnr, bnr: p.bnr }).then(async (x) => {
+      if (!aktiv) return;
+      setPunkt(x);
+      if (x) { const [av] = await kjoreavstander(PROFIL.base, [x]); if (aktiv) setAvstand(av ?? null); }
+    }).catch(() => { if (aktiv) setPunkt(null); });
     return () => { aktiv = false; };
   }, [adr, p.kommunenr, p.gnr, p.bnr]);
   const q = encodeURIComponent(adr);
@@ -420,9 +426,6 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   const lagre = async () => {
     if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.adresse.trim(), kontakt_navn: ny.navn.trim(), kontakt_telefon: ny.tlf.trim() }), "Lagret")) setEndre(false);
   };
-  // Kontakt: egen kontaktperson på prosjektet, ellers kundens telefon
-  const kontaktNavn = p.kontakt_navn || (p.kontakt_telefon ? "" : k?.navn ?? "");
-  const kontaktTlf = p.kontakt_telefon || (p.kontakt_navn ? "" : k?.telefon ?? "");
 
   if (endre) return (
     <div className="adresse" style={{ flexDirection: "column", alignItems: "stretch" }}>
@@ -443,6 +446,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
         <div style={{ minWidth: 0 }}>
           <span className="label">Adresse</span>
           {adr ? <div className="adr">{adr}</div> : <div className="muted">Ingen adresse på prosjektet</div>}
+          {avstand && <div className="small"><b>{avstandTekst(avstand, true)}</b> <span className="muted">{avstand.luftlinje ? "" : `kjøring fra ${PROFIL.firma}`}</span></div>}
           {adr && !p.adresse && <div className="small muted">Kundens adresse – ikke bekreftet som adresse for utførelse</div>}
         </div>
         <div className="row">
@@ -460,20 +464,6 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
         </div>
       )}
       {adr && punkt === null && <div className="small muted">Fant ikke adressen i kartet. <a href={`https://www.google.com/maps/search/?api=1&query=${q}`} target="_blank" rel="noreferrer">Søk i Google Maps</a></div>}
-      {(kontaktNavn || kontaktTlf) && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ minWidth: 0 }}>
-            <span className="label">{p.kontakt_navn || p.kontakt_telefon ? "Kontaktperson" : "Kunde"}</span>
-            <div><b>{kontaktNavn || "–"}</b>{kontaktTlf && <span className="muted"> · {kontaktTlf}</span>}</div>
-          </div>
-          {kontaktTlf && (
-            <div className="row">
-              <a className="btn sm primary" href={telLenke(kontaktTlf)}>Ring</a>
-              <a className="btn sm" href={"sms:" + kontaktTlf.replace(/[^\d+]/g, "")}>SMS</a>
-            </div>
-          )}
-        </div>
-      )}
       {leder && !p.kontakt_navn && !p.kontakt_telefon && adr && <div className="small muted">Ingen kontaktperson på prosjektet. Trykk «Endre» for å legge inn navn og telefon.</div>}
     </div>
   );
@@ -542,6 +532,27 @@ function KobleVisma({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
             <button className="btn" onClick={() => setSikker(false)}>Avbryt</button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Kontaktperson på stedet (eller kundens telefon) med Ring og SMS, rett under kunden øverst */
+function Kontakt({ p }: { p: Prosjekt }) {
+  const { d, leder } = useApp();
+  const k = d.kunder.find((x) => x.id === p.kunde_id);
+  const egen = !!(p.kontakt_navn || p.kontakt_telefon);
+  const navn = egen ? p.kontakt_navn ?? "" : "";
+  const tlf = egen ? p.kontakt_telefon ?? "" : k?.telefon ?? "";
+  if (!navn && !tlf) return leder ? <div className="small muted">Ingen kontaktperson. Legg inn med «Endre» ved adressen.</div> : null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", alignItems: "center" }}>
+      <span className="small">{egen ? "Kontaktperson: " : "Kunde: "}{navn && <b>{navn}</b>}{navn && tlf ? " · " : ""}{tlf && <a href={telLenke(tlf)}>{tlf}</a>}</span>
+      {tlf && (
+        <span className="row" style={{ gap: 6 }}>
+          <a className="btn sm primary" href={telLenke(tlf)}>Ring</a>
+          <a className="btn sm" href={"sms:" + tlf.replace(/[^\d+]/g, "")}>SMS</a>
+        </span>
       )}
     </div>
   );

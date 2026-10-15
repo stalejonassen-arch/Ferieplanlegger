@@ -10,6 +10,8 @@ export interface Profil {
   tema: Tema;
   /** Sted for værmeldingen */
   sted: { navn: string; lat: number; lon: number };
+  /** Bedriftens adresse i kartet (utgangspunkt for km til prosjektene) */
+  base: { lat: number; lon: number };
   /** Navn på kampanjekortet */
   kampanje: string;
   /** Innlogging i demoen: e-post og navn */
@@ -20,14 +22,14 @@ export interface Profil {
 
 const AUSTNES: Profil = {
   id: "austnes", undertittel: "Byggfag · N L Austnes AS", firma: "N L Austnes AS", tema: "byggfag",
-  sted: { navn: "Haramsøy", lat: 62.665, lon: 6.405 }, kampanje: "Kampanje fra Byggfag",
+  sted: { navn: "Haramsøy", lat: 62.665, lon: 6.405 }, base: { lat: 62.646733, lon: 6.261610 }, kampanje: "Kampanje fra Byggfag",
   demoBrukere: [["stale@demo.no", "Ståle (leder)"], ["mads@demo.no", "Mads Kjerstad"], ["jim@demo.no", "Jim Kato"], ["karianne@demo.no", "Karianne"]],
   snekkere: true,
 };
 
 const THAUGLAND: Profil = {
   id: "thaugland", undertittel: "Thaugland · Trelast og byggevarer siden 1913", firma: "Thaugland", tema: "thaugland",
-  sted: { navn: "Oslo", lat: 59.913, lon: 10.752 }, kampanje: "Månedens tilbud",
+  sted: { navn: "Oslo", lat: 59.913, lon: 10.752 }, base: { lat: 59.913, lon: 10.752 }, kampanje: "Månedens tilbud",
   demoBrukere: [["stale@demo.no", "Kari Thorsen (daglig leder)"], ["mads@demo.no", "Martin Lie (proffsalg)"], ["jim@demo.no", "Erik Dahl (lager og levering)"], ["karianne@demo.no", "Ingrid Berg (butikk)"]],
   snekkere: false,
 };
