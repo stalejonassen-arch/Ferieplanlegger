@@ -47,7 +47,7 @@ function startdata(): Data {
     { id: "k2", visma_nr: 10022, navn: "Jonas Haram", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
   ];
   const prosjekter = [
-    { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "Larsnilsvegen 41, 6290 Haramsøy", kontakt_navn: "Merete", kontakt_telefon: "900 00 000", estimert_timer: 38, start: null, slutt: null, aktiv: true },
+    { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "Larsnilsvegen 41, 6290 Haramsøy", kontakt_navn: "Merete", kontakt_telefon: "900 00 000", selger_id: "stale", snekker_id: "mads", estimert_timer: 38, start: null, slutt: null, aktiv: true },
     { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
   ];
   // Forrige uke: Mads har litt overtid, Snekker 3 har glemt lunsj én dag

@@ -112,6 +112,7 @@ export function Prosjekter() {
                         {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id);
                           const navn = p.kontakt_navn ?? "", tlf = p.kontakt_telefon || (p.kontakt_navn ? "" : kk?.telefon ?? "");
                           return navn || tlf ? <div className="small">Kontakt: {navn && <b>{navn}</b>}{navn && tlf ? " · " : ""}{tlf && <a href={telLenke(tlf)}>{tlf}</a>}</div> : null; })()}
+                        {(p.selger_id || p.snekker_id) && <div className="small muted">{[p.selger_id && `Selger: ${d.ansatte.find((a) => a.id === p.selger_id)?.navn ?? ""}`, p.snekker_id && `Snekker: ${d.ansatte.find((a) => a.id === p.snekker_id)?.navn ?? ""}`].filter(Boolean).join(" · ")}</div>}
                         {(() => { const a = adresseFor(p); const av = avstand.get(p.id);
                           return a ? <div className="small"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`} target="_blank" rel="noreferrer">{a}</a>{av && <span className="muted" title={av.luftlinje ? "Fant ikke kjørerute – rett linje" : `Kjøreavstand fra ${PROFIL.firma}`}> · {avstandTekst(av)}</span>}</div> : null; })()}
                         {(() => { const f = fakt?.get(p.id); return f && liteFakturert(f) ? (

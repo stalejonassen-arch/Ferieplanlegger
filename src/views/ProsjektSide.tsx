@@ -50,6 +50,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
         </div>
         <Kontakt p={p} />
+        <Ansvar p={p} />
         <TimerStatus p={p} />
         <Adresse p={p} adr={adr} />
         {leder && p.visma_nr == null && <KobleVisma p={p} tilbake={tilbake} />}
@@ -406,10 +407,11 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   const { leder, kjor } = useApp();
   const [endre, setEndre] = useState(false);
   const [avstand, setAvstand] = useState<Avstand | null>(null);
-  const [ny, setNy] = useState({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "" });
+  const { d } = useApp();
+  const [ny, setNy] = useState({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "", selger: p.selger_id ?? "", snekker: p.snekker_id ?? "" });
   const [punkt, setPunkt] = useState<Punkt | null | undefined>(undefined);
   const [stortKart, setStortKart] = useState(false);
-  useEffect(() => { setEndre(false); setNy({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "" }); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setEndre(false); setNy({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "", selger: p.selger_id ?? "", snekker: p.snekker_id ?? "" }); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     let aktiv = true;
     setPunkt(undefined);
@@ -424,7 +426,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   const q = encodeURIComponent(adr);
   const maal = punkt ? `${punkt.lat},${punkt.lon}` : q;
   const lagre = async () => {
-    if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.adresse.trim(), kontakt_navn: ny.navn.trim(), kontakt_telefon: ny.tlf.trim() }), "Lagret")) setEndre(false);
+    if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.adresse.trim(), kontakt_navn: ny.navn.trim(), kontakt_telefon: ny.tlf.trim(), selger_id: ny.selger || null, snekker_id: ny.snekker || null }), "Lagret")) setEndre(false);
   };
 
   if (endre) return (
@@ -436,6 +438,18 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
           <input type="text" value={ny.navn} onChange={(e) => setNy({ ...ny, navn: e.target.value })} placeholder="Navn" /></label>
         <label className="field"><span className="label">Telefon</span>
           <input type="tel" value={ny.tlf} onChange={(e) => setNy({ ...ny, tlf: e.target.value })} placeholder="Mobilnummer" /></label>
+      </div>
+      <div className="row">
+        <label className="field"><span className="label">Selger</span>
+          <select value={ny.selger} onChange={(e) => setNy({ ...ny, selger: e.target.value })}>
+            <option value="">Ikke valgt</option>
+            {d.ansatte.filter((a) => a.aktiv || a.id === ny.selger).map((a) => <option key={a.id} value={a.id}>{a.navn}</option>)}
+          </select></label>
+        <label className="field"><span className="label">Snekker (ansvarlig)</span>
+          <select value={ny.snekker} onChange={(e) => setNy({ ...ny, snekker: e.target.value })}>
+            <option value="">Ikke valgt</option>
+            {d.ansatte.filter((a) => a.aktiv || a.id === ny.snekker).map((a) => <option key={a.id} value={a.id}>{a.navn}</option>)}
+          </select></label>
       </div>
       <div className="row"><button className="btn primary sm" onClick={lagre}>Lagre</button><button className="btn sm" onClick={() => setEndre(false)}>Avbryt</button></div>
     </div>
@@ -451,7 +465,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
         </div>
         <div className="row">
           {adr && <a className="btn sm primary" href={`https://www.google.com/maps/dir/?api=1&destination=${maal}`} target="_blank" rel="noreferrer">Kjør hit</a>}
-          {leder && <button className="btn sm" onClick={() => setEndre(true)}>{adr || p.kontakt_navn ? "Endre" : "Legg inn adresse og kontakt"}</button>}
+          {leder && <button className="btn sm" onClick={() => setEndre(true)}>{adr || p.kontakt_navn ? "Endre" : "Legg inn adresse, kontakt, selger og snekker"}</button>}
         </div>
       </div>
       {adr && punkt && (
@@ -554,6 +568,20 @@ function Kontakt({ p }: { p: Prosjekt }) {
           <a className="btn sm" href={"sms:" + tlf.replace(/[^\d+]/g, "")}>SMS</a>
         </span>
       )}
+    </div>
+  );
+}
+
+/** Selger og snekker som har prosjektet */
+function Ansvar({ p }: { p: Prosjekt }) {
+  const { d } = useApp();
+  const navn = (id?: string | null) => (id ? d.ansatte.find((a) => a.id === id)?.navn ?? "" : "");
+  const selger = navn(p.selger_id), snekker = navn(p.snekker_id);
+  if (!selger && !snekker) return null;
+  return (
+    <div className="small" style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px" }}>
+      {selger && <span>Selger: <b>{selger}</b></span>}
+      {snekker && <span>Snekker: <b>{snekker}</b></span>}
     </div>
   );
 }

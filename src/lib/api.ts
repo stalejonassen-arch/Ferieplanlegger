@@ -58,7 +58,7 @@ export interface Api {
   /** Leder: merk prosjektet som ferdig fakturert (alle fakturerbare timer teller som fakturert) */
   settFakturertFull(id: string, full: boolean): Promise<void>;
   /** Leder: eiendomsdata til Boligmappa (matrikkel, bruksenhet, fag) */
-  lagreEiendom(id: string, e: Partial<Pick<Prosjekt, "adresse" | "kommunenr" | "kommune" | "gnr" | "bnr" | "fnr" | "snr" | "bruksenhet" | "boligmappe_nr" | "fag" | "kontakt_navn" | "kontakt_telefon">>): Promise<void>;
+  lagreEiendom(id: string, e: Partial<Pick<Prosjekt, "adresse" | "kommunenr" | "kommune" | "gnr" | "bnr" | "fnr" | "snr" | "bruksenhet" | "boligmappe_nr" | "fag" | "kontakt_navn" | "kontakt_telefon" | "selger_id" | "snekker_id">>): Promise<void>;
   /** Mitt språk i appen */
   settMittSprak(sprak: "nb" | "pl"): Promise<void>;
   settMittTema(tema: Tema): Promise<void>;
