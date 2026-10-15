@@ -4,7 +4,8 @@ import { api, nobbLenke, type FdvDok, type FdvVare } from "../lib/api";
 import { langDato } from "../lib/ferie";
 import { PROFIL } from "../lib/profil";
 import { t2, type Prosjekt } from "../lib/timer";
-import { delAdresse, eiendom, erSjekkliste, FAG, filnavn, klarForBoligmappa, lagZip, matrikkelTekst, sokKartverket, type BoligmappaEksport, type Eiendom, type KartverketTreff } from "../lib/boligmappa";
+import type { RapportData } from "../lib/sluttrapport";
+import { delAdresse, rapportFilnavn, eiendom, erSjekkliste, FAG, filnavn, klarForBoligmappa, lagZip, matrikkelTekst, sokKartverket, type BoligmappaEksport, type Eiendom, type KartverketTreff } from "../lib/boligmappa";
 
 /** Sluttdokumentasjon til kunden: utført arbeid, tilleggsarbeid, bilder. Skrives ut eller lagres som PDF fra nettleseren. */
 export function Sluttdok({ p }: { p: Prosjekt }) {
@@ -57,11 +58,72 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
     if (bilder.length) api.bildeUrler(bilder.map((b) => b.sti)).then(setUrler).catch(() => {});
   }, [bilder.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [lager, setLager] = useState("");
+  const [pdfFeil, setPdfFeil] = useState("");
+  const filnavnPdf = rapportFilnavn(adr, p.navn, idag);
+  /** Lager hele sluttrapporten som én PDF, med FDV og sjekklister lagt ved bakerst */
+  const byggPdf = async (status: (t: string) => void = setLager): Promise<Uint8Array> => {
+    const hent = async (u: string) => new Uint8Array(await (await fetch(u)).arrayBuffer());
+    const bildeData: RapportData["bilder"] = [];
+    if (medBilder && bilder.length) {
+      const u = await api.bildeUrler(bilder.map((b) => b.sti));
+      let i = 0;
+      for (const b of bilder.slice().reverse()) {
+        i++; status(`Henter bilde ${i} av ${bilder.length} …`);
+        if (u[b.sti]) try { bildeData.push({ data: await hent(u[b.sti]!), tekst: [b.tekst, b.opprettet ? langDato(b.opprettet.slice(0, 10)) : ""].filter(Boolean).join(" · ") }); } catch { /* hoppes over */ }
+      }
+    }
+    const vedlegg: RapportData["vedlegg"] = [];
+    if (medFdv) {
+      let i = 0;
+      for (const x of kundeDok) {
+        i++; status(`Henter vedlegg ${i} av ${kundeDok.length} …`);
+        try { vedlegg.push({ navn: x.navn.replace(/\.\w+$/, ""), data: await hent(await api.dokUrl(x.sti)) }); } catch { /* hoppes over */ }
+      }
+    }
+    status("Lager PDF …");
+    const { lagSluttrapport } = await import("../lib/sluttrapport");
+    return lagSluttrapport({
+      firma: { navn: PROFIL.firma, linje: PROFIL.bedrift.linje, adresse: PROFIL.bedrift.adresse, orgnr: PROFIL.bedrift.orgnr, tlf: PROFIL.bedrift.tlf },
+      tittel: p.navn, prosjektnr: p.visma_nr ? String(p.visma_nr) : undefined, kunde: k?.navn,
+      adresse: adr ? `${adr}${e.bruksenhet ? `, bruksenhet ${e.bruksenhet}` : ""}` : undefined,
+      matrikkel: matrikkelTekst(e) || undefined, fag: e.fag,
+      utfort: datoer.length ? `${langDato(datoer[0]!)} – ${langDato(datoer[datoer.length - 1]!)}` : undefined,
+      timer: medTimer && sumT > 0 ? `${t2(sumT)} timer` : undefined,
+      utarbeidetAv: meg.navn, dato: langDato(idag), innledning: innledning.trim() || undefined,
+      dagbok: medDagbok ? dagbok.map((x) => ({ dato: langDato(x.dato), tekst: x.tekst })) : [],
+      tillegg: tillegg.map((x) => ({
+        tittel: x.tittel, beskrivelse: x.beskrivelse || undefined,
+        detaljer: [x.timer != null ? `${t2(x.timer)} timer` : "", x.materiell].filter(Boolean).join(" · ") || undefined,
+        godkjent: x.signert_navn ? `Godkjent av ${x.signert_navn}${x.signert_tid ? `, ${new Date(x.signert_tid).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" })}` : ""}` : undefined,
+        signatur: x.signatur,
+      })),
+      bilder: bildeData,
+      varer: medFdv ? fdvVarer.map((v) => ({ navn: v.beskrivelse, nobb: v.nobb_nr || "–", antall: v.antall ? `${t2(v.antall)} ${v.enhet.toLowerCase()}` : "–", lenke: lenke(v) })) : [],
+      vedlegg, boligmappa: true,
+    });
+  };
+  const lastNedPdf = async (del = false) => {
+    setPdfFeil("");
+    try {
+      const data = await byggPdf();
+      const fil = new File([data as BlobPart], filnavnPdf, { type: "application/pdf" });
+      if (del && navigator.canShare?.({ files: [fil] })) {
+        await navigator.share({ files: [fil], title: `Sluttdokumentasjon – ${p.navn}`, text: `Hei${k?.navn ? ` ${k.navn.split(" ")[0]}` : ""}! Her er sluttdokumentasjonen for ${p.navn}. Den kan lastes opp i Boligmappa for boligen din. Hilsen ${PROFIL.firma}` }).catch(() => {});
+      } else {
+        const u = URL.createObjectURL(fil);
+        const el = document.createElement("a"); el.href = u; el.download = filnavnPdf; el.click();
+        setTimeout(() => URL.revokeObjectURL(u), 60000);
+      }
+    } catch (x) { setPdfFeil(x instanceof Error ? x.message : "Klarte ikke å lage PDF-en. Prøv igjen."); }
+    setLager("");
+  };
+
   return (
     <>
       <section className="panel ikke-utskrift">
         <h2 style={{ margin: 0 }}>Sluttdokumentasjon</h2>
-        <p className="small muted" style={{ margin: 0 }}>Dokumentasjon til kunden når jobben er ferdig. Trykk «Lagre som PDF» og velg «Lagre som PDF» som skriver, eller skriv ut direkte.</p>
+        <p className="small muted" style={{ margin: 0 }}>Én ferdig PDF til kunden når jobben er ferdig: forside, utført arbeid, tilleggsarbeid, bilder, FDV og garanti, med FDV-dokumenter og sjekklister lagt ved bakerst. Kunden kan laste den rett opp i Boligmappa.</p>
         <label className="field"><span className="label">Innledning til kunden (valgfritt)</span>
           <textarea rows={2} value={innledning} onChange={(e) => setInnledning(e.target.value)} placeholder="F.eks. Takk for oppdraget! Her er en oppsummering av arbeidet vi har utført." /></label>
         <div className="row small">
@@ -70,11 +132,18 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
           <label className="row"><input type="checkbox" checked={medBilder} onChange={(e) => setMedBilder(e.target.checked)} /> Bilder</label>
           <label className="row"><input type="checkbox" checked={medFdv} onChange={(e) => setMedFdv(e.target.checked)} /> FDV-dokumentasjon</label>
         </div>
-        <div><button className="btn primary" onClick={() => window.print()}>Lagre som PDF / skriv ut</button></div>
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <button className="btn primary" disabled={!!lager} onClick={() => lastNedPdf()}>{lager || "Last ned sluttrapport (PDF)"}</button>
+          {"canShare" in navigator && <button className="btn" disabled={!!lager} onClick={() => lastNedPdf(true)}>Send til kunden</button>}
+          <button className="btn sm" onClick={() => window.print()}>Skriv ut</button>
+        </div>
+        {pdfFeil && <p className="small" style={{ margin: 0, color: "var(--warn)" }}>{pdfFeil}</p>}
+        <p className="small muted" style={{ margin: 0 }}>Filnavn: {filnavnPdf}</p>
       </section>
 
       <Boligmappa p={p} adr={adr} kunde={k?.navn ?? ""} fra={datoer[0] ?? null} til={datoer[datoer.length - 1] ?? null}
-        dagbok={dagbok.map((x) => `${langDato(x.dato)}: ${x.tekst}`)} bilder={bilder} dok={kundeDok} varer={fdvVarer.map((v) => ({ tittel: v.beskrivelse, lenke: lenke(v) }))} innledning={innledning} />
+        dagbok={dagbok.map((x) => `${langDato(x.dato)}: ${x.tekst}`)} bilder={bilder} dok={kundeDok} varer={fdvVarer.map((v) => ({ tittel: v.beskrivelse, lenke: lenke(v) }))} innledning={innledning}
+        lagPdf={byggPdf} pdfNavn={filnavnPdf} />
 
       <section className="panel ikke-utskrift">
         <h3 style={{ margin: 0 }}>FDV-dokumentasjon</h3>
@@ -236,9 +305,10 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
 type BildeRad = { id: string; sti: string; tekst?: string | null; opprettet?: string };
 
 /** Klargjøring for Boligmappa: eiendom (matrikkel), fag, sjekkliste og eksport av alt som skal inn. */
-function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innledning }: {
+function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innledning, lagPdf, pdfNavn }: {
   p: Prosjekt; adr: string; kunde: string; fra: string | null; til: string | null; dagbok: string[];
   bilder: BildeRad[]; dok: FdvDok[]; varer: { tittel: string; lenke: string }[]; innledning: string;
+  lagPdf: (status: (t: string) => void) => Promise<Uint8Array>; pdfNavn: string;
 }) {
   const { leder, kjor } = useApp();
   const [e, setE] = useState<Eiendom>(eiendom(p));
@@ -275,7 +345,8 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
     try {
       const filer: { navn: string; data: Uint8Array }[] = [];
       const hent = async (u: string) => new Uint8Array(await (await fetch(u)).arrayBuffer());
-      const dokumenter: BoligmappaEksport["dokumenter"] = [{ tittel: "Sluttdokumentasjon", type: "sluttdokumentasjon", fil: "Sluttdokumentasjon.pdf" }];
+      const dokumenter: BoligmappaEksport["dokumenter"] = [{ tittel: "Sluttdokumentasjon", type: "sluttdokumentasjon", fil: pdfNavn }];
+      filer.push({ navn: pdfNavn, data: await lagPdf(setEksporterer) });
       const urler = bilder.length ? await api.bildeUrler(bilder.map((b) => b.sti)) : {};
       let i = 0;
       for (const b of bilder) {
@@ -305,7 +376,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
       filer.unshift({ navn: "boligmappa.json", data: new TextEncoder().encode(JSON.stringify(meta, null, 2)) });
       filer.push({ navn: "LES_MEG.txt", data: new TextEncoder().encode(
         `Dokumentasjon til Boligmappa\n\nEiendom: ${a.adresse}, ${a.postnr} ${a.poststed}\nMatrikkel: ${matrikkelTekst(lagret) || "(mangler)"}\nBruksenhet: ${lagret.bruksenhet || "-"}\nFag: ${lagret.fag}\nUtført: ${fra ?? ""} – ${til ?? ""}\n\n` +
-        `Legg også ved Sluttdokumentasjon.pdf (lagres fra ByggLogg med «Lagre som PDF»).\nboligmappa.json inneholder alle opplysningene i maskinlesbar form.\n`) });
+        `${pdfNavn} er hele sluttrapporten med FDV og sjekklister lagt ved. Den kan lastes opp i Boligmappa som ett dokument.\nBildene og dokumentene ligger også hver for seg i mappene. boligmappa.json inneholder alle opplysningene i maskinlesbar form.\n`) });
       const blob = new Blob([lagZip(filer) as BlobPart], { type: "application/zip" });
       const u = URL.createObjectURL(blob);
       const el = document.createElement("a");
@@ -373,7 +444,7 @@ function Boligmappa({ p, adr, kunde, fra, til, dagbok, bilder, dok, varer, innle
         <button className="btn sm" disabled={!!eksporterer} onClick={eksporter}>{eksporterer || "Last ned pakke for Boligmappa (zip)"}</button>
       </div>
       {feil && <p className="small" style={{ margin: 0, color: "var(--warn)" }}>{feil}</p>}
-      <p className="small muted" style={{ margin: 0 }}>Pakken inneholder bilder, FDV, sjekklister og en fil med alle opplysningene Boligmappa trenger. Legg PDF-en av sluttdokumentasjonen ved selv. Direkte sending til Boligmappa krever partneravtale med dem, og pakken er laget slik at det kan kobles på senere.</p>
+      <p className="small muted" style={{ margin: 0 }}><b>Enklest for privatkunden:</b> send sluttrapporten (PDF) til kunden. Kunden logger inn i Boligmappa med BankID og laster den opp som ett dokument. Fremgangsmåten står bakerst i rapporten. Har bedriften Boligmappa-konto som fagfolk, kan dere laste den opp selv. Zip-pakken har i tillegg bildene og dokumentene hver for seg. Direkte sending fra ByggLogg krever partneravtale med Boligmappa.</p>
     </section>
   );
 }
