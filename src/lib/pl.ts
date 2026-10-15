@@ -210,6 +210,8 @@ export const PL_TEKST: Record<string, string> = {
 "Lukk": "Zamknij",
 "Personvern": "Ochrona danych",
 "Avtalevilkår": "Warunki umowy",
+"Om ByggLogg": "O ByggLogg",
+"Les mer om ByggLogg": "Więcej o ByggLogg",
 "ByggLogg fra Jonassen AS": "ByggLogg od Jonassen AS",
 "Sluttid må være etter starttid.": "Godzina zakończenia musi być po godzinie rozpoczęcia.",
 "Uke": "Tydzień",

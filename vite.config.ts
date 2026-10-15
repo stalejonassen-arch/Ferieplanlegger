@@ -23,7 +23,7 @@ export default defineConfig({
           { src: "icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
         ]
       },
-      workbox: { importScripts: ["push-sw.js"], navigateFallbackDenylist: [/^\/auth/], skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true }
+      workbox: { importScripts: ["push-sw.js"], navigateFallbackDenylist: [/^\/auth/, /^\/hjem/], skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true }
     })
   ],
   test: { environment: "node", include: ["test/**/*.test.ts"] }

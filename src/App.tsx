@@ -253,7 +253,7 @@ export function App() {
         <LagreSomApp />
 
         {api.modus === "demo" && (
-          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg.</span>{import.meta.env.VITE_SUPABASE_URL && PROFIL.id === "demo" && !/^(www\.)?bygglogg\.app$/.test(location.hostname) && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
+          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg. <a href="https://bygglogg.app" target="_blank" rel="noopener">Les mer om ByggLogg</a></span>{import.meta.env.VITE_SUPABASE_URL && PROFIL.id === "demo" && !/^(www\.)?bygglogg\.app$/.test(location.hostname) && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
         {nyeRapporter[0] && aktiv !== "rapporter" && (
@@ -305,7 +305,7 @@ export function App() {
         <div className="small muted" style={{ textAlign: "center", margin: "18px 0 90px" }}>
           <a href="#personvern" onClick={(e) => { e.preventDefault(); velg("personvern"); window.scrollTo(0, 0); }}>Personvern</a>
           {" · "}<a href="#vilkar" onClick={(e) => { e.preventDefault(); velg("vilkar"); window.scrollTo(0, 0); }}>Avtalevilkår</a>
-          {" · "}ByggLogg fra Jonassen AS
+          {" · "}<a href="https://bygglogg.app" target="_blank" rel="noopener">ByggLogg fra Jonassen AS</a>
         </div>
       </div>
       {toast && <div className={`toast${toast.feil ? " feil" : ""}`} role="status">{toast.t}</div>}

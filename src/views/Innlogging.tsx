@@ -71,6 +71,7 @@ export function Innlogging() {
         <div className="small row" style={{ gap: "4px 14px", flexWrap: "wrap" }}>
           <button type="button" className="linkbtn" onClick={() => setVis((x) => x === "personvern" ? null : "personvern")}>{vis === "personvern" ? "Skjul personvern" : "Personvern – slik behandler vi opplysningene dine"}</button>
           <button type="button" className="linkbtn" onClick={() => setVis((x) => x === "vilkar" ? null : "vilkar")}>{vis === "vilkar" ? "Skjul avtalevilkår" : "Avtalevilkår"}</button>
+          <a href="https://bygglogg.app" target="_blank" rel="noopener">Om ByggLogg</a>
         </div>
       </div>
       {vis === "personvern" && <Personvern lukk={() => setVis(null)} tilVilkar={() => setVis("vilkar")} />}

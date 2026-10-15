@@ -542,7 +542,8 @@ function demoValgt(): boolean {
     const q = new URLSearchParams(location.search);
     if (q.has("demo")) {
       if (q.get("demo") === "av") sessionStorage.removeItem("bygglogg-demo"); else sessionStorage.setItem("bygglogg-demo", q.get("demo") || "1");
-      history.replaceState(null, "", location.pathname + location.hash);
+      // På bygglogg.app beholdes «?demo», ellers viser en ny lasting hjemmesiden i stedet for demoen
+      if (!/(^|\.)bygglogg\.app$/.test(location.hostname) || location.hostname.startsWith("austnes.")) history.replaceState(null, "", location.pathname + location.hash);
     }
     return !!sessionStorage.getItem("bygglogg-demo");
   } catch { return false; }
