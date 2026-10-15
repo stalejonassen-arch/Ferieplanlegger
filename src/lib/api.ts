@@ -53,6 +53,8 @@ export interface Api {
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
   /** Leder: slå et prosjekt laget i appen sammen med prosjektet fra Visma (alt flyttes, app-prosjektet slettes) */
   kobleProsjekt(fra: string, til: string): Promise<void>;
+  /** Slår «fra» inn i «til»: alt flyttes, «fra» forsvinner fra listene */
+  slaaSammenProsjekter(fra: string, til: string): Promise<void>;
   /** Leder: merk prosjektet som fastpris (holdes utenfor sammenligning av fakturerte timer) */
   settFastpris(id: string, fastpris: boolean): Promise<void>;
   /** Leder: merk prosjektet som ferdig fakturert (alle fakturerbare timer teller som fakturert) */
@@ -215,7 +217,8 @@ function supabaseApi(sb: SupabaseClient): Api {
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
         avdelinger: ok(avdelinger), ansatte: ok(ansatte), ferieaar: ok(ferieaar), soknader: ok(soknader),
-        kunder: ok(kunder), prosjekter: ok(prosjekter), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
+        // Prosjekter som er slått inn i et annet vises ikke
+        kunder: ok(kunder), prosjekter: (ok(prosjekter) as Prosjekt[]).filter((p) => !p.slatt_sammen_med), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
         rapporter: rapporter.error ? [] : rapporter.data, lest: lest.error ? [] : lest.data,
         fravaer: fravaer.error ? [] : fravaer.data,
@@ -520,6 +523,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async lagreEiendom(id, e) { ok(await sb.from("prosjekter").update(e).eq("id", id)); },
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },
     async kobleProsjekt(fra, til) { ok(await sb.rpc("koble_prosjekt", { fra, til })); },
+    async slaaSammenProsjekter(fra, til) { ok(await sb.rpc("slaa_sammen_prosjekter", { fra, til })); },
     async lagreProsjekt(p, nyKunde) {
       // Kunden røres bare hvis den er oppgitt (eller en ny kunde opprettes) – ellers beholdes den
       const kunde: { kunde_id?: string | null } = "kunde_id" in p ? { kunde_id: p.kunde_id ?? null } : {};
