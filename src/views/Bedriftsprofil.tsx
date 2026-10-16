@@ -3,7 +3,7 @@ import { useApp } from "../App";
 import { api, type PlattformBedrift, type TripletexStatus } from "../lib/api";
 import type { Bedrift, Tema } from "../lib/ferie";
 
-const TEMA: [Tema, string][] = [["byggfag", "Byggfag-blå"], ["bfportal", "BFportal"], ["standard", "Skandinavisk"], ["fargerik", "Fargerik"], ["mork", "Mørk"], ["thaugland", "Rød og grå"]];
+const TEMA: [Tema, string][] = [["byggfag", "ByggLogg-blå"], ["bfportal", "Lys blå"], ["standard", "Skandinavisk"], ["fargerik", "Fargerik"], ["mork", "Mørk"], ["thaugland", "Rød og grå"]];
 
 interface StedTreff { navn: string; kommune: string; lat: number; lon: number }
 

@@ -229,7 +229,7 @@ export function App() {
             </select>
             <select aria-label="Farger" className="temavalg" value={tema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}<option value="byggfag">Byggfag-blå</option><option value="bfportal">BFportal</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}<option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>

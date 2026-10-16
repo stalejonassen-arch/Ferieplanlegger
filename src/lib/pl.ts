@@ -68,7 +68,7 @@ export const PL_TEKST: Record<string, string> = {
 "Fant ingen utløpsdato på beviset. Står det ingen, gjelder det uten utløp – sjekk selv.": "Nie znaleziono daty ważności. Jeśli jej nie ma, certyfikat jest bezterminowy – sprawdź sam.",
 "Klarte ikke å lese utløpsdatoen sikkert. Fyll inn fra beviset.": "Nie udało się odczytać daty ważności. Wpisz ją z certyfikatu.",
 "HMS- og sikkerhetskurs": "Kursy BHP i bezpieczeństwa",
-"Farger": "Kolory", "Skandinavisk": "Skandynawski", "Byggfag-blå": "Niebieski Byggfag", "Fargerik": "Kolorowy", "Mørk": "Ciemny",
+"Farger": "Kolory", "Skandinavisk": "Skandynawski", "ByggLogg-blå": "Niebieski ByggLogg", "Lys blå": "Jasnoniebieski", "Fargerik": "Kolorowy", "Mørk": "Ciemny",
 "Chat": "Czat", "Meldinger": "Wiadomości", "+ Ny": "+ Nowa", "Skriv til en kollega": "Napisz do kolegi", "Velg person …": "Wybierz osobę …",
 "Tråd på et prosjekt": "Wątek projektu", "Velg prosjekt …": "Wybierz projekt …", "Alle i firmaet": "Wszyscy w firmie", "Ingen meldinger ennå": "Brak wiadomości",
 "Ingen meldinger ennå. Skriv den første!": "Brak wiadomości. Napisz pierwszą!", "Velg en samtale": "Wybierz rozmowę", "Skriv en melding …": "Napisz wiadomość …",

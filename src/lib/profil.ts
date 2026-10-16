@@ -24,7 +24,7 @@ export interface Profil {
 }
 
 const GENERISK: Profil = {
-  id: "bygglogg", undertittel: "Byggfag · Demo Bygg AS", firma: "Demo Bygg AS", tema: "byggfag",
+  id: "bygglogg", undertittel: "Demo Bygg AS", firma: "Demo Bygg AS", tema: "byggfag",
   sted: { navn: "Ålesund", lat: 62.472, lon: 6.155 }, kampanje: "Kampanje fra Byggfag",
   demoBrukere: [["stale@demo.no", "Kari Hansen (leder)"], ["mads@demo.no", "Ola Berg (snekker)"], ["jim@demo.no", "Jon Lie (lager)"], ["karianne@demo.no", "Anne Dahl (kjøkken)"]],
   snekkere: true,
