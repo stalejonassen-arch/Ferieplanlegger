@@ -11,6 +11,8 @@ import { Personvern } from "./views/Personvern";
 import { Vilkar } from "./views/Vilkar";
 import { Oppsett } from "./views/Oppsett";
 import { Lonn } from "./views/Lonn";
+import { Tidsplan } from "./views/Plan";
+import { Leveranseoversikt } from "./views/Materiell";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
@@ -48,6 +50,7 @@ const IKON: Record<string, React.ReactNode> = {
   timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>,
   chat: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></>,
   prosjekter: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
   avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
   utstyr: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8 6.2 21l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></>,
   rapporter: <><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h7M9 16h7M9 8h3" /></>,
@@ -71,10 +74,10 @@ const SKYLINE = (
 );
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "chat" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern" | "vilkar";
+type Fane = "timer" | "chat" | "prosjekter" | "plan" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern" | "vilkar";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "chat", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern", "vilkar"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "chat", "prosjekter", "plan", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern", "vilkar"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -202,7 +205,7 @@ export function App() {
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
-  const faner: [Fane, string][] = [["timer", "Timer"], ["chat", "Chat"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const faner: [Fane, string][] = [["timer", "Timer"], ["chat", "Chat"], ["prosjekter", "Prosjekter"], ["plan", leder || meg?.prosjektleder ? "Butikk/prosjektleder" : "Plan"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
   const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" || fane === "personvern" || fane === "vilkar" ? fane : "timer";
@@ -299,6 +302,7 @@ export function App() {
           </div>
         )}
         {aktiv === "lonn" && <Lonn />}
+        {aktiv === "plan" && <><Tidsplan />{(leder || meg?.prosjektleder) && <Leveranseoversikt />}</>}
         {aktiv === "oppsett" && <Oppsett />}
         {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
         {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}

@@ -24,6 +24,8 @@ export interface Ansatt {
   lunsjtrekk?: boolean;
   /** Ansattnummer som i Svenn/lønnssystemet */
   ansattnr?: string | null;
+  /** Kan planlegge, dele ut arbeid og styre materiell uten å være leder (f.eks. butikk/prosjektleder) */
+  prosjektleder?: boolean;
   /** Språk i appen: nb (norsk) eller pl (polsk) */
   sprak?: "nb" | "pl";
   tema?: Tema;
@@ -70,6 +72,10 @@ export interface Data {
   maalOmsetning?: number | null;
   /** Kampanjer fra Byggfag (DM) */
   kampanjer?: Kampanje[];
+  /** Arbeidsplan og materialliste (alle i bedriften ser dem) */
+  oppgaver?: import("./plan").Oppgave[];
+  leveranser?: import("./plan").Leveranse[];
+  materialer?: import("./plan").Materiale[];
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
   /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */
