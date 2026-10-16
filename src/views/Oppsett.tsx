@@ -205,12 +205,27 @@ function SvennImport() {
   const prosjekter = [...d.prosjekter].sort((a, b) => (b.visma_nr ?? 0) - (a.visma_nr ?? 0) || a.navn.localeCompare(b.navn));
   const sp: SvennProsjekt[] = fil ? svennProsjekter(fil.rader) : [];
 
+  /** Nye ansatte uten ansattnr: sett nummeret fra Svenn når navnet stemmer med nøyaktig én i ByggLogg */
+  const kobleAnsattnr = async (rader: SvennRad[]) => {
+    const ord = (s: string) => new Set(s.toLowerCase().normalize("NFC").split(/[^\p{L}]+/u).filter(Boolean));
+    const ledige = d.ansatte.filter((a) => a.aktiv !== false && !a.ansattnr);
+    for (const [nr, navn] of new Map(rader.map((r) => [r.ansattnr, r.ansatt]))) {
+      if (!nr || d.ansatte.some((a) => a.ansattnr === nr)) continue;
+      const s = ord(navn ?? "");
+      const treff = ledige.filter((a) => { const w = ord(a.navn); return w.size > 0 && [...w].every((x) => s.has(x)); });
+      if (treff.length !== 1) continue;
+      await api.lagreAnsatt({ id: treff[0].id, navn: treff[0].navn, avdeling_id: treff[0].avdeling_id, ansattnr: nr });
+      ledige.splice(ledige.indexOf(treff[0]), 1);
+    }
+  };
+
   const velgFil = async (f: File | undefined) => {
     setFeil(""); setSvar(null); setFil(null);
     if (!f) return;
     try {
       const les = lesSvenn(await lesXlsx(await f.arrayBuffer()));
       if (!les.rader.length) throw new Error("Fant ingen timer i fila.");
+      await kobleAnsattnr(les.rader);
       const lagret = new Map((await api.svennKoblinger()).map((k) => [k.nokkel, k]));
       setKob(Object.fromEntries(svennProsjekter(les.rader).map((p) => [p.nokkel, foreslaKobling(p, d.prosjekter, lagret, PROFIL.firma)])));
       setFil({ navn: f.name, ...les });

@@ -143,6 +143,31 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
   return rader.length;
 }
 
+/** Nye ansatte uten utstyrskonto: koble automatisk til Visma-prosjektet med navnet deres
+ *  (f.eks. «Utstyr Mats Lausund»). Kobler bare når det finnes nøyaktig ett ledig prosjekt som passer. */
+async function kobleUtstyrskontoer(b: { id: number }) {
+  const { data: ansatte } = await sb.from("ansatte").select("id, navn, utstyr_prosjekt_id").eq("bedrift_id", b.id).eq("aktiv", true);
+  const uten = (ansatte ?? []).filter((a) => !a.utstyr_prosjekt_id);
+  if (!uten.length) return 0;
+  const brukt = new Set((ansatte ?? []).map((a) => a.utstyr_prosjekt_id).filter(Boolean));
+  const { data: pr } = await sb.from("prosjekter").select("id, navn").eq("bedrift_id", b.id);
+  const ledige = (pr ?? []).filter((p) => !brukt.has(p.id) && /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn ?? ""));
+  const ord = (s: string) => s.toLowerCase().normalize("NFC").split(/[^\p{L}]+/u).filter(Boolean);
+  let antall = 0;
+  for (const a of uten) {
+    const navn = ord(a.navn);
+    if (!navn.length) continue;
+    const har = (p: { navn: string }, deler: string[]) => { const w = new Set(ord(p.navn)); return deler.every((d) => w.has(d)); };
+    // Fornavn må stemme; finnes flere, må også etternavnet stemme (to Lausund-er)
+    let treff = ledige.filter((p) => har(p, [navn[0]]));
+    if (treff.length > 1 && navn.length > 1) treff = treff.filter((p) => har(p, [navn[0], navn[navn.length - 1]]));
+    if (treff.length !== 1) continue;
+    const { error } = await sb.from("ansatte").update({ utstyr_prosjekt_id: treff[0].id }).eq("id", a.id).is("utstyr_prosjekt_id", null);
+    if (!error) { antall++; ledige.splice(ledige.indexOf(treff[0]), 1); }
+  }
+  return antall;
+}
+
 /** Utstyrskontoene (verktøy, arbeidstøy og forbruk per ansatt): alle linjer med dato og pris.
  *  Fritekstlinjer («T») etter en diverse-linje legges til beskrivelsen, f.eks. «Diverse – regnkle». */
 async function synkUtstyr(tok: string, b: { id: number; visma_firma_nr: number }, klasseNr: number) {
@@ -355,7 +380,9 @@ Deno.serve(async (req) => {
         catch (e) { vareAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
       let utstyrAntall: number | string = "hoppet over";
-      if (url.searchParams.get("varer") || url.searchParams.get("utstyr") || new Date().getUTCMinutes() < 15) {
+      let nyeKontoer = 0;
+      try { nyeKontoer = await kobleUtstyrskontoer(b); } catch (e) { console.error("Utstyrskonto", e); }
+      if (nyeKontoer || url.searchParams.get("varer") || url.searchParams.get("utstyr") || new Date().getUTCMinutes() < 15) {
         try { utstyrAntall = await synkUtstyr(tok, b, pk.nr); }
         catch (e) { utstyrAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
@@ -365,7 +392,7 @@ Deno.serve(async (req) => {
       let omsetning: number | string = 0;
       try { omsetning = await synkOmsetning(tok, b); }
       catch (e) { omsetning = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, arbeid: arbeidAntall, omsetning, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
