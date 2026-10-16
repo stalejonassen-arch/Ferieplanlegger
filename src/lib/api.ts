@@ -10,6 +10,7 @@ import { STANDARD_KVOTER, type Kvoter, type Utstyr } from "./utstyr";
 import type { Kompetanse } from "./kompetanse";
 import type { Lest, Melding } from "./chat";
 import type { Kobling, importRader } from "./svenn";
+import type { LeveranseStatus, NyLeveranse, NyOppgave, NyttMateriale, OppgaveStatus } from "./plan";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -64,6 +65,18 @@ export interface Api {
   /** Mitt språk i appen */
   settMittSprak(sprak: "nb" | "pl"): Promise<void>;
   settMittTema(tema: Tema): Promise<void>;
+  /** Arbeidsplan: leder deler ut arbeid, den som har fått det endrer status */
+  lagreOppgave(o: NyOppgave): Promise<void>;
+  slettOppgave(id: string): Promise<void>;
+  settOppgaveStatus(id: string, status: OppgaveStatus): Promise<void>;
+  /** Materialliste delt i leveranser */
+  lagreLeveranse(l: NyLeveranse): Promise<void>;
+  slettLeveranse(id: string): Promise<void>;
+  settLeveranseStatus(id: string, status: LeveranseStatus): Promise<void>;
+  lagreMaterialer(m: NyttMateriale[]): Promise<void>;
+  slettMateriale(id: string): Promise<void>;
+  settMaterialeLevert(id: string, levert: boolean): Promise<void>;
+  flyttMaterialer(ider: string[], leveranseId: string | null): Promise<void>;
   /** Leder: lagre kampanje (DM). nyeSider legges til bak eksisterende, fjern = stier som tas bort. */
   lagreKampanje(k: Partial<Kampanje> & { tittel: string; fra: string; til: string }, nyeSider?: Blob[], fjern?: string[]): Promise<void>;
   slettKampanje(id: string, sider: string[]): Promise<void>;
@@ -190,7 +203,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -213,6 +226,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("kompetanse").select("*").order("gyldig_til", { ascending: true, nullsFirst: false }).limit(5000),
         sb.from("omsetning_mnd").select("aar, mnd, belop, oppdatert").order("aar").order("mnd"),
         sb.from("kampanjer").select("id, tittel, tekst, fra, til, lenke, sider, opprettet").order("fra", { ascending: false }).limit(100),
+        alle(() => sb.from("oppgaver").select("id, prosjekt_id, tittel, beskrivelse, fra, til, ansatte, rekkefolge, status, opprettet_av, ferdig_tid").order("fra").order("id"), 20000),
+        alle(() => sb.from("leveranser").select("id, prosjekt_id, navn, rekkefolge, dato, status, leverandor, notat").order("rekkefolge").order("id"), 20000),
+        alle(() => sb.from("materialer").select("id, prosjekt_id, leveranse_id, rekkefolge, varenr, nobb_nr, beskrivelse, antall, enhet, notat, levert").order("rekkefolge").order("id"), 50000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -230,6 +246,10 @@ function supabaseApi(sb: SupabaseClient): Api {
         omsetning: omsetning.error ? [] : (omsetning.data as any[]).map((x) => ({ ...x, belop: Number(x.belop) })),
         maalOmsetning: b0.maal_omsetning_aar == null ? null : Number(b0.maal_omsetning_aar),
         kampanjer: kampanjer.error ? [] : kampanjer.data,
+        // Tomme lister hvis databasen ikke har arbeidsplanen ennå
+        oppgaver: oppgaver.error ? [] : oppgaver.data,
+        leveranser: leveranser.error ? [] : leveranser.data,
+        materialer: materialer.error ? [] : (materialer.data as any[]).map((m) => ({ ...m, antall: Number(m.antall) })),
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -248,6 +268,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "avdelinger" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "timer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "prosjekter" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "oppgaver" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "leveranser" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "materialer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "kampanjer" }, snart)
@@ -463,6 +486,29 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
+    async lagreOppgave(o) {
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}) };
+      ok(o.id ? await sb.from("oppgaver").update(rad).eq("id", o.id) : await sb.from("oppgaver").insert(rad));
+    },
+    async slettOppgave(id) { ok(await sb.from("oppgaver").delete().eq("id", id)); },
+    async settOppgaveStatus(id, status) { ok(await sb.from("oppgaver").update({ status }).eq("id", id)); },
+    async lagreLeveranse(l) {
+      const rad = { prosjekt_id: l.prosjekt_id, navn: l.navn.trim(), dato: l.dato || null, leverandor: l.leverandor.trim(), notat: l.notat.trim(),
+        ...(l.rekkefolge != null ? { rekkefolge: l.rekkefolge } : {}), ...(l.status ? { status: l.status } : {}) };
+      ok(l.id ? await sb.from("leveranser").update(rad).eq("id", l.id) : await sb.from("leveranser").insert(rad));
+    },
+    async slettLeveranse(id) { ok(await sb.from("leveranser").delete().eq("id", id)); },
+    async settLeveranseStatus(id, status) { ok(await sb.from("leveranser").update({ status }).eq("id", id)); },
+    async lagreMaterialer(liste) {
+      for (const m of liste) {
+        const rad = { prosjekt_id: m.prosjekt_id, leveranse_id: m.leveranse_id, beskrivelse: m.beskrivelse.trim(), antall: m.antall, enhet: m.enhet.trim(),
+          varenr: (m.varenr ?? "").trim(), nobb_nr: (m.nobb_nr ?? "").trim(), notat: (m.notat ?? "").trim(), ...(m.rekkefolge != null ? { rekkefolge: m.rekkefolge } : {}) };
+        ok(m.id ? await sb.from("materialer").update(rad).eq("id", m.id) : await sb.from("materialer").insert(rad));
+      }
+    },
+    async slettMateriale(id) { ok(await sb.from("materialer").delete().eq("id", id)); },
+    async settMaterialeLevert(id, levert) { ok(await sb.from("materialer").update({ levert }).eq("id", id)); },
+    async flyttMaterialer(ider, leveranseId) { if (ider.length) ok(await sb.from("materialer").update({ leveranse_id: leveranseId }).in("id", ider)); },
     async lagreKampanje(k, nyeSider = [], fjern = []) {
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
       const lastet: string[] = [];

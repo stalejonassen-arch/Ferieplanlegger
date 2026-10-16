@@ -1214,3 +1214,49 @@ header.top select.temavalg option { color: #10162E; }
 :root[data-tema="thaugland"][data-tema="thaugland"][data-tema="thaugland"] .ferie-flate .btn.primary { background: #FFB300; color: #1D1D1B; border-color: #FFB300; }
 :root[data-tema="thaugland"] header.top { background: radial-gradient(500px 200px at 90% 0%, rgba(255, 179, 0, .25), transparent 62%), linear-gradient(135deg, #2B2B29, #1D1D1B 60%, #0E0E0D); box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .7); }
 :root[data-tema="thaugland"] .toppfelt header.top { background: none; box-shadow: none; }
+
+/* ---------- Arbeidsplan og materialliste ---------- */
+.plan-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.plan-oppgave { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--sunk); border-left: 4px solid var(--accent); }
+.plan-oppgave.ferdig { opacity: .65; }
+.plan-oppgave.ferdig b { text-decoration: line-through; }
+.plan-velg { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-person { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; cursor: pointer; background: var(--surface); }
+.plan-person.valgt { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); font-weight: 600; }
+.plan-person input { margin: 0; }
+.plan-tidslinje { display: flex; flex-direction: column; gap: 4px; }
+.plan-linje { display: grid; grid-template-columns: minmax(90px, 30%) 1fr; gap: 8px; align-items: center; }
+.plan-linje-navn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-linje-spor { position: relative; height: 14px; background: var(--sunk); border-radius: 7px; }
+.plan-linje-spor i { position: absolute; top: 0; bottom: 0; border-radius: 7px; opacity: .9; }
+.plan-linje-spor i.ferdig { opacity: .35; }
+.plan-linje-spor i.sen { outline: 2px solid var(--warn); }
+.plan-idag { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); }
+.plan-uke { table-layout: fixed; width: 100%; min-width: 820px; }
+.plan-uke th, .plan-uke td { vertical-align: top; padding-inline: 4px; }
+.plan-uke th:first-child { width: 130px; }
+.plan-uke th.helg { width: 64px; }
+.plan-uke th.helg, .plan-uke td.helg { background: color-mix(in srgb, var(--sunk) 60%, transparent); }
+.plan-uke th.idag, .plan-uke td.idag { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.plan-uke tr.meg .plan-navn { font-weight: 700; }
+.plan-navn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-borte { display: block; font-size: 12px; font-weight: 700; color: var(--muted); padding: 2px 6px; border-radius: 6px; background: repeating-linear-gradient(45deg, var(--sunk), var(--sunk) 4px, var(--hatch) 4px, var(--hatch) 8px); margin-bottom: 3px; }
+.plan-brikke { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; border: 0; border-radius: 6px; color: #fff; padding: 3px 6px; margin-bottom: 3px; font: inherit; cursor: pointer; }
+.plan-brikke:disabled { cursor: default; opacity: 1; }
+.plan-brikke.ferdig { opacity: .45; }
+.plan-brikke .p { font-size: 11px; opacity: .9; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-brikke .t { font-size: 12.5px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.plan-ledig { width: 100%; border: 1px dashed var(--line); background: none; color: var(--muted); border-radius: 6px; padding: 4px; cursor: pointer; opacity: .5; }
+.plan-ledig:hover, .plan-ledig:focus-visible { opacity: 1; }
+.leveranse { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.leveranse.levert { background: color-mix(in srgb, var(--approved) 8%, transparent); }
+.leveranse-topp { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.leveranse-nr { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--accent); color: var(--accent-ink); }
+.mat-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mat-liste li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+.mat-liste li.levert .mat-navn { text-decoration: line-through; color: var(--muted); }
+.mat-hake { display: flex; gap: 8px; align-items: center; flex: 1 1 200px; min-width: 0; cursor: pointer; }
+.mat-hake input { width: 20px; height: 20px; flex: none; }
+.mat-antall { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mat-verktoy { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.mat-verktoy select { max-width: 170px; }

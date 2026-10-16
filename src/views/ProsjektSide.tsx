@@ -16,8 +16,10 @@ import { dagHendelser, lokalDato } from "../lib/dag";
 import { avstandTekst, finnPunkt, kjoreavstander, telLenke, type Avstand, type Punkt } from "../lib/kart";
 import { PROFIL } from "../lib/profil";
 import { Kart } from "./Kart";
+import { ProsjektPlan } from "./Plan";
+import { Materialliste } from "./Materiell";
 
-type Del = "oversikt" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "plan" | "materiell" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder, meg, chat } = useApp();
@@ -33,7 +35,10 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   const [antallDok, setAntallDok] = useState<number | null>(null);
   useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
   const deler: [Del, string, number | null][] = [
-    ["oversikt", "Oversikt", null], ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
+    ["oversikt", "Oversikt", null],
+    ["plan", "Plan", (d.oppgaver ?? []).filter((o) => o.prosjekt_id === p.id && o.status !== "ferdig").length || null],
+    ["materiell", "Materiell", (d.leveranser ?? []).filter((l) => l.prosjekt_id === p.id && l.status !== "levert").length || null],
+    ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
     ["tillegg", "Tillegg", antall.tillegg], ["bilder", "Bilder", antall.bilder], ["dokumenter", "Dokumenter", antallDok],
     ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
     ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
@@ -64,6 +69,8 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         ))}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
+      {del === "plan" && <ProsjektPlan p={p} />}
+      {del === "materiell" && <Materialliste p={p} />}
       {del === "chat" && <section className="panel" style={{ padding: 0, overflow: "hidden" }}><Traad kanal={prosjektKanal(p.id)} hoyde={520} /></section>}
       {del === "historikk" && <Historikk p={p} />}
       {del === "dagbok" && <DagbokDel p={p} />}
@@ -81,6 +88,8 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
 /** Strekikoner for delene av prosjektet */
 const DEL_IKON: Record<string, React.ReactNode> = {
   oversikt: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
+  materiell: <><path d="M3 8l9-5 9 5-9 5-9-5z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>,
   historikk: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   dagbok: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M8 17h2" /></>,
   tillegg: <><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" /></>,

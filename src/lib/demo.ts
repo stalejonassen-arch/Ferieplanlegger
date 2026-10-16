@@ -1,5 +1,6 @@
 // Demomodus: samme oppførsel som databasen, men i minnet i nettleseren.
 // Brukes når appen kjøres uten Supabase-nøkler.
+import type { Leveranse, Materiale, Oppgave } from "./plan";
 import type { Api, FdvDok, FdvVare } from "./api";
 import type { Lest, Melding } from "./chat";
 import type { Ansatt, Data, Soknad } from "./ferie";
@@ -24,7 +25,7 @@ function startdata(): Data {
   const a = (id: string, navn: string, avdeling_id: number, rekkefolge: number, x: Partial<Ansatt> = {}): Ansatt =>
     ({ id, navn, epost: demoEpost(navn), avdeling_id, rolle: "ansatt", dager: 25, over60: false, aktiv: true, rekkefolge, ...x });
   const ansatte = [
-    a("stale", "Lars Berg", 1, 1, { rolle: "leder" }), a("butikk2", "Nina Solheim", 1, 2), a("karianne", "Kari Holm", 3, 1),
+    a("stale", "Lars Berg", 1, 1, { rolle: "leder" }), a("butikk2", "Nina Solheim", 1, 2, { prosjektleder: true }), a("karianne", "Kari Holm", 3, 1),
     a("mads", "Ola Nordmann", 2, 1), a("snekker2", "Henrik Vik", 2, 2), a("snekker3", "Piotr Kowalski", 2, 3),
     a("snekker4", "Marek Zielinski", 2, 4), a("snekker5", "Even Strand", 2, 5), a("jim", "Tomasz Nowak", 4, 1),
   ];
@@ -68,7 +69,37 @@ function startdata(): Data {
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
     kampanjer: demoKampanjer(),
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
-    utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) } };
+    utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) },
+    ...demoPlan(addDays(m0, 7)) };
+}
+
+/** Arbeidsplan og materialliste for demoen, rundt uka som går (m = mandag denne uka) */
+function demoPlan(m: string): Pick<Data, "oppgaver" | "leveranser" | "materialer"> {
+  const o = (id: string, prosjekt_id: string, tittel: string, fra: number, til: number, ansatte: string[], rekkefolge: number, status: Oppgave["status"] = "planlagt", beskrivelse = ""): Oppgave =>
+    ({ id, prosjekt_id, tittel, beskrivelse, fra: addDays(m, fra), til: addDays(m, til), ansatte, rekkefolge, status, opprettet_av: "stale", ferdig_tid: null });
+  const oppgaver = [
+    o("o1", "p2", "Riving av gammelt bad", -3, -2, ["mads", "snekker3"], 1, "ferdig"),
+    o("o2", "p2", "Nytt bjelkelag og sluk", 0, 1, ["mads", "snekker3"], 2, "pagaar", "Rørlegger kommer tirsdag kl. 10 for sluk."),
+    o("o3", "p2", "Våtromsplater og membran", 2, 4, ["snekker3"], 3),
+    o("o4", "p2", "Flislegging", 7, 9, ["snekker4"], 4),
+    o("o5", "p1", "Demontere gamle vinduer", 1, 1, ["snekker2"], 1),
+    o("o6", "p1", "Montere nye vinduer og listing", 2, 3, ["snekker2", "snekker5"], 2),
+  ];
+  const l = (id: string, prosjekt_id: string, navn: string, rekkefolge: number, dag: number, status: Leveranse["status"], leverandor = ""): Leveranse =>
+    ({ id, prosjekt_id, navn, rekkefolge, dato: addDays(m, dag), status, leverandor, notat: "" });
+  const leveranser = [
+    l("l1", "p2", "Bjelkelag og sluk", 1, -1, "levert", "Eget lager"),
+    l("l2", "p2", "Våtrom: plater og membran", 2, 1, "bestilt", "Byggevarehuset"),
+    l("l3", "p2", "Fliser og lim", 3, 6, "planlagt"),
+  ];
+  const v = (id: string, leveranse_id: string, beskrivelse: string, antall: number, enhet: string, levert: boolean, nobb_nr = ""): Materiale =>
+    ({ id, prosjekt_id: "p2", leveranse_id, rekkefolge: 0, varenr: nobb_nr, nobb_nr, beskrivelse, antall, enhet, notat: "", levert });
+  const materialer = [
+    v("v1", "l1", "Konstruksjonsvirke 48x198 C24", 12, "stk", true), v("v2", "l1", "Gulvsluk 110 mm", 1, "stk", true),
+    v("v3", "l2", "Våtromsplate 12 mm 620x2400", 14, "stk", false), v("v4", "l2", "Smøremembran 7 kg", 2, "spann", false),
+    v("v5", "l3", "Flis 30x60 grå", 9, "m2", false), v("v6", "l3", "Flislim hvit 20 kg", 4, "sekk", false),
+  ];
+  return { oppgaver, leveranser, materialer };
 }
 
 function demoUtstyr(): Utstyr[] {
@@ -108,6 +139,7 @@ export function demoApi(): Api {
   const endret = () => lyttere.forEach((f) => f());
   const meg = () => d.ansatte.find((a) => a.epost === epost);
   const leder = () => meg()?.rolle === "leder";
+  const planlegger = () => leder() || !!meg()?.prosjektleder;
   const nyId = () => Math.random().toString(36).slice(2, 10);
   const vent = () => new Promise((r) => setTimeout(r, 80));
   const mld: Melding[] = [];
@@ -405,6 +437,57 @@ export function demoApi(): Api {
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async settMittSprak(sprak) { const m = meg(); if (m) m.sprak = sprak; endret(); },
     async settMittTema(tema) { const m = meg(); if (m) m.tema = tema; endret(); },
+    async lagreOppgave(o) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan legge inn arbeid i planen.");
+      if (o.til < o.fra) throw new Error("Sluttdatoen er før startdatoen.");
+      const liste = (d.oppgaver ??= []);
+      const g = o.id ? liste.find((x) => x.id === o.id) : undefined;
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)] };
+      if (g) Object.assign(g, rad, o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {});
+      else liste.push({ id: nyId(), ...rad, rekkefolge: o.rekkefolge ?? 0, status: "planlagt", opprettet_av: meg()?.id ?? null, ferdig_tid: null });
+      endret();
+    },
+    async slettOppgave(id) { if (!planlegger()) throw new Error("Bare leder og prosjektleder kan slette."); d.oppgaver = (d.oppgaver ?? []).filter((x) => x.id !== id); endret(); },
+    async settOppgaveStatus(id, status) {
+      const o = (d.oppgaver ?? []).find((x) => x.id === id);
+      if (!o) return;
+      if (!planlegger() && !o.ansatte.includes(meg()?.id ?? "")) throw new Error("Du kan bare endre dine egne oppgaver.");
+      o.status = status; o.ferdig_tid = status === "ferdig" ? new Date().toISOString() : null; endret();
+    },
+    async lagreLeveranse(l) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan lage leveranser.");
+      const liste = (d.leveranser ??= []);
+      const g = l.id ? liste.find((x) => x.id === l.id) : undefined;
+      const rad = { prosjekt_id: l.prosjekt_id, navn: l.navn.trim(), dato: l.dato || null, leverandor: l.leverandor.trim(), notat: l.notat.trim() };
+      if (g) Object.assign(g, rad, l.rekkefolge != null ? { rekkefolge: l.rekkefolge } : {}, l.status ? { status: l.status } : {});
+      else liste.push({ id: nyId(), ...rad, rekkefolge: l.rekkefolge ?? 0, status: l.status ?? "planlagt" });
+      endret();
+    },
+    async slettLeveranse(id) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan slette.");
+      d.leveranser = (d.leveranser ?? []).filter((x) => x.id !== id);
+      for (const m of d.materialer ?? []) if (m.leveranse_id === id) m.leveranse_id = null;
+      endret();
+    },
+    async settLeveranseStatus(id, status) {
+      const l = (d.leveranser ?? []).find((x) => x.id === id);
+      if (!l) return;
+      if (!planlegger() && status !== "levert") return;
+      l.status = status; endret();
+    },
+    async lagreMaterialer(liste) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre materiallisten.");
+      const alle = (d.materialer ??= []);
+      for (const m of liste) {
+        const g = m.id ? alle.find((x) => x.id === m.id) : undefined;
+        const rad = { prosjekt_id: m.prosjekt_id, leveranse_id: m.leveranse_id, beskrivelse: m.beskrivelse.trim(), antall: m.antall, enhet: m.enhet.trim(), varenr: m.varenr ?? "", nobb_nr: m.nobb_nr ?? "", notat: m.notat ?? "" };
+        if (g) Object.assign(g, rad); else alle.push({ id: nyId(), ...rad, rekkefolge: m.rekkefolge ?? 0, levert: false });
+      }
+      endret();
+    },
+    async slettMateriale(id) { if (!planlegger()) throw new Error("Bare leder og prosjektleder kan slette."); d.materialer = (d.materialer ?? []).filter((x) => x.id !== id); endret(); },
+    async settMaterialeLevert(id, levert) { const m = (d.materialer ?? []).find((x) => x.id === id); if (m) { m.levert = levert; endret(); } },
+    async flyttMaterialer(ider, leveranseId) { if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre materiallisten."); for (const m of d.materialer ?? []) if (ider.includes(m.id)) m.leveranse_id = leveranseId; endret(); },
     async lagreKampanje(k, nyeSider = [], fjern = []) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       const liste = (d.kampanjer ??= []);
@@ -433,7 +516,7 @@ export function demoApi(): Api {
       const a = d.prosjekter.find((x) => x.id === fra), b = d.prosjekter.find((x) => x.id === til);
       if (!a || !b) throw new Error("Fant ikke prosjektet.");
       if (a.id === b.id) throw new Error("Velg et annet prosjekt.");
-      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? []] as { prosjekt_id?: string | null }[][])
+      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? [], d.oppgaver ?? [], d.leveranser ?? [], d.materialer ?? []] as { prosjekt_id?: string | null }[][])
         for (const x of liste) if (x.prosjekt_id === fra) x.prosjekt_id = til;
       if (!b.adresse && a.adresse) b.adresse = a.adresse;
       if (b.estimert_timer == null && a.estimert_timer != null) b.estimert_timer = a.estimert_timer;
