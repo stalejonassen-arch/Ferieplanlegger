@@ -1,5 +1,5 @@
 // Push-varsler for ByggLogg (Web Push), også når appen er lukket.
-// Kalles fra databasen (pg_net) med { type: "melding" | "prosjekt", id } når noe nytt legges inn,
+// Kalles fra databasen (pg_net) med { type: "melding" | "prosjekt" | "oppgave", id } når noe nytt legges inn,
 // og med { type: "stemplet", id: ansatt } når noen har vært stemplet inn lenge (sjekkes hvert 5. minutt).
 // Funksjonen stoler ikke på innholdet i kallet: den leser meldingen/prosjektet selv, finner mottakerne,
 // og logger hvert varsel slik at det aldri går ut to ganger. Publiseres uten JWT-sjekk.
@@ -55,11 +55,41 @@ async function stemplet(ansattId: string) {
   return Response.json(res);
 }
 
+const MND = ["jan.", "feb.", "mar.", "apr.", "mai", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "des."];
+const dato = (iso: string) => `${Number(iso.slice(8, 10))}. ${MND[Number(iso.slice(5, 7)) - 1]}`;
+
+/** Nytt arbeid i planen: varsle dem som har fått oppgaven og ikke er varslet om den før (ikke den som la den inn) */
+async function oppgave(id: string) {
+  const { data: o } = await sb.from("oppgaver").select("id, bedrift_id, prosjekt_id, tittel, fra, til, ansatte, status, opprettet_av").eq("id", id).maybeSingle();
+  if (!o) return new Response("finnes ikke", { status: 404 });
+  if (o.status === "ferdig") return new Response("ferdig, hoppet over");
+  const nye: string[] = [];
+  for (const a of (o.ansatte ?? []) as string[]) {
+    if (a === o.opprettet_av) continue;
+    const { error } = await sb.from("push_logg").insert({ type: `oppgave:${a}`, id: o.id });
+    if (!error) nye.push(a);
+  }
+  if (!nye.length) return new Response("ingen nye");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: mottakere } = await sb.from("ansatte").select("id, navn, sprak").in("id", nye).eq("bedrift_id", o.bedrift_id).eq("aktiv", true);
+  const { data: p } = await sb.from("prosjekter").select("navn, adresse").eq("id", o.prosjekt_id).maybeSingle();
+  const naar = o.fra === o.til ? dato(o.fra) : `${dato(o.fra)} – ${dato(o.til)}`;
+  const r = await send(mottakere ?? [], (a) => ({
+    tittel: a.sprak === "pl" ? `Nowa praca: ${kort(o.tittel, 60)}` : `Nytt arbeid: ${kort(o.tittel, 60)}`,
+    tekst: [p?.navn, naar, p?.adresse].filter(Boolean).join(" · "),
+    url: "/#plan", tag: `oppgave-${o.id}`,
+  }));
+  return Response.json(r);
+}
+
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
+  if (type === "oppgave") return oppgave(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });
