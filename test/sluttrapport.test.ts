@@ -29,6 +29,11 @@ const data = (x: Partial<RapportData> = {}): RapportData => ({
   bilder: [{ data: png, tekst: "Før riving · 2. september 2026" }, { data: png, tekst: "Ferdig bad" }, { data: png }],
   varer: [{ navn: "Gipsplate standard 12,5 mm 1200x2400", nobb: "41234567", antall: "24 stk", lenke: "https://nobb.no/item/41234567" }],
   vedlegg: [],
+  egenkontroll: [{ navn: "Våtrom – membran og sluk", signert: "Signert av Lars Berg, 10. oktober 2026", punkter: [
+    { tekst: "Underlaget er rent, tørt og plant før membran", svar: "ok" },
+    { tekst: "Membranen er påført i riktig tykkelse (målt)", svar: "avvik", kommentar: "0,8 mm målt – smurt et ekstra strøk, 1,1 mm etterpå" },
+    { tekst: "Branntetting", svar: "na" },
+  ] }],
   boligmappa: true,
   ...x,
 });

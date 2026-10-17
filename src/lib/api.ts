@@ -11,6 +11,7 @@ import type { Kompetanse } from "./kompetanse";
 import type { Lest, Melding } from "./chat";
 import type { Kobling, importRader } from "./svenn";
 import type { LeveranseStatus, NyLeveranse, NyOppgave, NyttMateriale, OppgaveStatus } from "./plan";
+import type { Bestilling, BestillingStatus, Bestillingslinje, Punkt, Risiko } from "./kvalitet";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
@@ -21,7 +22,7 @@ export type DokKategori = "fdv" | "sjekkliste" | "tegning" | "kontrakt" | "annet
 export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string; kategori?: DokKategori; ansatt_id?: string }
 /** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
-export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; tekst?: string; svenn_id?: number; opprettet?: string };
+export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 /** Svar fra importen av Svenn-timer */
@@ -77,6 +78,22 @@ export interface Api {
   slettMateriale(id: string): Promise<void>;
   settMaterialeLevert(id: string, levert: boolean): Promise<void>;
   flyttMaterialer(ider: string[], leveranseId: string | null): Promise<void>;
+  /** Sjekklister (egenkontroll) */
+  nySjekkliste(prosjektId: string, navn: string, mal: string, punkter: string[]): Promise<string>;
+  lagreSjekkliste(id: string, x: { navn?: string; punkter?: Punkt[]; status?: "pagaar" | "signert" }): Promise<void>;
+  slettSjekkliste(id: string): Promise<void>;
+  /** SJA */
+  lagreSja(x: { id?: string; prosjekt_id: string; dato: string; arbeid: string; risikoer: Risiko[]; verneutstyr: string; deltakere: string[] }): Promise<void>;
+  kvitterSja(id: string): Promise<void>;
+  slettSja(id: string): Promise<void>;
+  /** HMS-kort: den ansatte selv */
+  lagreMittHmsKort(nr: string, gyldig: string | null): Promise<void>;
+  /** Bestilling fra byggeplassen */
+  bestill(x: { id?: string; prosjekt_id: string; onsket_dato: string | null; merknad: string; linjer: Bestillingslinje[] }): Promise<void>;
+  settBestillingStatus(id: string, status: BestillingStatus, svar?: string): Promise<void>;
+  slettBestilling(id: string): Promise<void>;
+  /** Lager en leveranse i materiallisten av bestillingen */
+  bestillingTilLeveranse(b: Bestilling, navn: string): Promise<void>;
   /** Leder: lagre kampanje (DM). nyeSider legges til bak eksisterende, fjern = stier som tas bort. */
   lagreKampanje(k: Partial<Kampanje> & { tittel: string; fra: string; til: string }, nyeSider?: Blob[], fjern?: string[]): Promise<void>;
   slettKampanje(id: string, sider: string[]): Promise<void>;
@@ -203,7 +220,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -229,6 +246,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("oppgaver").select("id, prosjekt_id, tittel, beskrivelse, fra, til, ansatte, rekkefolge, status, opprettet_av, ferdig_tid").order("fra").order("id"), 20000),
         alle(() => sb.from("leveranser").select("id, prosjekt_id, navn, rekkefolge, dato, status, leverandor, notat").order("rekkefolge").order("id"), 20000),
         alle(() => sb.from("materialer").select("id, prosjekt_id, leveranse_id, rekkefolge, varenr, nobb_nr, beskrivelse, antall, enhet, notat, levert").order("rekkefolge").order("id"), 50000),
+        alle(() => sb.from("sjekklister").select("*").order("opprettet").order("id"), 20000),
+        alle(() => sb.from("sja").select("*").order("dato", { ascending: false }).order("id"), 20000),
+        alle(() => sb.from("bestillinger").select("*").order("opprettet", { ascending: false }).order("id"), 20000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -250,6 +270,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         oppgaver: oppgaver.error ? [] : oppgaver.data,
         leveranser: leveranser.error ? [] : leveranser.data,
         materialer: materialer.error ? [] : (materialer.data as any[]).map((m) => ({ ...m, antall: Number(m.antall) })),
+        sjekklister: sjekklister.error ? [] : sjekklister.data,
+        sja: sjaer.error ? [] : sjaer.data,
+        bestillinger: bestillinger.error ? [] : bestillinger.data,
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -271,6 +294,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "oppgaver" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "leveranser" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "materialer" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sjekklister" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sja" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "bestillinger" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "kampanjer" }, snart)
@@ -327,6 +353,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       const data = await komprimer(fil);
       ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
       const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
+        ...(til.sjekkliste_id ? { sjekkliste_id: til.sjekkliste_id, sjekkliste_punkt: til.sjekkliste_punkt ?? null } : {}),
         ...(til.svenn_id ? { svenn_id: til.svenn_id, opprettet: til.opprettet } : {}) });
       if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
     },
@@ -509,6 +536,30 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettMateriale(id) { ok(await sb.from("materialer").delete().eq("id", id)); },
     async settMaterialeLevert(id, levert) { ok(await sb.from("materialer").update({ levert }).eq("id", id)); },
     async flyttMaterialer(ider, leveranseId) { if (ider.length) ok(await sb.from("materialer").update({ leveranse_id: leveranseId }).in("id", ider)); },
+    async nySjekkliste(prosjekt_id, navn, mal, punkter) {
+      const r = await sb.from("sjekklister").insert({ prosjekt_id, navn: navn.trim(), mal, punkter: punkter.map((tekst) => ({ tekst, svar: null, kommentar: "" })) }).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async lagreSjekkliste(id, x) { ok(await sb.from("sjekklister").update(x).eq("id", id)); },
+    async slettSjekkliste(id) { ok(await sb.from("sjekklister").delete().eq("id", id)); },
+    async lagreSja(x) {
+      const { id, ...rad } = x;
+      ok(id ? await sb.from("sja").update(rad).eq("id", id) : await sb.from("sja").insert(rad));
+    },
+    async kvitterSja(id) { ok(await sb.rpc("kvitter_sja", { sja_id: id })); },
+    async slettSja(id) { ok(await sb.from("sja").delete().eq("id", id)); },
+    async lagreMittHmsKort(nr, gyldig) { ok(await sb.rpc("lagre_mitt_hms_kort", { nr, gyldig })); },
+    async bestill(x) {
+      const { id, ...rad } = x;
+      ok(id ? await sb.from("bestillinger").update(rad).eq("id", id) : await sb.from("bestillinger").insert(rad));
+    },
+    async settBestillingStatus(id, status, svar) { ok(await sb.from("bestillinger").update({ status, ...(svar != null ? { svar } : {}) }).eq("id", id)); },
+    async slettBestilling(id) { ok(await sb.from("bestillinger").delete().eq("id", id)); },
+    async bestillingTilLeveranse(b, navn) {
+      const lev = ok(await sb.from("leveranser").insert({ prosjekt_id: b.prosjekt_id, navn, dato: b.onsket_dato, leverandor: "Eget lager", notat: b.merknad, status: "bestilt" }).select("id").single()) as { id: string };
+      ok(await sb.from("materialer").insert(b.linjer.map((l, i) => ({ prosjekt_id: b.prosjekt_id, leveranse_id: lev.id, beskrivelse: l.beskrivelse, antall: l.antall, enhet: l.enhet, nobb_nr: l.nobb ?? "", varenr: l.nobb ?? "", rekkefolge: i }))));
+      ok(await sb.from("bestillinger").update({ leveranse_id: lev.id, ...(b.status === "ny" ? { status: "plukkes" } : {}) }).eq("id", b.id));
+    },
     async lagreKampanje(k, nyeSider = [], fjern = []) {
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
       const lastet: string[] = [];

@@ -100,6 +100,11 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
       })),
       bilder: bildeData,
       varer: medFdv ? fdvVarer.map((v) => ({ navn: v.beskrivelse, nobb: v.nobb_nr || "–", antall: v.antall ? `${t2(v.antall)} ${v.enhet.toLowerCase()}` : "–", lenke: lenke(v) })) : [],
+      egenkontroll: (d.sjekklister ?? []).filter((x) => x.prosjekt_id === p.id && x.status === "signert").map((x) => ({
+        navn: x.navn,
+        signert: `Signert av ${d.ansatte.find((a) => a.id === x.signert_av)?.navn ?? "ukjent"}${x.signert_tid ? `, ${langDato(x.signert_tid.slice(0, 10))}` : ""}`,
+        punkter: x.punkter.filter((pt) => pt.svar).map((pt) => ({ tekst: pt.tekst, svar: pt.svar!, kommentar: pt.kommentar || undefined })),
+      })),
       vedlegg, boligmappa: true,
     });
   };

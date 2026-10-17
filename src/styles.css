@@ -1260,3 +1260,20 @@ header.top select.temavalg option { color: #10162E; }
 .mat-antall { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mat-verktoy { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 .mat-verktoy select { max-width: 170px; }
+
+/* ---------- Egenkontroll (sjekklister) ---------- */
+.sjekkliste { display: flex; flex-direction: column; gap: 10px; }
+.sk-punkter { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: sk; }
+.sk-punkter li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--sunk); border-left: 4px solid var(--line); counter-increment: sk; }
+.sk-punkter li.svar-ok { border-left-color: var(--approved); }
+.sk-punkter li.svar-avvik { border-left-color: var(--warn); }
+.sk-punkter li.svar-na { border-left-color: var(--muted); }
+.sk-tekst { flex: 1 1 260px; min-width: 0; }
+.sk-tekst::before { content: counter(sk) ". "; font-weight: 700; color: var(--muted); }
+.sk-valg { display: inline-flex; gap: 4px; }
+.sk-knapp { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 32px; }
+.sk-knapp[aria-pressed="true"].ok { background: var(--approved); border-color: var(--approved); color: #fff; }
+.sk-knapp[aria-pressed="true"].avvik { background: var(--warn); border-color: var(--warn); color: #fff; }
+.sk-knapp[aria-pressed="true"].na { background: var(--muted); border-color: var(--muted); color: #fff; }
+.sk-knapp:disabled { cursor: default; opacity: .85; }
+.sk-kommentar { flex-basis: 100%; }

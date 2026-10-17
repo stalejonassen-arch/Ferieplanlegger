@@ -18,8 +18,10 @@ import { PROFIL } from "../lib/profil";
 import { Kart } from "./Kart";
 import { ProsjektPlan } from "./Plan";
 import { Materialliste } from "./Materiell";
+import { Mannskap, SjaDel, Sjekklister } from "./Kvalitet";
+import { BestillDel } from "./Bestilling";
 
-type Del = "oversikt" | "plan" | "materiell" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder, meg, chat } = useApp();
@@ -38,6 +40,8 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     ["oversikt", "Oversikt", null],
     ["plan", "Plan", (d.oppgaver ?? []).filter((o) => o.prosjekt_id === p.id && o.status !== "ferdig").length || null],
     ["materiell", "Materiell", (d.leveranser ?? []).filter((l) => l.prosjekt_id === p.id && l.status !== "levert").length || null],
+    ["egenkontroll", "Egenkontroll", (d.sjekklister ?? []).filter((s) => s.prosjekt_id === p.id && s.status !== "signert").length || null],
+    ["hms", "SJA og mannskap", (d.sja ?? []).filter((s) => s.prosjekt_id === p.id && s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length || null],
     ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
     ["tillegg", "Tillegg", antall.tillegg], ["bilder", "Bilder", antall.bilder], ["dokumenter", "Dokumenter", antallDok],
     ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
@@ -70,7 +74,9 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
       {del === "plan" && <ProsjektPlan p={p} />}
-      {del === "materiell" && <Materialliste p={p} />}
+      {del === "materiell" && <><BestillDel p={p} /><Materialliste p={p} /></>}
+      {del === "egenkontroll" && <Sjekklister p={p} />}
+      {del === "hms" && <><SjaDel p={p} /><Mannskap p={p} /></>}
       {del === "chat" && <section className="panel" style={{ padding: 0, overflow: "hidden" }}><Traad kanal={prosjektKanal(p.id)} hoyde={520} /></section>}
       {del === "historikk" && <Historikk p={p} />}
       {del === "dagbok" && <DagbokDel p={p} />}
@@ -90,6 +96,8 @@ const DEL_IKON: Record<string, React.ReactNode> = {
   oversikt: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
   plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
   materiell: <><path d="M3 8l9-5 9 5-9 5-9-5z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>,
+  egenkontroll: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="m8.5 9 1.5 1.5 3-3M8.5 15l1.5 1.5 3-3" /><path d="M15 9.5h1M15 15.5h1" /></>,
+  hms: <><path d="M4 14a8 8 0 0 1 16 0v2H4z" /><path d="M12 6v4M2 18h20" /></>,
   historikk: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   dagbok: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M8 17h2" /></>,
   tillegg: <><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" /></>,

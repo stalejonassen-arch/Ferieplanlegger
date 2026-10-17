@@ -13,6 +13,7 @@ import { Oppsett } from "./views/Oppsett";
 import { Lonn } from "./views/Lonn";
 import { Tidsplan } from "./views/Plan";
 import { Leveranseoversikt } from "./views/Materiell";
+import { Bestillingsoversikt } from "./views/Bestilling";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
@@ -214,6 +215,9 @@ export function App() {
   const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
+  // Butikk/prosjektleder: nye bestillinger. Alle andre: SJA de ikke har kvittert på.
+  const planVarsel = (leder || meg?.prosjektleder) ? (d.bestillinger ?? []).filter((b) => b.status === "ny").length
+    : (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length;
   const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
@@ -246,6 +250,7 @@ export function App() {
               {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
               {f === "chat" && ulestChat > 0 && <span className="badge">{ulestChat}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
+              {f === "plan" && planVarsel > 0 && <span className="badge">{planVarsel}</span>}
               {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
               {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
             </button>
@@ -302,7 +307,7 @@ export function App() {
           </div>
         )}
         {aktiv === "lonn" && <Lonn />}
-        {aktiv === "plan" && <><Tidsplan />{(leder || meg?.prosjektleder) && <Leveranseoversikt />}</>}
+        {aktiv === "plan" && <>{(leder || meg?.prosjektleder) && <Bestillingsoversikt />}<Tidsplan />{(leder || meg?.prosjektleder) && <Leveranseoversikt />}</>}
         {aktiv === "oppsett" && <Oppsett />}
         {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
         {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}
