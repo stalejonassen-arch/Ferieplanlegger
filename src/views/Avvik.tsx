@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { kortDato, sorterAnsatte } from "../lib/ferie";
 import { AVVIK_STATUS, AVVIK_TYPE, type Avvik as AvvikT, type AvvikStatus, type AvvikType } from "../lib/hms";
 import { Bilder } from "./Bilder";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 type Filter = "aapne" | "mine" | "alle";
 
@@ -44,11 +45,7 @@ export function Avvik({ prosjektId }: { prosjektId?: string } = {}) {
               {Object.entries(AVVIK_TYPE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></label>
           {!prosjektId && (
-            <label className="field"><span className="label">Prosjekt</span>
-              <select value={ny.prosjekt_id} onChange={(e) => setNy({ ...ny, prosjekt_id: e.target.value })}>
-                <option value="">Ikke knyttet til prosjekt</option>
-                {d.prosjekter.filter((p) => p.aktiv).map((p) => <option key={p.id} value={p.id}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</option>)}
-              </select></label>
+            <ProsjektVelger value={ny.prosjekt_id} onChange={(id) => setNy({ ...ny, prosjekt_id: id })} prosjekter={d.prosjekter.filter((p) => p.aktiv)} tom="Ikke knyttet til prosjekt" />
           )}
         </div>
         <label className="field"><span className="label">Hva skjedde?</span>

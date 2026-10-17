@@ -1,6 +1,10 @@
 // Polsk oversettelse av brukerflaten (generert fra norske tekster i koden).
 // Nøkkel = norsk tekst slik den står på skjermen. Mangler en tekst, vises den norske.
 export const PL_TEKST: Record<string, string> = {
+"Søk nummer, navn, kunde, adresse": "Szukaj: numer, nazwa, klient, adres",
+"Slå sammen med": "Połącz z",
+"Velg prosjektet som skal beholdes …": "Wybierz projekt, który ma zostać …",
+"Forslag (samme kunde, adresse eller navn)": "Propozycje (ten sam klient, adres lub nazwa)",
 "Egenkontroll": "Samokontrola",
 "SJA og mannskap": "SJA i załoga",
 "Ny sjekkliste": "Nowa lista kontrolna",

@@ -7,6 +7,7 @@ import { addDays, borteDag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { fravaerPaa } from "../lib/fravaer";
 import { OPPGAVE_STATUS, forsinket, oppgaverPaa, sorterOppgaver, ukeDager, type NyOppgave, type Oppgave, type OppgaveStatus } from "../lib/plan";
 import { ukenr, type Prosjekt } from "../lib/timer";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 /** Leder eller prosjektleder: kan dele ut arbeid og styre materiell */
 export function usePlanlegger() { const { leder, meg } = useApp(); return leder || !!meg.prosjektleder; }
@@ -58,11 +59,7 @@ function OppgaveSkjema({ start, prosjekt, ferdig }: { start?: Partial<NyOppgave>
   return (
     <form onSubmit={lagre} className="plan-skjema" style={{ display: "grid", gap: 10 }}>
       {!prosjekt && (
-        <label className="field"><span className="label">Prosjekt</span>
-          <select id="oppgave-prosjekt" value={f.prosjekt_id} onChange={(e) => setF({ ...f, prosjekt_id: e.target.value })} required>
-            <option value="">Velg prosjekt …</option>
-            {prosjekter.map((p) => <option key={p.id} value={p.id}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</option>)}
-          </select></label>
+        <ProsjektVelger id="oppgave-prosjekt" value={f.prosjekt_id} onChange={(id) => setF({ ...f, prosjekt_id: id })} prosjekter={prosjekter} required />
       )}
       <label className="field"><span className="label">Arbeid</span>
         <input id="oppgave-tittel" value={f.tittel} onChange={(e) => setF({ ...f, tittel: e.target.value })} placeholder="F.eks. Riving, Membran og flis, Montere vinduer" maxLength={200} required /></label>

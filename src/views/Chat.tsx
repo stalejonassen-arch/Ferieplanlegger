@@ -3,6 +3,7 @@ import { VarselBryter } from "./Varsler";
 import { useApp } from "../App";
 import { api, feiltekst } from "../lib/api";
 import { FELLES, dmKanal, erDm, initialer, kanalNavn, kanaler, motpart, personFarge, prosjektKanal, tidTekst, type Melding } from "../lib/chat";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 /** Hele meldingssiden: kanalliste til venstre, samtale til høyre (på mobil: én om gangen). */
 export function Chat() {
@@ -31,11 +32,7 @@ export function Chat() {
                 <option value="">Velg person …</option>
                 {kolleger.map((a) => <option key={a.id} value={a.id}>{a.navn}</option>)}
               </select></label>
-            <label className="field"><span className="label">Tråd på et prosjekt</span>
-              <select value="" onChange={(e) => e.target.value && aapne(prosjektKanal(e.target.value))}>
-                <option value="">Velg prosjekt …</option>
-                {aktive.map((p) => <option key={p.id} value={p.id}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</option>)}
-              </select></label>
+            <ProsjektVelger label="Tråd på et prosjekt" value="" onChange={(id) => id && aapne(prosjektKanal(id))} prosjekter={aktive} />
           </div>
         )}
         <ul>

@@ -21,6 +21,7 @@ import { Materialliste } from "./Materiell";
 import { Mannskap, SjaDel, Sjekklister } from "./Kvalitet";
 import { BestillDel } from "./Bestilling";
 import { bruker, type Modul } from "../lib/moduler";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
@@ -551,7 +552,6 @@ function SlaaSammen({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const valg = d.prosjekter.filter((x) => x.id !== p.id && !utstyr.has(x.id) && (x.aktiv || treff(x) >= 10))
     .sort((a, b) => treff(b) - treff(a) || Number(b.visma_nr != null) - Number(a.visma_nr != null) || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
   const forslag = valg.filter((x) => treff(x) > 0).slice(0, 6);
-  const resten = valg.filter((x) => !forslag.includes(x));
   const mal = valg.find((x) => x.id === til);
   const navn = (x: Prosjekt) => `${x.visma_nr ?? "App"} · ${x.navn}${x.aktiv ? "" : " (avsluttet)"}`;
   const kunde = (x: Prosjekt) => d.kunder.find((k) => k.id === x.kunde_id)?.navn;
@@ -571,12 +571,10 @@ function SlaaSammen({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
       </p>
       {!sikker ? (
         <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "end" }}>
-          <label className="field" style={{ flex: "1 1 260px" }}><span className="label">Slå sammen med</span>
-            <select id="slaa-sammen-med" value={til} onChange={(e) => setTil(e.target.value)}>
-              <option value="">Velg prosjektet som skal beholdes …</option>
-              {forslag.length > 0 && <optgroup label="Forslag (samme kunde, adresse eller navn)">{forslag.map((x) => <option key={x.id} value={x.id}>{navn(x)}</option>)}</optgroup>}
-              <optgroup label={forslag.length ? "Alle" : "Prosjekter"}>{resten.map((x) => <option key={x.id} value={x.id}>{navn(x)}</option>)}</optgroup>
-            </select></label>
+          <div style={{ flex: "1 1 260px", display: "flex" }}>
+            <ProsjektVelger id="slaa-sammen-med" label="Slå sammen med" placeholder="Velg prosjektet som skal beholdes …" value={til} onChange={setTil}
+              prosjekter={valg} forslag={forslag.length ? { tittel: "Forslag (samme kunde, adresse eller navn)", ider: forslag.map((x) => x.id) } : undefined} />
+          </div>
           <button className="btn" disabled={!mal} onClick={() => setSikker(true)}>Slå sammen</button>
           {!app && <button className="btn" onClick={() => { setAapen(false); setTil(""); }}>Avbryt</button>}
         </div>

@@ -4,6 +4,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 const timerSiden = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
 const min = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
@@ -81,10 +82,8 @@ export function Stempling() {
           <button type="button" aria-pressed={prosjekt === ""} onClick={() => setProsjekt("")}>Internt</button>
         </div>
       )}
-      <select value={prosjekt} onChange={(e) => setProsjekt(e.target.value)} aria-label="Prosjekt">
-        <option value="">Internt arbeid (butikk, lager, verksted)</option>
-        {aktive.map((p) => <option key={p.id} value={p.id}>{navn(p.id)}</option>)}
-      </select>
+      <ProsjektVelger value={prosjekt} onChange={setProsjekt} prosjekter={aktive} tom="Internt arbeid (butikk, lager, verksted)"
+        forslag={{ tittel: "Siste prosjekter", ider: siste }} />
     </>
   );
 

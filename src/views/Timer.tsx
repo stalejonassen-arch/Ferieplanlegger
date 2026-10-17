@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { dagerUtenTimer, hhmm, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
 import { InneNaa, Stempling } from "./Stempling";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
@@ -100,11 +101,8 @@ export function Timer() {
             <label className="field kort"><span className="label">Til</span>
               <input type="time" step={900} value={f.til} onChange={(e) => sett({ til: e.target.value })} required /></label>
           </div>
-          <label className="field"><span className="label">Prosjekt</span>
-            <select value={f.prosjekt_id} onChange={(e) => sett({ prosjekt_id: e.target.value })}>
-              <option value="">Internt arbeid (butikk, lager, verksted)</option>
-              {aktive.map((p) => <option key={p.id} value={p.id}>{prosjektNavn(p.id)}</option>)}
-            </select></label>
+          <ProsjektVelger value={f.prosjekt_id} onChange={(id) => sett({ prosjekt_id: id })} prosjekter={aktive} tom="Internt arbeid (butikk, lager, verksted)"
+            forslag={{ tittel: "Siste prosjekter", ider: siste }} />
           {siste.length > 0 && (
             <div className="hurtig" aria-label="Siste prosjekter">
               {siste.map((id) => { const p = d.prosjekter.find((x) => x.id === id)!; return (
