@@ -7,6 +7,7 @@ import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
 import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, lesXlsx, svennBildetekst, svennProsjekter, type Kobling, type SvennFil, type SvennProsjekt, type SvennRad } from "../lib/svenn";
 import type { SvennResultat } from "../lib/api";
 import { KampanjeOppsett } from "./Kampanjer";
+import { MODULER, bruker, type Modul } from "../lib/moduler";
 
 /** Valg for varsel når noen fortsatt er stemplet inn: 7 t 30 min til 11 t, hvert kvarter */
 const VARSEL_STEMPLET = Array.from({ length: 15 }, (_, i) => 450 + i * 15);
@@ -29,53 +30,47 @@ export function Oppsett() {
     if (ok) { setNyNavn(""); setNyEpost(""); }
   };
 
+  const [aapen, setAapen] = useState<string | null>(null);
+  const [visInaktive, setVisInaktive] = useState(false);
+  const alle = sorterAnsatte(d);
+  const liste = alle.filter((a) => a.aktiv || visInaktive);
+  const inaktive = alle.filter((a) => !a.aktiv).length;
+
   return (
     <>
-      <section className="panel">
-        <h2>Ansatte</h2>
-        <p className="small muted">Endringer lagres når du går ut av feltet. E-posten er den ansatte bruker for å logge inn. «Dager» er feriedager per år regnet mandag–fredag: 25 er 5 uker, 21 er lovens minimum. «Overført» er ferie avtalt flyttet fra {aar - 1} til {aar}.</p>
-        <div className="staff">
-          <div className="staff-row staff-head">
-            <span>Navn</span><span>E-post</span><span>Avdeling</span><span>Rolle</span><span>Dager</span><span>Overført {aar}</span><span>Over 60</span><span>Aktiv</span>
-          </div>
-          {sorterAnsatte(d).map((a) => (
-            <div key={`${a.id}-${a.navn}-${a.epost}-${overfort(a)}`} className={`staff-row${a.aktiv ? "" : " inaktiv"}`}>
-              <span className="lbl" data-l="Navn">
-                <input type="text" id={`navn-${a.id}`} aria-label="Navn" defaultValue={a.navn}
-                  onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== a.navn) lagre(a, { navn: v }); }} />
-              </span>
-              <span className="lbl" data-l="E-post">
-                <input type="email" id={`epost-${a.id}`} aria-label="E-post" defaultValue={a.epost ?? ""} placeholder="Mangler – kan ikke logge inn"
-                  onBlur={(e) => { const v = e.target.value.trim(); if (v !== (a.epost ?? "")) lagre(a, { epost: v || null }); }} />
-              </span>
-              <span className="lbl" data-l="Avdeling">
-                <select id={`avd-${a.id}`} aria-label="Avdeling" value={a.avdeling_id} onChange={(e) => lagre(a, { avdeling_id: Number(e.target.value) })}>
-                  {d.avdelinger.map((g) => <option key={g.id} value={g.id}>{g.navn}</option>)}
-                </select>
-              </span>
-              <span className="lbl" data-l="Rolle">
-                <select id={`rolle-${a.id}`} aria-label="Rolle" value={a.rolle} onChange={(e) => lagre(a, { rolle: e.target.value as Ansatt["rolle"] })}>
-                  <option value="ansatt">Ansatt</option><option value="leder">Leder</option>
-                </select>
-              </span>
-              <span className="lbl" data-l="Dager">
-                <select id={`dager-${a.id}`} aria-label="Feriedager" value={a.dager} onChange={(e) => lagre(a, { dager: Number(e.target.value) })}>
-                  <option value={21}>21</option><option value={25}>25</option>
-                </select>
-              </span>
-              <span className="lbl" data-l={`Overført ${aar}`}>
-                <input type="number" id={`overfort-${a.id}`} aria-label={`Overført til ${aar}`} min={0} max={60} defaultValue={overfort(a)}
-                  onBlur={(e) => { const v = Math.max(0, Math.min(60, Number(e.target.value) || 0)); if (v !== overfort(a)) kjor(() => api.lagreOverfort(a.id, aar, v), "Lagret"); }} />
-              </span>
-              <span className="lbl" data-l="Over 60">
-                <input type="checkbox" id={`over60-${a.id}`} aria-label="Over 60 år" checked={a.over60} onChange={(e) => lagre(a, { over60: e.target.checked })} />
-              </span>
-              <span className="lbl" data-l="Aktiv">
-                <input type="checkbox" id={`aktiv-${a.id}`} aria-label="Aktiv" checked={a.aktiv} onChange={(e) => lagre(a, { aktiv: e.target.checked })} />
-              </span>
-            </div>
-          ))}
+      <nav className="oppsett-meny" aria-label="Deler av oppsettet">
+        {[["opp-ansatte", "Ansatte"], ["opp-deler", "Deler av appen"], ["opp-bemanning", "Bemanning"],
+          ...(bruker(d, "kampanjer") ? [["opp-kampanjer", "Kampanjer"]] : []), ...(bruker(d, "utstyr") ? [["opp-utstyr", "Utstyr"]] : []), ["opp-svenn", "Import fra Svenn"]]
+          .map(([id, t]) => <a key={id} href={`#oppsett`} onClick={(e) => { e.preventDefault(); document.getElementById(id!)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{t}</a>)}
+      </nav>
+
+      <section className="panel" id="opp-ansatte">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <h2 style={{ margin: 0 }}>Ansatte</h2>
+          {inaktive > 0 && <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={visInaktive} onChange={(e) => setVisInaktive(e.target.checked)} /> Vis {inaktive} som har sluttet</label>}
         </div>
+        <p className="small muted" style={{ margin: 0 }}>Trykk på en ansatt for å endre innlogging, ferie, arbeidstid, lønn, varsler, utstyr og HMS-kort. Endringer lagres med en gang.</p>
+        <ul className="ansatt-liste">
+          {liste.map((a) => {
+            const avd = d.avdelinger.find((g) => g.id === a.avdeling_id)?.navn ?? "";
+            const merk = [!a.epost && "mangler e-post", !a.ansattnr && "mangler ansattnr"].filter(Boolean) as string[];
+            return (
+              <li key={a.id} className={`${a.aktiv ? "" : "inaktiv"}${aapen === a.id ? " aapen" : ""}`}>
+                <button type="button" className="ansatt-topp" aria-expanded={aapen === a.id} onClick={() => setAapen(aapen === a.id ? null : a.id)}>
+                  <span className="ansatt-navn"><b>{a.navn}</b><span className="small muted">{avd}{a.epost ? ` · ${a.epost}` : ""}</span></span>
+                  <span className="ansatt-merker">
+                    {a.rolle === "leder" && <span className="chip godkjent">Leder</span>}
+                    {a.rolle !== "leder" && a.prosjektleder && <span className="chip venter">Prosjektleder</span>}
+                    {!a.aktiv && <span className="chip demo">Sluttet</span>}
+                    {merk.length > 0 && a.aktiv && <span className="small" style={{ color: "var(--warn)" }}>{merk.join(", ")}</span>}
+                  </span>
+                  <span className="ansatt-pil" aria-hidden="true">{aapen === a.id ? "▴" : "▾"}</span>
+                </button>
+                {aapen === a.id && <AnsattKort a={a} lagre={lagre} overfort={overfort(a)} />}
+              </li>
+            );
+          })}
+        </ul>
         <form className="row" onSubmit={leggTil} style={{ alignItems: "flex-end" }}>
           <label className="field"><span className="label">Ny ansatt</span>
             <input type="text" id="ny-navn" value={nyNavn} onChange={(e) => setNyNavn(e.target.value)} placeholder="Navn" />
@@ -90,10 +85,11 @@ export function Oppsett() {
           </label>
           <button className="btn" disabled={!nyNavn.trim()}>Legg til</button>
         </form>
-        <p className="small muted">Ansatte som slutter, setter du til ikke aktiv. Da forsvinner de fra kalenderen og mister tilgang, men historikken beholdes.</p>
       </section>
 
-      <section className="panel">
+      <ModulOppsett />
+
+      <section className="panel" id="opp-bemanning">
         <h2>Bemanning</h2>
         <p className="small muted">Hvor mange i hver avdeling som kan være borte samme dag før appen varsler.</p>
         <div className="row">
@@ -105,54 +101,142 @@ export function Oppsett() {
           ))}
         </div>
       </section>
-      <section className="panel">
-        <h2>Arbeidstid og lunsj</h2>
-        <p className="small muted">Brukes i lønnsgrunnlaget. Overtid regnes når uka går over normaltiden. Ansatte med lunsjtrekk får lunsj trukket på dager over 5,5 timer der lunsj ikke er registrert. Ansattnr er det samme nummeret som i Svenn og følger med i lønnsfilene. «I timerapport» styrer hvem som telles i oversikten over kundetimer og interntid (snekkere og allround). «Varsel stemplet inn» sender et push-varsel til den ansatte hvis hen fortsatt er stemplet inn så lenge etter første stempling i dag. «Prosjektleder» kan dele ut arbeid, lage tidsplan og styre materiallister og leveranser (fanen «Butikk/prosjektleder»), men ser ikke lønn og oppsett.</p>
-        <div className="scroll" style={{ border: 0 }}>
-          <table className="tbl">
-            <thead><tr><th>Ansatt</th><th>Ansattnr (Svenn)</th><th>Normaltid per uke</th><th>Lunsjtrekk</th><th>Lunsj (min)</th><th>I timerapport</th><th>Varsel nye prosjekter</th><th>Varsel stemplet inn</th><th>Prosjektleder</th></tr></thead>
-            <tbody>
-              {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => (
-                <tr key={`${a.id}-${a.normaltid_uke}-${a.lunsjtrekk}-${a.lunsj_min}-${a.i_timerapport}-${a.varsel_prosjekt}-${a.varsel_stemplet_min}-${a.ansattnr}-${a.prosjektleder}`}>
-                  <td>{a.navn}</td>
-                  <td><input type="text" inputMode="numeric" aria-label={`Ansattnr ${a.navn}`} style={{ width: 90 }} defaultValue={a.ansattnr ?? ""}
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v !== (a.ansattnr ?? "")) lagre(a, { ansattnr: v || null }); }} /></td>
-                  <td><select aria-label={`Normaltid ${a.navn}`} value={String(a.normaltid_uke ?? 37.5)} onChange={(e) => lagre(a, { normaltid_uke: Number(e.target.value) })}>
-                    <option value="37.5">37,5 timer</option><option value="40">40 timer</option></select></td>
-                  <td><input type="checkbox" aria-label={`Lunsjtrekk ${a.navn}`} checked={!!a.lunsjtrekk} onChange={(e) => lagre(a, { lunsjtrekk: e.target.checked })} /></td>
-                  <td><input type="number" aria-label={`Lunsj minutter ${a.navn}`} min={0} max={120} step={5} style={{ width: 80 }} defaultValue={a.lunsj_min ?? 30}
-                    onBlur={(e) => { const v = Math.max(0, Math.min(120, Number(e.target.value) || 0)); if (v !== (a.lunsj_min ?? 30)) lagre(a, { lunsj_min: v }); }} /></td>
-                  <td><input type="checkbox" aria-label={`I timerapport ${a.navn}`} checked={a.i_timerapport !== false} onChange={(e) => lagre(a, { i_timerapport: e.target.checked })} /></td>
-                  <td><input type="checkbox" aria-label={`Varsel om nye prosjekter til ${a.navn}`} checked={a.varsel_prosjekt !== false} onChange={(e) => lagre(a, { varsel_prosjekt: e.target.checked })} /></td>
-                  <td><select aria-label={`Varsel stemplet inn ${a.navn}`} value={a.varsel_stemplet_min === null ? "av" : String(a.varsel_stemplet_min ?? 495)}
-                    onChange={(e) => lagre(a, { varsel_stemplet_min: e.target.value === "av" ? null : Number(e.target.value) })}>
-                    <option value="av">Av</option>
-                    {VARSEL_STEMPLET.map((m) => <option key={m} value={m}>Etter {timerMin(m)}</option>)}
-                  </select></td>
-                  <td>{a.rolle === "leder" ? <span className="small muted">Leder</span> : <input type="checkbox" aria-label={`Prosjektleder ${a.navn}`} checked={!!a.prosjektleder} onChange={(e) => lagre(a, { prosjektleder: e.target.checked })} />}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <KampanjeOppsett />
-      <UtstyrOppsett lagre={lagre} />
-      <SvennImport />
-      <SvennDokumentasjon />
+      {bruker(d, "kampanjer") && <div id="opp-kampanjer"><KampanjeOppsett /></div>}
+      {bruker(d, "utstyr") && <UtstyrOppsett />}
+      <details className="panel oppsett-svenn" id="opp-svenn">
+        <summary><h2 style={{ display: "inline" }}>Import fra Svenn</h2> <span className="small muted">Timer og dokumentasjon fra Svenn. Trengs bare så lenge dere har Svenn.</span></summary>
+        <SvennImport />
+        <SvennDokumentasjon />
+      </details>
     </>
   );
 }
 
+/** Alt om én ansatt på ett sted: innlogging og rolle, ferie, arbeidstid og lønn, varsler, utstyr og HMS-kort */
+function AnsattKort({ a, lagre, overfort }: { a: Ansatt; lagre: (a: Ansatt, e: Partial<Ansatt>) => Promise<boolean>; overfort: number }) {
+  const { d, aar, kjor, idag } = useApp();
+  const kontoer = d.prosjekter.filter((p) => /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn) || d.ansatte.some((x) => x.utstyr_prosjekt_id === p.id));
+  const tekst = (felt: keyof Ansatt, label: string, x: { type?: string; placeholder?: string; inputMode?: "numeric" } = {}) => (
+    <label className="field"><span className="label">{label}</span>
+      <input type={x.type ?? "text"} inputMode={x.inputMode} placeholder={x.placeholder} defaultValue={(a[felt] as string | null | undefined) ?? ""}
+        onBlur={(e) => { const v = e.target.value.trim(); if (v !== ((a[felt] as string | null | undefined) ?? "")) lagre(a, { [felt]: v || (felt === "navn" ? a.navn : null) } as Partial<Ansatt>); }} /></label>
+  );
+  const hake = (felt: keyof Ansatt, label: string, verdi: boolean, hjelp?: string) => (
+    <label className="hake"><input type="checkbox" checked={verdi} onChange={(e) => lagre(a, { [felt]: e.target.checked } as Partial<Ansatt>)} />
+      <span>{label}{hjelp && <span className="small muted"> – {hjelp}</span>}</span></label>
+  );
+  const hmsUtlopt = a.hms_kort_gyldig && a.hms_kort_gyldig < idag;
+  return (
+    <div className="ansatt-kort">
+      <fieldset><legend>Innlogging og rolle</legend>
+        <div className="row">
+          {tekst("navn", "Navn")}
+          {tekst("epost", "E-post (brukes til innlogging)", { type: "email", placeholder: "Mangler – kan ikke logge inn" })}
+        </div>
+        <div className="row">
+          <label className="field"><span className="label">Avdeling</span>
+            <select value={a.avdeling_id} onChange={(e) => lagre(a, { avdeling_id: Number(e.target.value) })}>
+              {d.avdelinger.map((g) => <option key={g.id} value={g.id}>{g.navn}</option>)}
+            </select></label>
+          <label className="field"><span className="label">Rolle</span>
+            <select value={a.rolle} onChange={(e) => lagre(a, { rolle: e.target.value as Ansatt["rolle"] })}>
+              <option value="ansatt">Ansatt</option><option value="leder">Leder</option>
+            </select></label>
+        </div>
+        {a.rolle !== "leder" && hake("prosjektleder", "Prosjektleder", !!a.prosjektleder, "kan dele ut arbeid og styre materiell og bestillinger, men ser ikke lønn og oppsett")}
+        {hake("aktiv", "Aktiv", a.aktiv, "ta bort haken når noen slutter. Historikken beholdes")}
+      </fieldset>
+      <fieldset><legend>Ferie</legend>
+        <div className="row">
+          <label className="field kort"><span className="label">Feriedager per år</span>
+            <select value={a.dager} onChange={(e) => lagre(a, { dager: Number(e.target.value) })}>
+              <option value={21}>21 (lovens minimum)</option><option value={25}>25 (5 uker)</option>
+            </select></label>
+          <label className="field kort"><span className="label">Overført fra {aar - 1}</span>
+            <input type="number" min={0} max={60} defaultValue={overfort}
+              onBlur={(e) => { const v = Math.max(0, Math.min(60, Number(e.target.value) || 0)); if (v !== overfort) kjor(() => api.lagreOverfort(a.id, aar, v), "Lagret"); }} /></label>
+        </div>
+        {hake("over60", "Over 60 år", a.over60, "gir ekstra feriepenger")}
+      </fieldset>
+      <fieldset><legend>Arbeidstid og lønn</legend>
+        <div className="row">
+          {tekst("ansattnr", "Ansattnr (som i Svenn/lønn)", { inputMode: "numeric" })}
+          <label className="field kort"><span className="label">Normaltid per uke</span>
+            <select value={String(a.normaltid_uke ?? 37.5)} onChange={(e) => lagre(a, { normaltid_uke: Number(e.target.value) })}>
+              <option value="37.5">37,5 timer</option><option value="40">40 timer</option></select></label>
+          <label className="field kort"><span className="label">Lunsj (minutter)</span>
+            <input type="number" min={0} max={120} step={5} defaultValue={a.lunsj_min ?? 30}
+              onBlur={(e) => { const v = Math.max(0, Math.min(120, Number(e.target.value) || 0)); if (v !== (a.lunsj_min ?? 30)) lagre(a, { lunsj_min: v }); }} /></label>
+        </div>
+        {hake("lunsjtrekk", "Lunsjtrekk", !!a.lunsjtrekk, "lunsj trekkes på dager over 5,5 timer uten registrert lunsj")}
+        {hake("i_timerapport", "Med i timerapporten", a.i_timerapport !== false, "telles i oversikten over kundetimer og interntid")}
+      </fieldset>
+      <fieldset><legend>Varsler</legend>
+        {hake("varsel_prosjekt", "Varsel om nye prosjekter", a.varsel_prosjekt !== false)}
+        <label className="field kort"><span className="label">Varsel hvis fortsatt stemplet inn</span>
+          <select value={a.varsel_stemplet_min === null ? "av" : String(a.varsel_stemplet_min ?? 495)}
+            onChange={(e) => lagre(a, { varsel_stemplet_min: e.target.value === "av" ? null : Number(e.target.value) })}>
+            <option value="av">Av</option>
+            {VARSEL_STEMPLET.map((m) => <option key={m} value={m}>Etter {timerMin(m)}</option>)}
+          </select></label>
+      </fieldset>
+      {(bruker(d, "utstyr") || bruker(d, "sja")) && (
+        <fieldset><legend>Utstyr og HMS-kort</legend>
+          <div className="row">
+            {bruker(d, "utstyr") && (
+              <label className="field"><span className="label">Utstyrskonto i Visma</span>
+                <select value={a.utstyr_prosjekt_id ?? ""} onChange={(e) => lagre(a, { utstyr_prosjekt_id: e.target.value || null })}>
+                  <option value="">Ingen</option>
+                  {kontoer.map((p) => <option key={p.id} value={p.id} disabled={d.ansatte.some((x) => x.id !== a.id && x.utstyr_prosjekt_id === p.id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</option>)}
+                </select></label>
+            )}
+            {tekst("hms_kort_nr", "HMS-kort (nummer)")}
+            <label className="field kort"><span className="label">HMS-kort gyldig til</span>
+              <input type="date" defaultValue={a.hms_kort_gyldig ?? ""} onBlur={(e) => { const v = e.target.value || null; if (v !== (a.hms_kort_gyldig ?? null)) lagre(a, { hms_kort_gyldig: v }); }} /></label>
+          </div>
+          {hmsUtlopt && <span className="small" style={{ color: "var(--warn)" }}>HMS-kortet har gått ut.</span>}
+        </fieldset>
+      )}
+    </div>
+  );
+}
+
+/** Hvilke deler av appen bedriften bruker. Det som slås av, forsvinner fra menyene for alle, men ingenting slettes. */
+function ModulOppsett() {
+  const { d, kjor } = useApp();
+  const av = new Set(d.modulerAv ?? []);
+  const sett = (m: Modul, paa: boolean) => {
+    const ny = new Set(av);
+    if (paa) ny.delete(m); else ny.add(m);
+    const navn = MODULER.find((x) => x.id === m)?.navn ?? m;
+    kjor(() => api.lagreModuler([...ny]), paa ? `${navn} er slått på` : `${navn} er slått av`);
+  };
+  return (
+    <section className="panel" id="opp-deler">
+      <h2>Deler av appen</h2>
+      <p className="small muted">Slå av det dere ikke bruker, så blir appen enklere for de ansatte. Det som slås av, forsvinner fra menyene for alle, men ingenting slettes – slår du det på igjen, ligger alt der som før. Timer, prosjekter, ferie og fravær, lønn og oppsett er alltid med.</p>
+      <ul className="modul-liste">
+        {MODULER.map((m) => (
+          <li key={m.id}>
+            <label className="modul-valg">
+              <input type="checkbox" role="switch" checked={!av.has(m.id)} onChange={(e) => sett(m.id, e.target.checked)} aria-label={m.navn} />
+              <span><b>{m.navn}</b><span className="small muted">{m.hva}</span></span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Utstyrskonto per ansatt (prosjektet i Visma der verktøy og arbeidstøy føres) og grenser per år */
-function UtstyrOppsett({ lagre }: { lagre: (a: Ansatt, e: Partial<Ansatt>) => Promise<boolean> }) {
+function UtstyrOppsett() {
   const { d, kjor } = useApp();
   const [kv, setKv] = useState<Kvoter>(() => structuredClone(d.utstyrGrenser?.kvoter ?? STANDARD_KVOTER));
   const sett = (type: string, felt: "antall" | "aar", v: number) => setKv((x) => ({ ...x, [type]: { ...(x[type] ?? { antall: 0, aar: 1 }), [felt]: v } }));
-  const kontoer = d.prosjekter.filter((p) => /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn) || d.ansatte.some((a) => a.utstyr_prosjekt_id === p.id));
   return (
-    <section className="panel">
-      <h2>Utstyr: verktøy og arbeidstøy</h2>
+    <section className="panel" id="opp-utstyr">
+      <h2>Utstyr: kvoter for arbeidstøy</h2>
       <p className="small muted">Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy, verneutstyr eller forbruk. Kvotene gjelder per ansatt i en rullerende periode. Øvrig verneutstyr (hansker, briller, hørselvern) gis etter behov og har ingen kvote. Håndverktøy byttes nytt mot gammelt.</p>
       <form onSubmit={(e) => { e.preventDefault(); kjor(() => api.settUtstyrKvoter(kv), "Kvotene er lagret"); }}>
         <div className="scroll" style={{ border: 0 }}>
@@ -172,23 +256,7 @@ function UtstyrOppsett({ lagre }: { lagre: (a: Ansatt, e: Partial<Ansatt>) => Pr
         </div>
         <div className="row"><button className="btn">Lagre kvoter</button><span className="small muted">0 = ingen kvote for det plagget.</span></div>
       </form>
-      <div className="scroll" style={{ border: 0 }}>
-        <table className="tbl">
-          <thead><tr><th>Ansatt</th><th>Utstyrskonto i Visma</th></tr></thead>
-          <tbody>
-            {sorterAnsatte(d).filter((a) => a.aktiv).map((a) => (
-              <tr key={`${a.id}-${a.utstyr_prosjekt_id}`}>
-                <td>{a.navn}</td>
-                <td><select aria-label={`Utstyrskonto ${a.navn}`} value={a.utstyr_prosjekt_id ?? ""} onChange={(e) => lagre(a, { utstyr_prosjekt_id: e.target.value || null })}>
-                  <option value="">Ingen</option>
-                  {kontoer.map((p) => <option key={p.id} value={p.id} disabled={d.ansatte.some((x) => x.id !== a.id && x.utstyr_prosjekt_id === p.id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</option>)}
-                </select></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="small muted" style={{ margin: 0 }}>Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.</p>
+      <p className="small muted" style={{ margin: 0 }}>Utstyrskontoen velges på hver ansatt under «Ansatte». Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.</p>
     </section>
   );
 }
@@ -252,8 +320,8 @@ function SvennImport() {
   };
 
   return (
-    <section className="panel">
-      <h2>Import fra Svenn</h2>
+    <div className="oppsett-under">
+      <h3>Timer fra Svenn</h3>
       <p className="small muted">Hent inn timer fra Svenn som statistikk på prosjektene. I Svenn: <b>Rapporter → Timeliste</b>, velg periode og eksporter til <b>Excel</b>. Last opp fila her, sjekk at hvert Svenn-prosjekt peker på riktig prosjekt, og importer. Timene legges inn som godkjent og merket «Fra Svenn». Valgene huskes til neste gang, og en ny import av samme periode erstatter den forrige.</p>
       <label className="btn">Velg Excel-fil fra Svenn
         <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(e) => { velgFil(e.target.files?.[0]); e.target.value = ""; }} />
@@ -309,7 +377,7 @@ function SvennImport() {
           </div>
         </>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -379,8 +447,8 @@ function SvennDokumentasjon() {
   };
 
   return (
-    <section className="panel">
-      <h2>Dokumentasjon fra Svenn</h2>
+    <div className="oppsett-under">
+      <h3>Dokumentasjon fra Svenn</h3>
       <p className="small muted">Bilder og PDF-er fra prosjektene i Svenn. Last opp arkivet <b>svenn-dokumentasjon.zip</b>, sjekk prosjektene, og importer. Bildene havner under Bilder på prosjektet med mappe og dato fra Svenn, PDF-ene under FDV/dokumenter. Filer som allerede er importert hoppes over, så arkivet kan lastes opp på nytt.</p>
       <label className="btn">Velg arkiv fra Svenn (zip)
         <input type="file" accept=".zip,application/zip" hidden onChange={(e) => { velgFil(e.target.files?.[0]); e.target.value = ""; }} />
@@ -417,6 +485,6 @@ function SvennDokumentasjon() {
           </div>
         </>
       )}
-    </section>
+    </div>
   );
 }

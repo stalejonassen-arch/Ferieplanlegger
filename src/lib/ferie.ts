@@ -79,6 +79,8 @@ export interface Data {
   oppgaver?: import("./plan").Oppgave[];
   leveranser?: import("./plan").Leveranse[];
   materialer?: import("./plan").Materiale[];
+  /** Deler av appen leder har slått av */
+  modulerAv?: string[];
   /** Sjekklister, SJA og bestillinger */
   sjekklister?: import("./kvalitet").Sjekkliste[];
   sja?: import("./kvalitet").Sja[];

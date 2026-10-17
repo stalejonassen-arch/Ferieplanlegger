@@ -14,6 +14,7 @@ import { Lonn } from "./views/Lonn";
 import { Tidsplan } from "./views/Plan";
 import { Leveranseoversikt } from "./views/Materiell";
 import { Bestillingsoversikt } from "./views/Bestilling";
+import { bruker, type Modul } from "./lib/moduler";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
@@ -206,18 +207,26 @@ export function App() {
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
-  const faner: [Fane, string][] = [["timer", "Timer"], ["chat", "Chat"], ["prosjekter", "Prosjekter"], ["plan", leder || meg?.prosjektleder ? "Butikk/prosjektleder" : "Plan"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const planlegger = leder || !!meg?.prosjektleder;
+  const b = (m: Modul) => bruker(d, m);
+  const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling")));
+  const faner: [Fane, string][] = [["timer", "Timer"], ...(b("chat") ? [["chat", "Chat"] as [Fane, string]] : []), ["prosjekter", "Prosjekter"],
+    ...(visPlanFane ? [["plan", planlegger ? "Butikk/prosjektleder" : "Plan"] as [Fane, string]] : []),
+    ...(b("avvik") ? [["avvik", "Avvik"] as [Fane, string]] : []),
+    ...(b("utstyr") ? [["utstyr", "Utstyr"] as [Fane, string]] : b("kurs") ? [["kurs", "Kurs og bevis"] as [Fane, string]] : []),
+    ...(b("rapporter") ? [["rapporter", "Rapporter"] as [Fane, string]] : []),
+    ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
-  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" || fane === "personvern" || fane === "vilkar" ? fane : "timer";
+  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || (fane === "kurs" && bruker(d, "kurs")) || fane === "personvern" || fane === "vilkar" ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
   const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
   const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
   // Butikk/prosjektleder: nye bestillinger. Alle andre: SJA de ikke har kvittert på.
-  const planVarsel = (leder || meg?.prosjektleder) ? (d.bestillinger ?? []).filter((b) => b.status === "ny").length
-    : (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length;
+  const planVarsel = planlegger ? (bruker(d, "bestilling") ? (d.bestillinger ?? []).filter((x) => x.status === "ny").length : 0)
+    : bruker(d, "sja") ? (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length : 0;
   const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
@@ -264,20 +273,20 @@ export function App() {
           <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg. <a href="https://bygglogg.app" target="_blank" rel="noopener">Les mer om ByggLogg</a></span>{import.meta.env.VITE_SUPABASE_URL && PROFIL.id === "demo" && !/^(www\.)?bygglogg\.app$/.test(location.hostname) && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
-        {nyeRapporter[0] && aktiv !== "rapporter" && (
+        {nyeRapporter[0] && aktiv !== "rapporter" && b("rapporter") && (
           <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
             <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>
         )}
 
 
-        {iUtstyr && (
+        {iUtstyr && b("utstyr") && b("kurs") && (
           <nav className="tabs undertabs" role="tablist">
             <button role="tab" aria-selected={aktiv === "utstyr"} onClick={() => velg("utstyr")}>Utstyr</button>
             <button role="tab" aria-selected={aktiv === "kurs"} onClick={() => velg("kurs")}>Kurs og bevis{kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}</button>
           </nav>
         )}
 
-        {aktiv === "timer" && <><VarselBanner /><Vaer /><KampanjeKort /><Timer /><KampanjerAv /></>}
+        {aktiv === "timer" && <><VarselBanner />{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
@@ -307,7 +316,7 @@ export function App() {
           </div>
         )}
         {aktiv === "lonn" && <Lonn />}
-        {aktiv === "plan" && <>{(leder || meg?.prosjektleder) && <Bestillingsoversikt />}<Tidsplan />{(leder || meg?.prosjektleder) && <Leveranseoversikt />}</>}
+        {aktiv === "plan" && <>{planlegger && b("bestilling") && <Bestillingsoversikt />}{b("plan") && <Tidsplan />}{planlegger && b("materiell") && <Leveranseoversikt />}</>}
         {aktiv === "oppsett" && <Oppsett />}
         {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
         {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}

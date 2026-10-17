@@ -1277,3 +1277,30 @@ header.top select.temavalg option { color: #10162E; }
 .sk-knapp[aria-pressed="true"].na { background: var(--muted); border-color: var(--muted); color: #fff; }
 .sk-knapp:disabled { cursor: default; opacity: .85; }
 .sk-kommentar { flex-basis: 100%; }
+
+/* ---------- Deler av appen (oppsett) ---------- */
+.modul-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.modul-valg { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.modul-valg:has(input:not(:checked)) { background: var(--sunk); opacity: .75; }
+.modul-valg input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.modul-valg > span { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- Oppsett ---------- */
+.oppsett-meny { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.oppsett-meny a { padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; font-weight: 600; color: var(--fg); text-decoration: none; }
+.ansatt-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ansatt-liste > li { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.ansatt-liste > li.inaktiv { opacity: .6; }
+.ansatt-liste > li.aapen { border-color: var(--accent); }
+.ansatt-topp { display: flex; gap: 10px; align-items: center; width: 100%; padding: 10px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ansatt-navn { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ansatt-navn .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ansatt-merker { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ansatt-pil { color: var(--muted); }
+.ansatt-kort { padding: 4px 12px 12px; display: grid; gap: 10px; }
+.ansatt-kort fieldset { border: 0; border-top: 1px solid var(--line-soft); padding: 10px 0 0; margin: 0; display: grid; gap: 8px; }
+.ansatt-kort legend { font-weight: 700; font-size: 14px; padding: 0 6px 0 0; }
+.hake { display: flex; gap: 8px; align-items: flex-start; font-size: 14.5px; cursor: pointer; }
+.hake input { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+.oppsett-svenn > summary { cursor: pointer; list-style: revert; }
+.oppsett-under { display: grid; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft); }

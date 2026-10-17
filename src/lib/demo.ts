@@ -465,6 +465,7 @@ export function demoApi(): Api {
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async settMittSprak(sprak) { const m = meg(); if (m) m.sprak = sprak; endret(); },
     async settMittTema(tema) { const m = meg(); if (m) m.tema = tema; endret(); },
+    async lagreModuler(av) { if (!leder()) throw new Error("Bare leder kan endre hvilke deler av appen som brukes."); d.modulerAv = [...new Set(av)]; endret(); },
     async lagreOppgave(o) {
       if (!planlegger()) throw new Error("Bare leder og prosjektleder kan legge inn arbeid i planen.");
       if (o.til < o.fra) throw new Error("Sluttdatoen er før startdatoen.");
