@@ -1,6 +1,7 @@
 // Demomodus: samme oppførsel som databasen, men i minnet i nettleseren.
 // Brukes når appen kjøres uten Supabase-nøkler.
 import type { Leveranse, Materiale, Oppgave } from "./plan";
+import type { Bestilling, Sja, Sjekkliste } from "./kvalitet";
 import type { Api, FdvDok, FdvVare } from "./api";
 import type { Lest, Melding } from "./chat";
 import type { Ansatt, Data, Soknad } from "./ferie";
@@ -99,7 +100,34 @@ function demoPlan(m: string): Pick<Data, "oppgaver" | "leveranser" | "materialer
     v("v3", "l2", "Våtromsplate 12 mm 620x2400", 14, "stk", false), v("v4", "l2", "Smøremembran 7 kg", 2, "spann", false),
     v("v5", "l3", "Flis 30x60 grå", 9, "m2", false), v("v6", "l3", "Flislim hvit 20 kg", 4, "sekk", false),
   ];
-  return { oppgaver, leveranser, materialer };
+  return { oppgaver, leveranser, materialer, ...demoKvalitet(m) };
+}
+
+/** Sjekkliste, SJA og en bestilling i demoen */
+function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestillinger"> {
+  const naa = new Date().toISOString();
+  const sjekklister: Sjekkliste[] = [{
+    id: "sk1", prosjekt_id: "p2", navn: "Våtrom – membran og sluk", mal: "vatrom", status: "pagaar", opprettet_av: "snekker3", opprettet: naa, endret: naa, signert_av: null, signert_tid: null,
+    punkter: [
+      { tekst: "Underlaget er rent, tørt og plant før membran", svar: "ok" },
+      { tekst: "Fall mot sluk er kontrollert i dusjsonen", svar: "ok" },
+      { tekst: "Sluk er montert etter produsentens anvisning, og klemring eller mansjett er tett", svar: "ok" },
+      { tekst: "Alle rørgjennomføringer har mansjett", svar: "avvik", kommentar: "Mangler mansjett på varmtvann – bestilt" },
+      { tekst: "Membranen er påført i riktig tykkelse (målt)", svar: null },
+      { tekst: "Tørketiden er overholdt før flislegging", svar: null },
+    ],
+  }];
+  const sja: Sja[] = [{
+    id: "sja1", prosjekt_id: "p1", dato: addDays(m, 1), arbeid: "Demontere og montere vinduer i 2. etasje", verneutstyr: "Hjelm, vernebriller, hansker",
+    risikoer: [{ fare: "Fall fra høyde (tak, stillas, stige)", tiltak: "Stillas med rekkverk, ikke stige" }, { fare: "Kutt og stikk fra verktøy", tiltak: "Kuttsikre hansker ved glass" }],
+    deltakere: ["snekker2", "snekker5"], kvittert: { snekker2: naa }, opprettet_av: "stale", opprettet: naa,
+  }];
+  const bestillinger: Bestilling[] = [{
+    id: "b1", prosjekt_id: "p2", bestilt_av: "mads", onsket_dato: addDays(m, 2), merknad: "Leveres på byggeplassen før kl. 10",
+    linjer: [{ beskrivelse: "Rørmansjett 15 mm", antall: 2, enhet: "stk" }, { beskrivelse: "Skruer 5x50 rustfri", antall: 1, enhet: "pk" }],
+    status: "ny", svar: "", behandlet_av: null, leveranse_id: null, opprettet: naa, endret: naa,
+  }];
+  return { sjekklister, sja, bestillinger };
 }
 
 function demoUtstyr(): Utstyr[] {
@@ -268,7 +296,7 @@ export function demoApi(): Api {
     },
     async lastOppBilde(fil, til) {
       const sti = URL.createObjectURL(fil);
-      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
+      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
       if (til.svenn_id) svennFiler.add(til.svenn_id);
       endret();
     },
@@ -487,6 +515,57 @@ export function demoApi(): Api {
     },
     async slettMateriale(id) { if (!planlegger()) throw new Error("Bare leder og prosjektleder kan slette."); d.materialer = (d.materialer ?? []).filter((x) => x.id !== id); endret(); },
     async settMaterialeLevert(id, levert) { const m = (d.materialer ?? []).find((x) => x.id === id); if (m) { m.levert = levert; endret(); } },
+    async nySjekkliste(prosjekt_id, navn, mal, punkter) {
+      const id = nyId(), naa = new Date().toISOString();
+      (d.sjekklister ??= []).push({ id, prosjekt_id, navn: navn.trim(), mal, punkter: punkter.map((tekst) => ({ tekst, svar: null, kommentar: "" })), status: "pagaar", opprettet_av: meg()?.id ?? null, opprettet: naa, endret: naa, signert_av: null, signert_tid: null });
+      endret(); return id;
+    },
+    async lagreSjekkliste(id, x) {
+      const s = (d.sjekklister ?? []).find((y) => y.id === id);
+      if (!s) return;
+      if (s.status === "signert" && !planlegger()) throw new Error("Sjekklisten er signert. Be leder eller prosjektleder åpne den igjen.");
+      if (x.status === "signert" && (x.punkter ?? s.punkter).some((p) => !p.svar)) throw new Error("Alle punktene må besvares før sjekklisten kan signeres.");
+      Object.assign(s, x, { endret: new Date().toISOString() });
+      if (x.status === "signert") { s.signert_av = meg()?.id ?? null; s.signert_tid = new Date().toISOString(); }
+      if (x.status === "pagaar") { s.signert_av = null; s.signert_tid = null; }
+      endret();
+    },
+    async slettSjekkliste(id) { d.sjekklister = (d.sjekklister ?? []).filter((x) => x.id !== id); endret(); },
+    async lagreSja(x) {
+      const liste = (d.sja ??= []);
+      const g = x.id ? liste.find((y) => y.id === x.id) : undefined;
+      if (g) { const nytt = g.arbeid !== x.arbeid || JSON.stringify(g.risikoer) !== JSON.stringify(x.risikoer) || g.verneutstyr !== x.verneutstyr || g.dato !== x.dato; Object.assign(g, x); if (nytt) g.kvittert = {}; }
+      else liste.unshift({ ...x, id: nyId(), kvittert: {}, opprettet_av: meg()?.id ?? null, opprettet: new Date().toISOString() });
+      endret();
+    },
+    async kvitterSja(id) {
+      const s = (d.sja ?? []).find((x) => x.id === id), m = meg();
+      if (!s || !m || !s.deltakere.includes(m.id)) throw new Error("Du står ikke som deltaker på denne SJA-en.");
+      s.kvittert = { ...s.kvittert, [m.id]: new Date().toISOString() }; endret();
+    },
+    async slettSja(id) { d.sja = (d.sja ?? []).filter((x) => x.id !== id); endret(); },
+    async lagreMittHmsKort(nr, gyldig) { const m = meg(); if (m) { m.hms_kort_nr = nr.trim(); m.hms_kort_gyldig = gyldig; endret(); } },
+    async bestill(x) {
+      const liste = (d.bestillinger ??= []);
+      const g = x.id ? liste.find((y) => y.id === x.id) : undefined;
+      if (g) { if (g.status !== "ny") throw new Error("Bestillingen er tatt i mot av butikken og kan ikke endres."); Object.assign(g, x); }
+      else { if (!x.linjer.length) throw new Error("Legg inn minst én vare."); const naa = new Date().toISOString(); liste.unshift({ ...x, id: nyId(), bestilt_av: meg()?.id ?? null, status: "ny", svar: "", behandlet_av: null, leveranse_id: null, opprettet: naa, endret: naa }); }
+      endret();
+    },
+    async settBestillingStatus(id, status, svar) {
+      if (!planlegger()) throw new Error("Bare butikk/prosjektleder kan endre status.");
+      const b = (d.bestillinger ?? []).find((x) => x.id === id); if (!b) return;
+      b.status = status; if (svar != null) b.svar = svar; b.behandlet_av = meg()?.id ?? null; endret();
+    },
+    async slettBestilling(id) { d.bestillinger = (d.bestillinger ?? []).filter((x) => x.id !== id); endret(); },
+    async bestillingTilLeveranse(b, navn) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre materiallisten.");
+      const levId = nyId();
+      (d.leveranser ??= []).push({ id: levId, prosjekt_id: b.prosjekt_id, navn, rekkefolge: 99, dato: b.onsket_dato, status: "bestilt", leverandor: "Eget lager", notat: b.merknad });
+      for (const [i, l] of b.linjer.entries()) (d.materialer ??= []).push({ id: nyId(), prosjekt_id: b.prosjekt_id, leveranse_id: levId, rekkefolge: i, varenr: l.nobb ?? "", nobb_nr: l.nobb ?? "", beskrivelse: l.beskrivelse, antall: l.antall, enhet: l.enhet, notat: "", levert: false });
+      const g = (d.bestillinger ?? []).find((x) => x.id === b.id); if (g) { g.leveranse_id = levId; if (g.status === "ny") g.status = "plukkes"; }
+      endret();
+    },
     async flyttMaterialer(ider, leveranseId) { if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre materiallisten."); for (const m of d.materialer ?? []) if (ider.includes(m.id)) m.leveranse_id = leveranseId; endret(); },
     async lagreKampanje(k, nyeSider = [], fjern = []) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
@@ -516,7 +595,7 @@ export function demoApi(): Api {
       const a = d.prosjekter.find((x) => x.id === fra), b = d.prosjekter.find((x) => x.id === til);
       if (!a || !b) throw new Error("Fant ikke prosjektet.");
       if (a.id === b.id) throw new Error("Velg et annet prosjekt.");
-      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? [], d.oppgaver ?? [], d.leveranser ?? [], d.materialer ?? []] as { prosjekt_id?: string | null }[][])
+      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? [], d.oppgaver ?? [], d.leveranser ?? [], d.materialer ?? [], d.sjekklister ?? [], d.sja ?? [], d.bestillinger ?? []] as { prosjekt_id?: string | null }[][])
         for (const x of liste) if (x.prosjekt_id === fra) x.prosjekt_id = til;
       if (!b.adresse && a.adresse) b.adresse = a.adresse;
       if (b.estimert_timer == null && a.estimert_timer != null) b.estimert_timer = a.estimert_timer;

@@ -85,6 +85,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0047_slaa_sammen_prosjekter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0048_arbeidsplan_materiell.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0049_oppgave_push.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0050_kvalitet_hms_bestilling.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -766,5 +767,58 @@ describe("arbeidsplan og materialliste", () => {
     expect((await as<any>(JIM, "select public.er_leder() as x"))[0].x).toBe(false);
     await as(STALE, "update public.ansatte set prosjektleder = false where epost = $1", [JIM]);
     await expect(as(JIM, "insert into public.leveranser (prosjekt_id, navn) values ($1, 'Igjen')", [p.id])).rejects.toThrow();
+  });
+});
+
+describe("sjekklister, SJA, HMS-kort og bestillinger", () => {
+  const q = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("sjekkliste: alle punkter må besvares, signert er låst for ansatte, leder kan åpne igjen", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Sjekkliste-prosjekt') returning id");
+    const punkter = JSON.stringify([{ tekst: "Membran rundt sluk" }, { tekst: "Tykkelse målt" }]);
+    const [s] = await as<any>(JIM, "insert into public.sjekklister (prosjekt_id, navn, punkter, status) values ($1, 'Våtrom', $2::jsonb, 'signert') returning id, status, opprettet_av", [p.id, punkter]);
+    expect(s.status).toBe("pagaar");
+    await expect(as(JIM, "update public.sjekklister set status = 'signert' where id = $1", [s.id])).rejects.toThrow(/besvares/);
+    const svar = JSON.stringify([{ tekst: "Membran rundt sluk", svar: "ok" }, { tekst: "Tykkelse målt", svar: "avvik", kommentar: "0,8 mm, smurt på nytt" }]);
+    await as(JIM, "update public.sjekklister set punkter = $2::jsonb, status = 'signert' where id = $1", [s.id, svar]);
+    const [etter] = await q("select status, signert_av, signert_tid from public.sjekklister where id = $1", [s.id]);
+    expect(etter.status).toBe("signert");
+    expect(etter.signert_av).toBe(await idOf("Jim Kato"));
+    await expect(as(JIM, "update public.sjekklister set navn = 'Endret' where id = $1", [s.id])).rejects.toThrow(/signert/);
+    expect(await as(JIM, "delete from public.sjekklister where id = $1 returning id", [s.id])).toHaveLength(0);
+    await as(STALE, "update public.sjekklister set status = 'pagaar' where id = $1", [s.id]);
+    expect((await q("select signert_av from public.sjekklister where id = $1", [s.id]))[0].signert_av).toBeNull();
+  });
+  it("SJA: bare deltakere kvitterer, og endret innhold krever ny kvittering", async () => {
+    const jim = await idOf("Jim Kato"), mads = await idOf("Mads Kjerstad");
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('SJA-prosjekt') returning id");
+    const risiko = JSON.stringify([{ fare: "Fall fra tak", tiltak: "Sele og stillas med rekkverk" }]);
+    const [s] = await as<any>(STALE, "insert into public.sja (prosjekt_id, arbeid, risikoer, deltakere) values ($1, 'Legge takstein', $2::jsonb, array[$3::uuid]) returning id", [p.id, risiko, jim]);
+    await expect(as(MADS, "select public.kvitter_sja($1)", [s.id])).rejects.toThrow(/deltaker/);
+    await as(JIM, "select public.kvitter_sja($1)", [s.id]);
+    expect(Object.keys((await q("select kvittert from public.sja where id = $1", [s.id]))[0].kvittert)).toEqual([jim]);
+    await expect(as(JIM, "update public.sja set kvittert = '{}'::jsonb, arbeid = 'Jim endret' where id = $1", [s.id])).rejects.toThrow(/Bare den som laget/);
+    await as(STALE, "update public.sja set deltakere = array[$2::uuid, $3::uuid] where id = $1", [s.id, jim, mads]);
+    expect(Object.keys((await q("select kvittert from public.sja where id = $1", [s.id]))[0].kvittert)).toEqual([jim]);
+    await as(STALE, "update public.sja set arbeid = 'Legge takstein og beslag' where id = $1", [s.id]);
+    expect((await q("select kvittert from public.sja where id = $1", [s.id]))[0].kvittert).toEqual({});
+  });
+  it("HMS-kort: hver ansatt kan lagre sitt eget", async () => {
+    await as(JIM, "select public.lagre_mitt_hms_kort(' AB123456 ', '2028-05-01')");
+    const [a] = await q("select hms_kort_nr, hms_kort_gyldig::text g from public.ansatte where epost = $1", [JIM]);
+    expect(a).toEqual({ hms_kort_nr: "AB123456", g: "2028-05-01" });
+  });
+  it("bestilling: snekkeren bestiller og retter til butikken tar i mot; butikken styrer status", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Bestilling-prosjekt') returning id");
+    const linjer = JSON.stringify([{ beskrivelse: "Skruer 5x50", antall: 2, enhet: "pk" }]);
+    await expect(as(JIM, "insert into public.bestillinger (prosjekt_id, linjer) values ($1, '[]'::jsonb)", [p.id])).rejects.toThrow();
+    const [b] = await as<any>(JIM, "insert into public.bestillinger (prosjekt_id, linjer, status) values ($1, $2::jsonb, 'levert') returning id, status", [p.id, linjer]);
+    expect(b.status).toBe("ny");
+    await as(JIM, "update public.bestillinger set merknad = 'Haster' where id = $1", [b.id]);
+    await as(JIM, "update public.bestillinger set status = 'levert' where id = $1", [b.id]);
+    expect((await q("select status, merknad from public.bestillinger where id = $1", [b.id]))[0]).toEqual({ status: "ny", merknad: "Haster" });
+    await expect(as(MADS, "update public.bestillinger set merknad = 'X' where id = $1", [b.id])).rejects.toThrow(/tatt i mot/);
+    await as(STALE, "update public.bestillinger set status = 'plukkes' where id = $1", [b.id]);
+    await expect(as(JIM, "update public.bestillinger set merknad = 'Etterpå' where id = $1", [b.id])).rejects.toThrow(/tatt i mot/);
+    expect((await q("select behandlet_av from public.bestillinger where id = $1", [b.id]))[0].behandlet_av).toBe((await q("select id from public.ansatte where epost = $1", [STALE]))[0].id);
   });
 });

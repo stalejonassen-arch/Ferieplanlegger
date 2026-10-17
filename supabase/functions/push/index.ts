@@ -84,12 +84,50 @@ async function oppgave(id: string) {
   return Response.json(r);
 }
 
+/** Bestilling fra byggeplassen: ny → butikk/prosjektleder; klar, levert eller avvist → den som bestilte */
+async function bestilling(id: string) {
+  const { data: b } = await sb.from("bestillinger").select("id, bedrift_id, prosjekt_id, bestilt_av, status, linjer, svar, onsket_dato").eq("id", id).maybeSingle();
+  if (!b || !["ny", "klar", "levert", "avvist"].includes(b.status)) return new Response("ikke aktuelt");
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `bestilling:${b.status}`, id: b.id });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: p } = await sb.from("prosjekter").select("navn").eq("id", b.prosjekt_id).maybeSingle();
+  const { data: alle } = await sb.from("ansatte").select("id, navn, sprak, rolle, prosjektleder").eq("bedrift_id", b.bedrift_id).eq("aktiv", true);
+  const linjer = (b.linjer ?? []) as { beskrivelse: string; antall?: number; enhet?: string }[];
+  const varer = kort(linjer.map((l) => `${l.antall ? `${l.antall} ${l.enhet ?? ""} `.replace("  ", " ") : ""}${l.beskrivelse}`).join(", "), 150);
+  if (b.status === "ny") {
+    const bestiller = (alle ?? []).find((a) => a.id === b.bestilt_av)?.navn ?? "Byggeplassen";
+    const mottakere = (alle ?? []).filter((a) => (a.rolle === "leder" || a.prosjektleder) && a.id !== b.bestilt_av);
+    const r = await send(mottakere, (a) => ({
+      tittel: a.sprak === "pl" ? `Nowe zamówienie: ${kort(p?.navn ?? "", 40)}` : `Ny bestilling: ${kort(p?.navn ?? "", 40)}`,
+      tekst: `${bestiller}${b.onsket_dato ? ` (til ${dato(b.onsket_dato)})` : ""}: ${varer}`,
+      url: "/#plan", tag: `bestilling-${b.id}`,
+    }));
+    return Response.json(r);
+  }
+  const meg = (alle ?? []).filter((a) => a.id === b.bestilt_av);
+  const tekst: Record<string, [string, string]> = {
+    klar: ["Bestillingen er klar", "Zamówienie jest gotowe"],
+    levert: ["Bestillingen er levert", "Zamówienie dostarczone"],
+    avvist: ["Bestillingen kan ikke leveres", "Zamówienie nie może zostać zrealizowane"],
+  };
+  const r = await send(meg, (a) => ({
+    tittel: tekst[b.status]![a.sprak === "pl" ? 1 : 0],
+    tekst: [p?.navn, b.svar || varer].filter(Boolean).join(" · "),
+    url: "/#prosjekter", tag: `bestilling-${b.id}`,
+  }));
+  return Response.json(r);
+}
+
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
   if (type === "oppgave") return oppgave(id);
+  if (type === "bestilling") return bestilling(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });

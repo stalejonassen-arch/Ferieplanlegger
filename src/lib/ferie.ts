@@ -26,6 +26,9 @@ export interface Ansatt {
   ansattnr?: string | null;
   /** Kan planlegge, dele ut arbeid og styre materiell uten å være leder (f.eks. butikk/prosjektleder) */
   prosjektleder?: boolean;
+  /** HMS-kort (byggekort) */
+  hms_kort_nr?: string;
+  hms_kort_gyldig?: string | null;
   /** Språk i appen: nb (norsk) eller pl (polsk) */
   sprak?: "nb" | "pl";
   tema?: Tema;
@@ -76,6 +79,10 @@ export interface Data {
   oppgaver?: import("./plan").Oppgave[];
   leveranser?: import("./plan").Leveranse[];
   materialer?: import("./plan").Materiale[];
+  /** Sjekklister, SJA og bestillinger */
+  sjekklister?: import("./kvalitet").Sjekkliste[];
+  sja?: import("./kvalitet").Sja[];
+  bestillinger?: import("./kvalitet").Bestilling[];
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
   /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */

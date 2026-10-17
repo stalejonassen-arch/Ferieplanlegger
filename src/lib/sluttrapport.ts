@@ -21,6 +21,8 @@ export interface RapportData {
   tillegg: { tittel: string; beskrivelse?: string; detaljer?: string; godkjent?: string; signatur?: string | null }[];
   bilder: { data: Uint8Array; tekst?: string }[];
   varer: { navn: string; nobb: string; antall: string; lenke: string }[];
+  /** Signerte sjekklister (egenkontroll) */
+  egenkontroll?: { navn: string; signert: string; punkter: { tekst: string; svar: "ok" | "avvik" | "na"; kommentar?: string }[] }[];
   vedlegg: { navn: string; data: Uint8Array }[];
   boligmappa: boolean;
 }
@@ -229,6 +231,33 @@ export async function lagSluttrapport(d: RapportData, fonter?: { R: Uint8Array; 
       i++;
     }
     if (i % 2 === 1) y -= bh + 40;
+  }
+
+  if (d.egenkontroll?.length) {
+    overskrift("Egenkontroll", 90);
+    avsnitt("Sjekklistene er fylt ut og signert på byggeplassen underveis i arbeidet.", 10, R, DEMPET);
+    y -= 6;
+    const SVAR = { ok: "OK", avvik: "Avvik", na: "Ikke aktuelt" } as const;
+    const FARGE = { ok: rgb(0.12, 0.5, 0.25), avvik: rgb(0.75, 0.2, 0.15), na: DEMPET } as const;
+    for (const k of d.egenkontroll) {
+      plass(60);
+      avsnitt(k.navn, 11.5, B);
+      avsnitt(k.signert, 9, R, DEMPET);
+      y -= 4;
+      for (const pt of k.punkter) {
+        const linjer = brytLinjer(pt.tekst, R, 10, BREDDE - 90);
+        const kom = pt.kommentar ? brytLinjer(pt.kommentar, R, 9, BREDDE - 100) : [];
+        plass(linjer.length * 13 + kom.length * 11 + 8);
+        linjer.forEach((l, n) => side.drawText(l, { x: M + 8, y: y - n * 13, size: 10, font: R, color: TEKST }));
+        const sv = SVAR[pt.svar] ?? "";
+        side.drawText(sv, { x: A4.w - M - B.widthOfTextAtSize(sv, 9.5), y, size: 9.5, font: B, color: FARGE[pt.svar] ?? DEMPET });
+        y -= linjer.length * 13;
+        kom.forEach((l) => { side.drawText(l, { x: M + 18, y, size: 9, font: R, color: DEMPET }); y -= 11; });
+        side.drawLine({ start: { x: M, y: y + 4 }, end: { x: A4.w - M, y: y + 4 }, thickness: 0.3, color: LINJE });
+        y -= 6;
+      }
+      y -= 12;
+    }
   }
 
   if (d.varer.length || d.vedlegg.length) {
