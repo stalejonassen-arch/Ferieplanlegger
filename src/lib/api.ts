@@ -66,6 +66,8 @@ export interface Api {
   /** Mitt språk i appen */
   settMittSprak(sprak: "nb" | "pl"): Promise<void>;
   settMittTema(tema: Tema): Promise<void>;
+  /** Deler av appen som er slått av for bedriften */
+  lagreModuler(av: string[]): Promise<void>;
   /** Arbeidsplan: leder deler ut arbeid, den som har fått det endrer status */
   lagreOppgave(o: NyOppgave): Promise<void>;
   slettOppgave(id: string): Promise<void>;
@@ -260,6 +262,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         fravaer: fravaer.error ? [] : fravaer.data,
         ordrer: ordrer.error ? [] : (ordrer.data as any[]).map((o) => ({ ...o, fakturert: Number(o.fakturert), kostnad: Number(o.kostnad), transaksjonstype: Number(o.transaksjonstype), ordretype: Number(o.ordretype), kunde_nr: o.kunde_nr == null ? null : Number(o.kunde_nr) })),
         egetKundenr: b0.eget_kundenr == null ? null : Number(b0.eget_kundenr),
+        modulerAv: (b0.moduler_av as string[] | undefined) ?? [],
         timepris: b0.timepris == null ? null : Number(b0.timepris),
         fakturerteTimer: fakt.error ? [] : (fakt.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), fakturert: Number(x.fakturert), ikke_fakturert: Number(x.ikke_fakturert), pris: Number(x.pris) })),
         kompetanse: kompetanse.error ? [] : kompetanse.data,
@@ -513,6 +516,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
+    async lagreModuler(av) { ok(await sb.rpc("lagre_moduler", { av })); },
     async lagreOppgave(o) {
       const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}) };
       ok(o.id ? await sb.from("oppgaver").update(rad).eq("id", o.id) : await sb.from("oppgaver").insert(rad));

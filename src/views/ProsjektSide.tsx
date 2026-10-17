@@ -20,6 +20,7 @@ import { ProsjektPlan } from "./Plan";
 import { Materialliste } from "./Materiell";
 import { Mannskap, SjaDel, Sjekklister } from "./Kvalitet";
 import { BestillDel } from "./Bestilling";
+import { bruker, type Modul } from "../lib/moduler";
 
 type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
 
@@ -36,7 +37,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   };
   const [antallDok, setAntallDok] = useState<number | null>(null);
   useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
-  const deler: [Del, string, number | null][] = [
+  const alleDeler: [Del, string, number | null][] = [
     ["oversikt", "Oversikt", null],
     ["plan", "Plan", (d.oppgaver ?? []).filter((o) => o.prosjekt_id === p.id && o.status !== "ferdig").length || null],
     ["materiell", "Materiell", (d.leveranser ?? []).filter((l) => l.prosjekt_id === p.id && l.status !== "levert").length || null],
@@ -47,6 +48,12 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
     ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
   ];
+  const deler = alleDeler.filter(([x]) => {
+    // Deler leder har slått av for bedriften
+    const m: Partial<Record<Del, Modul[]>> = { plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
+      dagbok: ["dagbok"], tillegg: ["tillegg"], avvik: ["avvik"], okonomi: ["okonomi"], sluttdok: ["sluttdok"] };
+    return !m[x] || m[x]!.some((y) => bruker(d, y));
+  });
 
 
   return (
@@ -74,7 +81,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
       {del === "plan" && <ProsjektPlan p={p} />}
-      {del === "materiell" && <><BestillDel p={p} /><Materialliste p={p} /></>}
+      {del === "materiell" && <>{bruker(d, "bestilling") && <BestillDel p={p} />}{bruker(d, "materiell") && <Materialliste p={p} />}</>}
       {del === "egenkontroll" && <Sjekklister p={p} />}
       {del === "hms" && <><SjaDel p={p} /><Mannskap p={p} /></>}
       {del === "chat" && <section className="panel" style={{ padding: 0, overflow: "hidden" }}><Traad kanal={prosjektKanal(p.id)} hoyde={520} /></section>}

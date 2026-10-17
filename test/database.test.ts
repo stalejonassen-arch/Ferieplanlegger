@@ -86,6 +86,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0048_arbeidsplan_materiell.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0049_oppgave_push.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0050_kvalitet_hms_bestilling.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0051_moduler.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -820,5 +821,15 @@ describe("sjekklister, SJA, HMS-kort og bestillinger", () => {
     await as(STALE, "update public.bestillinger set status = 'plukkes' where id = $1", [b.id]);
     await expect(as(JIM, "update public.bestillinger set merknad = 'Etterpå' where id = $1", [b.id])).rejects.toThrow(/tatt i mot/);
     expect((await q("select behandlet_av from public.bestillinger where id = $1", [b.id]))[0].behandlet_av).toBe((await q("select id from public.ansatte where epost = $1", [STALE]))[0].id);
+  });
+});
+
+describe("deler av appen", () => {
+  it("bare leder slår av og på, og bare gyldige navn lagres", async () => {
+    await expect(as(JIM, "select public.lagre_moduler(array['chat'])")).rejects.toThrow(/Bare leder/);
+    await as(STALE, "select public.lagre_moduler(array['chat', 'vaer', 'chat', 'Ugyldig!', 'x'])");
+    expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual(["chat", "vaer"]);
+    await as(STALE, "select public.lagre_moduler(array[]::text[])");
+    expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual([]);
   });
 });
