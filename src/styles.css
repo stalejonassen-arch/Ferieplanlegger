@@ -1246,8 +1246,9 @@ header.top select.temavalg option { color: #10162E; }
 .plan-brikke.ferdig { opacity: .45; }
 .plan-brikke .p { font-size: 11px; opacity: .9; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plan-brikke .t { font-size: 12.5px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-.plan-ledig { width: 100%; border: 1px dashed var(--line); background: none; color: var(--muted); border-radius: 6px; padding: 4px; cursor: pointer; opacity: .5; }
-.plan-ledig:hover, .plan-ledig:focus-visible { opacity: 1; }
+.plan-ledig { width: 100%; min-height: 32px; border: 1px dashed var(--line); background: none; color: var(--accent, var(--muted)); font-size: 1.1rem; border-radius: 6px; padding: 4px; cursor: pointer; opacity: .75; }
+.plan-ledig.liten { min-height: 22px; font-size: .9rem; padding: 0; opacity: .45; margin-top: 2px; }
+.plan-ledig:hover, .plan-ledig:focus-visible { opacity: 1; border-style: solid; }
 .leveranse { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .leveranse.levert { background: color-mix(in srgb, var(--approved) 8%, transparent); }
 .leveranse-topp { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

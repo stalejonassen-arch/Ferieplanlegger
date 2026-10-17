@@ -1,6 +1,6 @@
 // Arbeidsplan: leder deler ut arbeid på prosjektene til de ansatte, med fra–til-dato.
 // Tidsplanen viser uka per ansatt (med ferie og fravær), og hver ansatt ser sine egne oppgaver øverst.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { addDays, borteDag, kortDato, sorterAnsatte } from "../lib/ferie";
@@ -190,6 +190,15 @@ export function Tidsplan() {
   const leder = usePlanlegger();
   const [uke, setUke] = useState(idag);
   const [skjema, setSkjema] = useState<null | (Partial<NyOppgave> & { id?: string })>(null);
+  const [skjemaNr, setSkjemaNr] = useState(0);
+  const skjemaRef = useRef<HTMLDivElement>(null);
+  const aapne = (s: Partial<NyOppgave> & { id?: string }) => { setSkjema(s); setSkjemaNr((n) => n + 1); };
+  // Skjemaet ligger under tabellen – rull ned til det så man ser at trykket virket
+  useEffect(() => {
+    if (!skjema || !skjemaRef.current) return;
+    skjemaRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    skjemaRef.current.querySelector<HTMLElement>("select, input")?.focus({ preventScroll: true });
+  }, [skjemaNr]); // eslint-disable-line react-hooks/exhaustive-deps
   const dager = ukeDager(uke);
   const alle = d.oppgaver ?? [];
   const ansatte = sorterAnsatte(d).filter((a) => a.aktiv);
@@ -239,13 +248,14 @@ export function Tidsplan() {
                         {os.map((o) => (
                           <button key={o.id} type="button" className={`plan-brikke${o.status === "ferdig" ? " ferdig" : ""}`} style={{ background: farge(o.prosjekt_id) }}
                             title={`${prosjekt(o.prosjekt_id)?.navn ?? ""}: ${o.tittel} (${periodeTekst(o)})`}
-                            onClick={() => leder && setSkjema({ ...o })} disabled={!leder}>
+                            onClick={() => leder && aapne({ ...o })} disabled={!leder}>
                             <span className="p">{prosjekt(o.prosjekt_id)?.navn ?? "Prosjekt"}</span>
                             <span className="t">{o.tittel}</span>
                           </button>
                         ))}
-                        {leder && !b && !os.length && i < 5 && (
-                          <button type="button" className="plan-ledig" aria-label={`Del ut arbeid til ${a.navn} ${DAG[i]}`} onClick={() => setSkjema({ ansatte: [a.id], fra: x, til: x })}>+</button>
+                        {leder && !b && (
+                          <button type="button" className={`plan-ledig${os.length || i > 4 ? " liten" : ""}`} title={`Planlegg arbeid for ${a.navn} ${DAG[i]?.toLowerCase()} ${Number(x.slice(8))}.`}
+                            aria-label={`Planlegg arbeid for ${a.navn} ${DAG[i]} ${Number(x.slice(8))}.`} onClick={() => aapne({ ansatte: [a.id], fra: x, til: x })}>+</button>
                         )}
                       </td>
                     );
@@ -255,12 +265,13 @@ export function Tidsplan() {
             </tbody>
           </table>
         </div>
-        {leder && !skjema && <div className="row"><button className="btn primary" onClick={() => setSkjema({ fra: dager[0]!, til: dager[4]! })}>+ Del ut arbeid</button></div>}
-        {leder && skjema && <OppgaveSkjema start={skjema} ferdig={() => setSkjema(null)} />}
+        {leder && !skjema && <div className="row"><button className="btn primary" onClick={() => aapne({ fra: dager[0]!, til: dager[4]! })}>+ Del ut arbeid</button></div>}
+        {leder && !skjema && <p className="muted small" style={{ margin: 0 }}>Trykk på + i en rute for å planlegge arbeid for den ansatte den dagen, eller på en jobb for å endre den.</p>}
+        <div ref={skjemaRef} style={{ scrollMarginTop: 70 }}>{leder && skjema && <OppgaveSkjema key={skjemaNr} start={skjema} ferdig={() => setSkjema(null)} />}</div>
         {leder && ikkeDelt.length > 0 && (
           <>
             <h3 style={{ marginBottom: 0 }}>Ikke delt ut ennå</h3>
-            <ol className="plan-liste">{sorterOppgaver(ikkeDelt).map((o) => <OppgaveKort key={o.id} o={o} visProsjekt rediger={() => setSkjema({ ...o })} />)}</ol>
+            <ol className="plan-liste">{sorterOppgaver(ikkeDelt).map((o) => <OppgaveKort key={o.id} o={o} visProsjekt rediger={() => aapne({ ...o })} />)}</ol>
           </>
         )}
       </section>

@@ -51,6 +51,7 @@ export const PL_TEKST: Record<string, string> = {
 "Du har ikke fått noe arbeid i planen nå.": "Nie masz teraz przydzielonej pracy w planie.",
 "Tidsplan": "Harmonogram",
 "+ Del ut arbeid": "+ Przydziel pracę",
+"Trykk på + i en rute for å planlegge arbeid for den ansatte den dagen, eller på en jobb for å endre den.": "Naciśnij + w polu, aby zaplanować pracę dla pracownika na ten dzień, albo na zadanie, aby je zmienić.",
 "Ikke delt ut ennå": "Jeszcze nie przydzielone",
 "Planlagt": "Zaplanowane",
 "Pågår": "W toku",
