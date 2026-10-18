@@ -319,7 +319,7 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
   .utskrift { border: 0 !important; padding: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
   .wrap > div:not(:has(.utskrift)) { display: none !important; }
   .rapport.utskrift { max-width: none !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
-  @page { @bottom-left { content: "N L Austnes AS · Sluttdokumentasjon"; font-size: 8pt; color: #5A6278; } @bottom-right { content: "Side " counter(page) " av " counter(pages); font-size: 8pt; color: #5A6278; } }
+  @page { @bottom-left { content: "Sluttdokumentasjon"; font-size: 8pt; color: #5A6278; } @bottom-right { content: "Side " counter(page) " av " counter(pages); font-size: 8pt; color: #5A6278; } }
   .rp-del h2 { break-after: avoid; }
   .rp-signatur { break-inside: avoid; }
   a { color: inherit; }
@@ -1214,3 +1214,118 @@ header.top select.temavalg option { color: #10162E; }
 :root[data-tema="thaugland"][data-tema="thaugland"][data-tema="thaugland"] .ferie-flate .btn.primary { background: #FFB300; color: #1D1D1B; border-color: #FFB300; }
 :root[data-tema="thaugland"] header.top { background: radial-gradient(500px 200px at 90% 0%, rgba(255, 179, 0, .25), transparent 62%), linear-gradient(135deg, #2B2B29, #1D1D1B 60%, #0E0E0D); box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .7); }
 :root[data-tema="thaugland"] .toppfelt header.top { background: none; box-shadow: none; }
+
+/* ---------- Arbeidsplan og materialliste ---------- */
+.plan-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.plan-oppgave { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--sunk); border-left: 4px solid var(--accent); }
+.plan-oppgave.ferdig { opacity: .65; }
+.plan-oppgave.ferdig b { text-decoration: line-through; }
+.plan-velg { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-person { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; cursor: pointer; background: var(--surface); }
+.plan-person.valgt { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); font-weight: 600; }
+.plan-person input { margin: 0; }
+.plan-tidslinje { display: flex; flex-direction: column; gap: 4px; }
+.plan-linje { display: grid; grid-template-columns: minmax(90px, 30%) 1fr; gap: 8px; align-items: center; }
+.plan-linje-navn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-linje-spor { position: relative; height: 14px; background: var(--sunk); border-radius: 7px; }
+.plan-linje-spor i { position: absolute; top: 0; bottom: 0; border-radius: 7px; opacity: .9; }
+.plan-linje-spor i.ferdig { opacity: .35; }
+.plan-linje-spor i.sen { outline: 2px solid var(--warn); }
+.plan-idag { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); }
+.plan-uke { table-layout: fixed; width: 100%; min-width: 820px; }
+.plan-uke th, .plan-uke td { vertical-align: top; padding-inline: 4px; }
+.plan-uke th:first-child { width: 130px; }
+.plan-uke th.helg { width: 64px; }
+.plan-uke th.helg, .plan-uke td.helg { background: color-mix(in srgb, var(--sunk) 60%, transparent); }
+.plan-uke th.idag, .plan-uke td.idag { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.plan-uke tr.meg .plan-navn { font-weight: 700; }
+.plan-navn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-borte { display: block; font-size: 12px; font-weight: 700; color: var(--muted); padding: 2px 6px; border-radius: 6px; background: repeating-linear-gradient(45deg, var(--sunk), var(--sunk) 4px, var(--hatch) 4px, var(--hatch) 8px); margin-bottom: 3px; }
+.plan-brikke { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; border: 0; border-radius: 6px; color: #fff; padding: 3px 6px; margin-bottom: 3px; font: inherit; cursor: pointer; }
+.plan-brikke:disabled { cursor: default; opacity: 1; }
+.plan-brikke.ferdig { opacity: .45; }
+.plan-brikke .p { font-size: 11px; opacity: .9; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-brikke .t { font-size: 12.5px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.plan-ledig { width: 100%; min-height: 32px; border: 1px dashed var(--line); background: none; color: var(--accent, var(--muted)); font-size: 1.1rem; border-radius: 6px; padding: 4px; cursor: pointer; opacity: .75; }
+.plan-ledig.liten { min-height: 22px; font-size: .9rem; padding: 0; opacity: .45; margin-top: 2px; }
+.plan-ledig:hover, .plan-ledig:focus-visible { opacity: 1; border-style: solid; }
+.leveranse { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.leveranse.levert { background: color-mix(in srgb, var(--approved) 8%, transparent); }
+.leveranse-topp { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.leveranse-nr { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--accent); color: var(--accent-ink); }
+.mat-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mat-liste li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+.mat-liste li.levert .mat-navn { text-decoration: line-through; color: var(--muted); }
+.mat-hake { display: flex; gap: 8px; align-items: center; flex: 1 1 200px; min-width: 0; cursor: pointer; }
+.mat-hake input { width: 20px; height: 20px; flex: none; }
+.mat-antall { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mat-verktoy { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.mat-verktoy select { max-width: 170px; }
+
+/* ---------- Egenkontroll (sjekklister) ---------- */
+.sjekkliste { display: flex; flex-direction: column; gap: 10px; }
+.sk-punkter { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: sk; }
+.sk-punkter li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--sunk); border-left: 4px solid var(--line); counter-increment: sk; }
+.sk-punkter li.svar-ok { border-left-color: var(--approved); }
+.sk-punkter li.svar-avvik { border-left-color: var(--warn); }
+.sk-punkter li.svar-na { border-left-color: var(--muted); }
+.sk-tekst { flex: 1 1 260px; min-width: 0; }
+.sk-tekst::before { content: counter(sk) ". "; font-weight: 700; color: var(--muted); }
+.sk-valg { display: inline-flex; gap: 4px; }
+.sk-knapp { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 32px; }
+.sk-knapp[aria-pressed="true"].ok { background: var(--approved); border-color: var(--approved); color: #fff; }
+.sk-knapp[aria-pressed="true"].avvik { background: var(--warn); border-color: var(--warn); color: #fff; }
+.sk-knapp[aria-pressed="true"].na { background: var(--muted); border-color: var(--muted); color: #fff; }
+.sk-knapp:disabled { cursor: default; opacity: .85; }
+.sk-kommentar { flex-basis: 100%; }
+
+/* ---------- Deler av appen (oppsett) ---------- */
+.modul-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.modul-valg { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.modul-valg:has(input:not(:checked)) { background: var(--sunk); opacity: .75; }
+.modul-valg input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.modul-valg > span { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- Oppsett ---------- */
+.oppsett-meny { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.oppsett-meny a { padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; font-weight: 600; color: var(--fg); text-decoration: none; }
+.ansatt-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ansatt-liste > li { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.ansatt-liste > li.inaktiv { opacity: .6; }
+.ansatt-liste > li.aapen { border-color: var(--accent); }
+.ansatt-topp { display: flex; gap: 10px; align-items: center; width: 100%; padding: 10px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ansatt-navn { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ansatt-navn .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ansatt-merker { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ansatt-pil { color: var(--muted); }
+.ansatt-kort { padding: 4px 12px 12px; display: grid; gap: 10px; }
+.ansatt-kort fieldset { border: 0; border-top: 1px solid var(--line-soft); padding: 10px 0 0; margin: 0; display: grid; gap: 8px; }
+.ansatt-kort legend { font-weight: 700; font-size: 14px; padding: 0 6px 0 0; }
+.hake { display: flex; gap: 8px; align-items: flex-start; font-size: 14.5px; cursor: pointer; }
+.hake input { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+.oppsett-svenn > summary { cursor: pointer; list-style: revert; }
+.oppsett-under { display: grid; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+
+/* Prosjektvelger med søk */
+.pvelger { position: relative; }
+.pvelger-knapp { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; text-align: left; min-height: 42px; padding: 8px 34px 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunk) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center; cursor: pointer; }
+.pvelger-knapp:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.pvelger-knapp.tom > span:first-child { color: var(--muted); }
+.pvelger-knapp > span:first-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pvelger-kunde { font-size: 12px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pvelger-krav { position: absolute; left: 12px; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.pvelger-panel { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; right: 0; min-width: min(340px, 90vw); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / .18); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.pvelger-panel input[type=search] { width: 100%; }
+.pvelger-liste { list-style: none; margin: 0; padding: 0; max-height: min(320px, 50vh); overflow-y: auto; overscroll-behavior: contain; }
+.pvelger-gruppe { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px 8px 2px; }
+.pvelger-rad { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.pvelger-rad.aktiv { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.pvelger-rad.valgt { font-weight: 700; }
+.pvelger-rad.av { opacity: .45; cursor: not-allowed; }
+.pvelger-under { font-size: 12px; color: var(--muted); font-weight: 400; }
+.pvelger-ingen { padding: 10px; color: var(--muted); font-size: 14px; }
+.pvelger-knapp, .pvelger-panel { color: var(--fg); }
+.stempel .pvelger-knapp { background-color: #FFFFFF; color: #0E1430; border-color: transparent; }
+.stempel .pvelger-knapp .pvelger-kunde { color: #475170; }
+/* I stemplingskortet (overflow skjult) legger listen seg i kortet i stedet for over det */
+.stempel .pvelger-panel { position: static; margin-top: 4px; box-shadow: none; }

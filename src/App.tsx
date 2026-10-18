@@ -7,8 +7,15 @@ import { MinFerie } from "./views/MinFerie";
 import { Kalender } from "./views/Kalender";
 import { Soknader } from "./views/Soknader";
 import { Regler } from "./views/Regler";
+import { Personvern } from "./views/Personvern";
+import { Vilkar } from "./views/Vilkar";
 import { Oppsett } from "./views/Oppsett";
 import { Lonn } from "./views/Lonn";
+import { Tidsplan } from "./views/Plan";
+import { Leveranseoversikt } from "./views/Materiell";
+import { Bestillingsoversikt } from "./views/Bestilling";
+import { Reklamasjoner } from "./views/Reklamasjon";
+import { bruker, type Modul } from "./lib/moduler";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
@@ -46,6 +53,7 @@ const IKON: Record<string, React.ReactNode> = {
   timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>,
   chat: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></>,
   prosjekter: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
   avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
   utstyr: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8 6.2 21l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></>,
   rapporter: <><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h7M9 16h7M9 8h3" /></>,
@@ -69,10 +77,10 @@ const SKYLINE = (
 );
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "chat" | "prosjekter" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett";
+type Fane = "timer" | "chat" | "prosjekter" | "plan" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern" | "vilkar";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "chat", "prosjekter", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "chat", "prosjekter", "plan", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern", "vilkar"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -201,15 +209,30 @@ export function App() {
   const aapneAvvik = d.avvik.filter((a) => (leder && a.status === "apen") || (a.ansvarlig_id === meg.id && a.status !== "lukket")).length;
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
-  const faner: [Fane, string][] = [["timer", "Timer"], ["chat", "Chat"], ["prosjekter", "Prosjekter"], ["avvik", "Avvik"], ["utstyr", "Utstyr"], ["rapporter", "Rapporter"], ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
+  const planlegger = leder || !!meg?.prosjektleder;
+  const b = (m: Modul) => bruker(d, m);
+  // Reklamasjoner som er gitt til meg og ikke er ferdige
+  const mineReklamasjoner = b("reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => r.ansvarlig_id === meg.id && (r.status === "godkjent" || (r.status === "utbedret" && !r.signatur))).length : 0;
+  const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling") || b("reklamasjon"))) || mineReklamasjoner > 0;
+  const faner: [Fane, string][] = [["timer", "Timer"], ...(b("chat") ? [["chat", "Chat"] as [Fane, string]] : []), ["prosjekter", "Prosjekter"],
+    ...(visPlanFane ? [["plan", planlegger ? "Butikk/prosjektleder" : "Plan"] as [Fane, string]] : []),
+    ...(b("avvik") ? [["avvik", "Avvik"] as [Fane, string]] : []),
+    ...(b("utstyr") ? [["utstyr", "Utstyr"] as [Fane, string]] : b("kurs") ? [["kurs", "Kurs og bevis"] as [Fane, string]] : []),
+    ...(b("rapporter") ? [["rapporter", "Rapporter"] as [Fane, string]] : []),
+    ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
-  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || fane === "kurs" ? fane : "timer";
+  const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || (fane === "kurs" && bruker(d, "kurs")) || fane === "personvern" || fane === "vilkar" ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
   const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
   const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
+  // Butikk/prosjektleder: nye bestillinger. Alle andre: SJA de ikke har kvittert på.
+  // Butikk/prosjektleder: også nye reklamasjoner som ikke er vurdert. Den som har fått en reklamasjon: den også.
+  const planVarsel = (planlegger ? (bruker(d, "bestilling") ? (d.bestillinger ?? []).filter((x) => x.status === "ny").length : 0)
+      + (bruker(d, "reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => r.status === "ny").length : 0)
+    : (bruker(d, "sja") ? (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length : 0) + mineReklamasjoner);
   const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
@@ -242,6 +265,7 @@ export function App() {
               {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
               {f === "chat" && ulestChat > 0 && <span className="badge">{ulestChat}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
+              {f === "plan" && planVarsel > 0 && <span className="badge">{planVarsel}</span>}
               {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
               {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
             </button>
@@ -252,23 +276,23 @@ export function App() {
         <LagreSomApp />
 
         {api.modus === "demo" && (
-          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg.</span>{import.meta.env.VITE_PLATTFORM_SUPABASE_URL && PROFIL.id !== "thaugland" && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
+          <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg. <a href="https://bygglogg.app" target="_blank" rel="noopener">Les mer om ByggLogg</a></span>{import.meta.env.VITE_PLATTFORM_SUPABASE_URL && PROFIL.id !== "thaugland" && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
-        {nyeRapporter[0] && aktiv !== "rapporter" && (
+        {nyeRapporter[0] && aktiv !== "rapporter" && b("rapporter") && (
           <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
             <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>
         )}
 
 
-        {iUtstyr && (
+        {iUtstyr && b("utstyr") && b("kurs") && (
           <nav className="tabs undertabs" role="tablist">
             <button role="tab" aria-selected={aktiv === "utstyr"} onClick={() => velg("utstyr")}>Utstyr</button>
             <button role="tab" aria-selected={aktiv === "kurs"} onClick={() => velg("kurs")}>Kurs og bevis{kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}</button>
           </nav>
         )}
 
-        {aktiv === "timer" && <><VarselBanner /><Vaer /><KampanjeKort /><Timer /><KampanjerAv /></>}
+        {aktiv === "timer" && <><VarselBanner />{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter />}
         {aktiv === "avvik" && <Avvik />}
@@ -298,7 +322,15 @@ export function App() {
           </div>
         )}
         {aktiv === "lonn" && <Lonn />}
+        {aktiv === "plan" && <>{planlegger && b("bestilling") && <Bestillingsoversikt />}{b("reklamasjon") && (planlegger || mineReklamasjoner > 0) && <Reklamasjoner />}{b("plan") && <Tidsplan />}{planlegger && b("materiell") && <Leveranseoversikt />}</>}
         {aktiv === "oppsett" && <Oppsett />}
+        {aktiv === "personvern" && <Personvern bedrift={d.bedrift} sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
+        {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}
+        <div className="small muted" style={{ textAlign: "center", margin: "18px 0 90px" }}>
+          <a href="#personvern" onClick={(e) => { e.preventDefault(); velg("personvern"); window.scrollTo(0, 0); }}>Personvern</a>
+          {" · "}<a href="#vilkar" onClick={(e) => { e.preventDefault(); velg("vilkar"); window.scrollTo(0, 0); }}>Avtalevilkår</a>
+          {" · "}<a href="https://bygglogg.app" target="_blank" rel="noopener">ByggLogg fra Jonassen AS</a>
+        </div>
       </div>
       {toast && <div className={`toast${toast.feil ? " feil" : ""}`} role="status">{toast.t}</div>}
     </AppCtx.Provider>

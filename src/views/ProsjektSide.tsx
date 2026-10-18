@@ -13,8 +13,19 @@ import { Dokumenter, Statistikk } from "./ProsjektDeler";
 import { Traad } from "./Chat";
 import { prosjektKanal, uleste as ulesteChat } from "../lib/chat";
 import { dagHendelser, lokalDato } from "../lib/dag";
+import { avstandTekst, finnPunkt, kjoreavstander, telLenke, type Avstand, type Punkt } from "../lib/kart";
+import { firma } from "../lib/profil";
+import { useFirmaPunkt } from "../lib/useAvstander";
+import { Kart } from "./Kart";
+import { ProsjektPlan } from "./Plan";
+import { Materialliste } from "./Materiell";
+import { Mannskap, SjaDel, Sjekklister } from "./Kvalitet";
+import { BestillDel } from "./Bestilling";
+import { bruker, type Modul } from "../lib/moduler";
+import { ProsjektVelger } from "./ProsjektVelger";
+import { Reklamasjoner } from "./Reklamasjon";
 
-type Del = "oversikt" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder, meg, chat } = useApp();
@@ -29,12 +40,25 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   };
   const [antallDok, setAntallDok] = useState<number | null>(null);
   useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
-  const deler: [Del, string, number | null][] = [
-    ["oversikt", "Oversikt", null], ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
+  const alleDeler: [Del, string, number | null][] = [
+    ["oversikt", "Oversikt", null],
+    ["plan", "Plan", (d.oppgaver ?? []).filter((o) => o.prosjekt_id === p.id && o.status !== "ferdig").length || null],
+    ["materiell", "Materiell", (d.leveranser ?? []).filter((l) => l.prosjekt_id === p.id && l.status !== "levert").length || null],
+    ["egenkontroll", "Egenkontroll", (d.sjekklister ?? []).filter((s) => s.prosjekt_id === p.id && s.status !== "signert").length || null],
+    ["hms", "SJA og mannskap", (d.sja ?? []).filter((s) => s.prosjekt_id === p.id && s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length || null],
+    ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
     ["tillegg", "Tillegg", antall.tillegg], ["bilder", "Bilder", antall.bilder], ["dokumenter", "Dokumenter", antallDok],
-    ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
+    ["avvik", "Avvik", antall.avvik],
+    ["reklamasjon", "Reklamasjon", (d.reklamasjoner ?? []).filter((r) => r.prosjekt_id === p.id && (r.status === "ny" || r.status === "godkjent")).length || null],
+    ["statistikk", "Statistikk", null],
     ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
   ];
+  const deler = alleDeler.filter(([x]) => {
+    // Deler leder har slått av for bedriften
+    const m: Partial<Record<Del, Modul[]>> = { plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
+      dagbok: ["dagbok"], tillegg: ["tillegg"], avvik: ["avvik"], reklamasjon: ["reklamasjon"], okonomi: ["okonomi"], sluttdok: ["sluttdok"] };
+    return !m[x] || m[x]!.some((y) => bruker(d, y));
+  });
 
 
   return (
@@ -44,11 +68,13 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         <h2 style={{ margin: 0 }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</h2>
         <div className="row small" style={{ gap: "4px 14px" }}>
           {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
-          {k?.telefon && <a href={`tel:${k.telefon.replace(/\s/g, "")}`}>{k.telefon}</a>}
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}
         </div>
+        <Kontakt p={p} />
+        <Ansvar p={p} />
         <TimerStatus p={p} />
         <Adresse p={p} adr={adr} />
+        {leder && <SlaaSammen p={p} tilbake={tilbake} />}
       </section>
       <nav className="seksjoner" aria-label="Deler av prosjektet">
         {deler.map(([x, t, n]) => (
@@ -59,6 +85,10 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         ))}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
+      {del === "plan" && <ProsjektPlan p={p} />}
+      {del === "materiell" && <>{bruker(d, "bestilling") && <BestillDel p={p} />}{bruker(d, "materiell") && <Materialliste p={p} />}</>}
+      {del === "egenkontroll" && <Sjekklister p={p} />}
+      {del === "hms" && <><SjaDel p={p} /><Mannskap p={p} /></>}
       {del === "chat" && <section className="panel" style={{ padding: 0, overflow: "hidden" }}><Traad kanal={prosjektKanal(p.id)} hoyde={520} /></section>}
       {del === "historikk" && <Historikk p={p} />}
       {del === "dagbok" && <DagbokDel p={p} />}
@@ -66,6 +96,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
       {del === "bilder" && <section className="panel"><Bilder bilder={d.bilder.filter((b) => b.prosjekt_id === p.id)} til={{ prosjekt_id: p.id }} tittel="Bilder fra prosjektet" /></section>}
       {del === "dokumenter" && <Dokumenter p={p} onEndret={setAntallDok} />}
       {del === "avvik" && <Avvik prosjektId={p.id} />}
+      {del === "reklamasjon" && <Reklamasjoner p={p} />}
       {del === "statistikk" && <Statistikk p={p} />}
       {del === "okonomi" && <Lonnsomhet p={p} />}
       {del === "sluttdok" && <Sluttdok p={p} />}
@@ -76,7 +107,12 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
 /** Strekikoner for delene av prosjektet */
 const DEL_IKON: Record<string, React.ReactNode> = {
   oversikt: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
+  materiell: <><path d="M3 8l9-5 9 5-9 5-9-5z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>,
+  egenkontroll: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="m8.5 9 1.5 1.5 3-3M8.5 15l1.5 1.5 3-3" /><path d="M15 9.5h1M15 15.5h1" /></>,
+  hms: <><path d="M4 14a8 8 0 0 1 16 0v2H4z" /><path d="M12 6v4M2 18h20" /></>,
   historikk: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  reklamasjon: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></>,
   dagbok: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M8 17h2" /></>,
   tillegg: <><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" /></>,
   bilder: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-9 8" /></>,
@@ -94,15 +130,16 @@ const DEL_IKON: Record<string, React.ReactNode> = {
 function Materiell({ p }: { p: Prosjekt }) {
   const [varer, setVarer] = useState<FdvVare[] | null>(null);
   const [alle, setAlle] = useState(false);
-  useEffect(() => { api.fdv(p.id).then((x) => setVarer(x.varer)).catch(() => setVarer([])); }, [p.id]);
+  // Sist hentet øverst (varer uten dato til slutt)
+  useEffect(() => { api.fdv(p.id).then((x) => setVarer([...x.varer].sort((a, b) => (b.sist_dato ?? "").localeCompare(a.sist_dato ?? "") || a.beskrivelse.localeCompare(b.beskrivelse, "nb")))).catch(() => setVarer([])); }, [p.id]);
   if (!varer?.length) return null;
   const vis = alle ? varer : varer.slice(0, 15);
   return (
     <>
-      <h3 style={{ margin: "8px 0 0" }}>Materiell brukt <span className="small muted">({varer.length} varer fra Visma)</span></h3>
+      <h3 style={{ margin: "8px 0 0" }}>Materiell brukt <span className="small muted">({varer.length} varer fra Visma, sist hentet øverst)</span></h3>
       <div style={{ overflowX: "auto" }}>
-        <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th></tr></thead><tbody>
-          {vis.map((v) => <tr key={v.varenr}><td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td><td>{t2(v.antall)} {v.enhet.toLowerCase()}</td></tr>)}
+        <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th><th>Sist hentet</th></tr></thead><tbody>
+          {vis.map((v) => <tr key={v.varenr}><td style={{ whiteSpace: "normal" }}>{v.beskrivelse}</td><td>{t2(v.antall)} {v.enhet.toLowerCase()}</td><td className="small">{v.sist_dato ? kortDato(v.sist_dato) : "–"}</td></tr>)}
         </tbody></table>
       </div>
       {varer.length > 15 && <div><button className="btn sm" onClick={() => setAlle(!alle)}>{alle ? "Vis færre" : `Vis alle ${varer.length}`}</button></div>}
@@ -396,34 +433,84 @@ function SignerDialog({ t, lukk }: { t: Tillegg; lukk: () => void }) {
 
 // ------------------------------------------------------------ Adresse med kart
 
-/** Adressen der jobben gjøres, med knapper til kart og veibeskrivelse. Leder kan rette den. */
+/** Adressen der jobben gjøres med kart, kontaktperson på stedet og knapper til veibeskrivelse og telefon. Leder kan rette den. */
 function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
   const { leder, kjor } = useApp();
   const [endre, setEndre] = useState(false);
-  const [ny, setNy] = useState(p.adresse || adr);
-  useEffect(() => { setEndre(false); setNy(p.adresse || adr); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [avstand, setAvstand] = useState<Avstand | null>(null);
+  const { d } = useApp();
+  const [ny, setNy] = useState({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "", selger: p.selger_id ?? "", snekker: p.snekker_id ?? "" });
+  const [punkt, setPunkt] = useState<Punkt | null | undefined>(undefined);
+  const [stortKart, setStortKart] = useState(false);
+  const base = useFirmaPunkt(d.bedrift);
+  useEffect(() => { setEndre(false); setNy({ adresse: p.adresse || adr, navn: p.kontakt_navn ?? "", tlf: p.kontakt_telefon ?? "", selger: p.selger_id ?? "", snekker: p.snekker_id ?? "" }); }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let aktiv = true;
+    setPunkt(undefined);
+    setAvstand(null);
+    finnPunkt(adr, { kommunenr: p.kommunenr, gnr: p.gnr, bnr: p.bnr }).then(async (x) => {
+      if (!aktiv) return;
+      setPunkt(x);
+      if (x && base) { const [av] = await kjoreavstander(base, [x]); if (aktiv) setAvstand(av ?? null); }
+    }).catch(() => { if (aktiv) setPunkt(null); });
+    return () => { aktiv = false; };
+  }, [adr, p.kommunenr, p.gnr, p.bnr, base?.lat, base?.lon]);
   const q = encodeURIComponent(adr);
-  const lagre = async () => { if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.trim() }), "Adressen er lagret")) setEndre(false); };
+  const maal = punkt ? `${punkt.lat},${punkt.lon}` : q;
+  const lagre = async () => {
+    if (await kjor(() => api.lagreEiendom(p.id, { adresse: ny.adresse.trim(), adresse_manuell: ny.adresse.trim() !== "", kontakt_navn: ny.navn.trim(), kontakt_telefon: ny.tlf.trim(), selger_id: ny.selger || null, snekker_id: ny.snekker || null }), "Lagret")) setEndre(false);
+  };
 
   if (endre) return (
-    <div className="adresse">
-      <label className="field" style={{ flex: "1 1 260px" }}><span className="label">Adresse for utførelse</span>
-        <input type="text" value={ny} onChange={(e) => setNy(e.target.value)} placeholder="Gate 1, 1234 Sted" autoFocus /></label>
+    <div className="adresse" style={{ flexDirection: "column", alignItems: "stretch" }}>
+      <label className="field"><span className="label">Adresse for utførelse</span>
+        <input type="text" value={ny.adresse} onChange={(e) => setNy({ ...ny, adresse: e.target.value })} placeholder="Gate 1, 1234 Sted" autoFocus /></label>
+      <div className="row">
+        <label className="field"><span className="label">Kontaktperson på stedet</span>
+          <input type="text" value={ny.navn} onChange={(e) => setNy({ ...ny, navn: e.target.value })} placeholder="Navn" /></label>
+        <label className="field"><span className="label">Telefon</span>
+          <input type="tel" value={ny.tlf} onChange={(e) => setNy({ ...ny, tlf: e.target.value })} placeholder="Mobilnummer" /></label>
+      </div>
+      <div className="row">
+        <label className="field"><span className="label">Selger</span>
+          <select value={ny.selger} onChange={(e) => setNy({ ...ny, selger: e.target.value })}>
+            <option value="">Ikke valgt</option>
+            {d.ansatte.filter((a) => a.aktiv || a.id === ny.selger).map((a) => <option key={a.id} value={a.id}>{a.navn}</option>)}
+          </select></label>
+        <label className="field"><span className="label">Snekker (ansvarlig)</span>
+          <select value={ny.snekker} onChange={(e) => setNy({ ...ny, snekker: e.target.value })}>
+            <option value="">Ikke valgt</option>
+            {d.ansatte.filter((a) => a.aktiv || a.id === ny.snekker).map((a) => <option key={a.id} value={a.id}>{a.navn}</option>)}
+          </select></label>
+      </div>
       <div className="row"><button className="btn primary sm" onClick={lagre}>Lagre</button><button className="btn sm" onClick={() => setEndre(false)}>Avbryt</button></div>
     </div>
   );
   return (
-    <div className="adresse">
-      <div style={{ minWidth: 0 }}>
-        <span className="label">Adresse</span>
-        {adr ? <div className="adr">{adr}</div> : <div className="muted">Ingen adresse på prosjektet</div>}
-        {adr && !p.adresse && <div className="small muted">Kundens adresse – ikke bekreftet som adresse for utførelse</div>}
+    <div className="adresse" style={{ flexDirection: "column", alignItems: "stretch" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 16px", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ minWidth: 0 }}>
+          <span className="label">Adresse</span>
+          {adr ? <div className="adr">{adr}</div> : <div className="muted">Ingen adresse på prosjektet</div>}
+          {avstand && <div className="small"><b>{avstandTekst(avstand, true)}</b> <span className="muted">{avstand.luftlinje ? "" : `kjøring fra ${firma(d.bedrift).navn}`}</span></div>}
+          {adr && !p.adresse && <div className="small muted">Kundens adresse – ikke bekreftet som adresse for utførelse</div>}
+        </div>
+        <div className="row">
+          {adr && <a className="btn sm primary" href={`https://www.google.com/maps/dir/?api=1&destination=${maal}`} target="_blank" rel="noreferrer">Kjør hit</a>}
+          {leder && <button className="btn sm" onClick={() => setEndre(true)}>{adr || p.kontakt_navn ? "Endre" : "Legg inn adresse, kontakt, selger og snekker"}</button>}
+        </div>
       </div>
-      <div className="row">
-        {adr && <a className="btn sm primary" href={`https://www.google.com/maps/dir/?api=1&destination=${q}`} target="_blank" rel="noreferrer">Kjør hit</a>}
-        {adr && <a className="btn sm" href={`https://www.google.com/maps/search/?api=1&query=${q}`} target="_blank" rel="noreferrer">Vis i kart</a>}
-        {leder && <button className="btn sm" onClick={() => setEndre(true)}>{adr ? "Endre" : "Legg inn adresse"}</button>}
-      </div>
+      {adr && punkt && (
+        <div className="prosjektkart" style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)" }}>
+          <Kart punkt={punkt} hoyde={stortKart ? 420 : 220} tittel={`Kart over ${adr}`} />
+          <div className="row" style={{ position: "absolute", right: 8, bottom: 22, gap: 6, zIndex: 500 }}>
+            <button className="btn sm" onClick={() => setStortKart((x) => !x)}>{stortKart ? "Mindre kart" : "Større kart"}</button>
+            <a className="btn sm" href={`https://www.google.com/maps/search/?api=1&query=${maal}`} target="_blank" rel="noreferrer">Åpne i kart</a>
+          </div>
+        </div>
+      )}
+      {adr && punkt === null && <div className="small muted">Fant ikke adressen i kartet. <a href={`https://www.google.com/maps/search/?api=1&query=${q}`} target="_blank" rel="noreferrer">Søk i Google Maps</a></div>}
+      {leder && !p.kontakt_navn && !p.kontakt_telefon && adr && <div className="small muted">Ingen kontaktperson på prosjektet. Trykk «Endre» for å legge inn navn og telefon.</div>}
     </div>
   );
 }
@@ -449,3 +536,105 @@ function TimerStatus({ p }: { p: Prosjekt }) {
   );
 }
 
+
+/** Ord i et navn, for å foreslå hvilket Visma-prosjekt et app-prosjekt hører til */
+const ord = (s: string) => new Set(s.toLowerCase().split(/[^a-zæøå0-9]+/).filter((w) => w.length > 2));
+
+/**
+ * Leder: slå prosjektet inn i et annet. Laget i appen → koble til Visma-prosjektet når det dukker opp der.
+ * To prosjekter som egentlig er samme jobb (samme kunde) → slå sammen, så alt havner på ett.
+ */
+function SlaaSammen({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
+  const { d, kjor } = useApp();
+  const app = p.visma_nr == null;
+  const [aapen, setAapen] = useState(app);
+  const [til, setTil] = useState("");
+  const [sikker, setSikker] = useState(false);
+  const mine = ord(p.navn);
+  const utstyr = new Set(d.ansatte.map((a) => a.utstyr_prosjekt_id).filter(Boolean));
+  if (utstyr.has(p.id)) return null;
+  const treff = (x: Prosjekt) => (x.kunde_id && x.kunde_id === p.kunde_id ? 10 : 0)
+    + (x.adresse && p.adresse && x.adresse.trim().toLowerCase() === p.adresse.trim().toLowerCase() ? 5 : 0)
+    + [...ord(x.navn)].filter((w) => mine.has(w)).length;
+  const valg = d.prosjekter.filter((x) => x.id !== p.id && !utstyr.has(x.id) && (x.aktiv || treff(x) >= 10))
+    .sort((a, b) => treff(b) - treff(a) || Number(b.visma_nr != null) - Number(a.visma_nr != null) || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
+  const forslag = valg.filter((x) => treff(x) > 0).slice(0, 6);
+  const mal = valg.find((x) => x.id === til);
+  const navn = (x: Prosjekt) => `${x.visma_nr ?? "App"} · ${x.navn}${x.aktiv ? "" : " (avsluttet)"}`;
+  const kunde = (x: Prosjekt) => d.kunder.find((k) => k.id === x.kunde_id)?.navn;
+  const slaa = async () => {
+    if (!mal) return;
+    const ok = await kjor(() => api.slaaSammenProsjekter(p.id, mal.id), `Slått sammen med ${mal.visma_nr ?? ""} ${mal.navn}`.replace("  ", " "));
+    if (ok) tilbake();
+  };
+  if (!aapen) return (
+    <div><button className="linkbtn small" onClick={() => setAapen(true)}>Samme jobb som et annet prosjekt? Slå sammen</button></div>
+  );
+  return (
+    <div className="koble-visma" style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+      <p className="small muted" style={{ margin: 0 }}>
+        {app ? "Laget i appen, finnes ikke i Visma. Når prosjektet er opprettet i Visma, slår du det sammen med Visma-prosjektet. " : "Er dette og et annet prosjekt egentlig samme jobb, kan de slås sammen. "}
+        Timer, stempling, dagbok, bilder, avvik, tillegg, dokumenter og chat flyttes til prosjektet du velger.
+      </p>
+      {!sikker ? (
+        <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+          <div style={{ flex: "1 1 260px", display: "flex" }}>
+            <ProsjektVelger id="slaa-sammen-med" label="Slå sammen med" placeholder="Velg prosjektet som skal beholdes …" value={til} onChange={setTil}
+              prosjekter={valg} forslag={forslag.length ? { tittel: "Forslag (samme kunde, adresse eller navn)", ider: forslag.map((x) => x.id) } : undefined} />
+          </div>
+          <button className="btn" disabled={!mal} onClick={() => setSikker(true)}>Slå sammen</button>
+          {!app && <button className="btn" onClick={() => { setAapen(false); setTil(""); }}>Avbryt</button>}
+        </div>
+      ) : mal && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <p className="small" style={{ margin: 0 }}>
+            Alt på <b>{navn(p)}</b>{kunde(p) ? ` (${kunde(p)})` : ""} flyttes til <b>{navn(mal)}</b>{kunde(mal) ? ` (${kunde(mal)})` : ""}.
+            Opplysninger som bare står på det første (adresse, kunde, estimat, notat) tas med. «{p.navn}» blir borte fra listen.
+            {p.visma_nr != null && " Det ligger fortsatt i Visma, men ordre og fakturerte timer derfra vises på prosjektet du beholder."}
+            {" "}Dette kan ikke angres.
+          </p>
+          {mal.visma_nr == null && p.visma_nr != null && <p className="small feil" style={{ margin: 0 }}>Du beholder et prosjekt som ikke finnes i Visma. Vanligvis bør du beholde Visma-prosjektet.</p>}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn primary" onClick={slaa}>Ja, slå sammen</button>
+            <button className="btn" onClick={() => setSikker(false)}>Avbryt</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Kontaktperson på stedet (eller kundens telefon) med Ring og SMS, rett under kunden øverst */
+function Kontakt({ p }: { p: Prosjekt }) {
+  const { d, leder } = useApp();
+  const k = d.kunder.find((x) => x.id === p.kunde_id);
+  const egen = !!(p.kontakt_navn || p.kontakt_telefon);
+  const navn = egen ? p.kontakt_navn ?? "" : "";
+  const tlf = egen ? p.kontakt_telefon ?? "" : k?.telefon ?? "";
+  if (!navn && !tlf) return leder ? <div className="small muted">Ingen kontaktperson. Legg inn med «Endre» ved adressen.</div> : null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", alignItems: "center" }}>
+      <span className="small">{egen ? "Kontaktperson: " : "Kunde: "}{navn && <b>{navn}</b>}{navn && tlf ? " · " : ""}{tlf && <a href={telLenke(tlf)}>{tlf}</a>}</span>
+      {tlf && (
+        <span className="row" style={{ gap: 6 }}>
+          <a className="btn sm primary" href={telLenke(tlf)}>Ring</a>
+          <a className="btn sm" href={"sms:" + tlf.replace(/[^\d+]/g, "")}>SMS</a>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Selger og snekker som har prosjektet */
+function Ansvar({ p }: { p: Prosjekt }) {
+  const { d } = useApp();
+  const navn = (id?: string | null) => (id ? d.ansatte.find((a) => a.id === id)?.navn ?? "" : "");
+  const selger = navn(p.selger_id), snekker = navn(p.snekker_id);
+  if (!selger && !snekker) return null;
+  return (
+    <div className="small" style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px" }}>
+      {selger && <span>Selger: <b>{selger}</b></span>}
+      {snekker && <span>Snekker: <b>{snekker}</b></span>}
+    </div>
+  );
+}

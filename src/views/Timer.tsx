@@ -7,6 +7,9 @@ import { api } from "../lib/api";
 import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { dagerUtenTimer, hhmm, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
 import { InneNaa, Stempling } from "./Stempling";
+import { ProsjektVelger } from "./ProsjektVelger";
+import { ReklamasjonValg } from "./Reklamasjon";
+import { bruker } from "../lib/moduler";
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
@@ -18,8 +21,17 @@ export function Timer() {
   const meSelv = hvem.id === meg.id;
   const lunsjStd = hvem.lunsjtrekk ? (hvem.lunsj_min ?? 30) : 0;
 
-  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true });
+  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true, reklamasjon_id: "" });
   const [f, setF] = useState(tom);
+  // Reklamasjon: timene føres på det faste reklamasjonsprosjektet (eller originaljobben) og faktureres ikke
+  const rp = bruker(d, "reklamasjon") ? d.reklamasjonProsjekt ?? null : null;
+  const aapneRekl = (pid: string) => bruker(d, "reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => (r.status === "godkjent" || r.status === "ny") && (pid === rp || r.prosjekt_id === pid)) : [];
+  const visRekl = !!f.prosjekt_id && (f.prosjekt_id === rp || aapneRekl(f.prosjekt_id).length > 0 || !!f.reklamasjon_id);
+  const velgProsjekt = (id: string) => {
+    const mine = aapneRekl(id).filter((r) => r.ansvarlig_id === hvem.id && r.status === "godkjent");
+    sett({ prosjekt_id: id, reklamasjon_id: id === rp && mine.length === 1 ? mine[0]!.id : id === f.prosjekt_id ? f.reklamasjon_id : "" });
+  };
+  const erRekl = !!f.prosjekt_id && (f.prosjekt_id === rp || !!f.reklamasjon_id);
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
   // Manuell føring er for det man glemte å logge; vises når man ber om det, endrer, eller leder fører for andre
   const [manuell, setManuell] = useState(false);
@@ -53,11 +65,12 @@ export function Timer() {
     if (!gyldig) return;
     const ok = await kjor(() => api.lagreTime({
       id: f.id, ansatt_id: hvem.id, prosjekt_id: f.prosjekt_id || null, dato: f.dato, fra: f.fra, til: f.til,
-      lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar,
+      lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar && !erRekl,
+      ...(visRekl || f.id ? { reklamasjon_id: visRekl ? f.reklamasjon_id || null : null } : {}),
     }), f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
-    if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
+    if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
   };
-  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false });
+  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false, reklamasjon_id: t.reklamasjon_id ?? "" });
   const kanEndre = (t: Time) => leder || t.status !== "godkjent";
 
   return (
@@ -100,23 +113,22 @@ export function Timer() {
             <label className="field kort"><span className="label">Til</span>
               <input type="time" step={900} value={f.til} onChange={(e) => sett({ til: e.target.value })} required /></label>
           </div>
-          <label className="field"><span className="label">Prosjekt</span>
-            <select value={f.prosjekt_id} onChange={(e) => sett({ prosjekt_id: e.target.value })}>
-              <option value="">Internt arbeid (butikk, lager, verksted)</option>
-              {aktive.map((p) => <option key={p.id} value={p.id}>{prosjektNavn(p.id)}</option>)}
-            </select></label>
+          <ProsjektVelger value={f.prosjekt_id} onChange={velgProsjekt} prosjekter={aktive} tom="Internt arbeid (butikk, lager, verksted)"
+            forslag={{ tittel: "Siste prosjekter", ider: siste }} />
           {siste.length > 0 && (
             <div className="hurtig" aria-label="Siste prosjekter">
               {siste.map((id) => { const p = d.prosjekter.find((x) => x.id === id)!; return (
-                <button type="button" key={id} aria-pressed={f.prosjekt_id === id} onClick={() => sett({ prosjekt_id: id })} title={prosjektNavn(id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</button>
+                <button type="button" key={id} aria-pressed={f.prosjekt_id === id} onClick={() => velgProsjekt(id)} title={prosjektNavn(id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</button>
               ); })}
               <button type="button" aria-pressed={f.prosjekt_id === ""} onClick={() => sett({ prosjekt_id: "" })}>Internt</button>
             </div>
           )}
           {f.prosjekt_id && <ProsjektForbruk prosjektId={f.prosjekt_id} />}
-          {f.prosjekt_id && (
+          {visRekl && <ReklamasjonValg value={f.reklamasjon_id} onChange={(id) => sett({ reklamasjon_id: id })} prosjektId={f.prosjekt_id === rp ? undefined : f.prosjekt_id} />}
+          {f.prosjekt_id && !erRekl && (
             <label className="row small"><input type="checkbox" checked={f.fakturerbar} onChange={(e) => sett({ fakturerbar: e.target.checked })} /> Fakturerbart (faktureres kunden)</label>
           )}
+          {erRekl && <p className="small muted" style={{ margin: 0 }}>Timer på reklamasjon faktureres ikke.</p>}
           {hvem.lunsjtrekk && (
             <label className="row small"><input type="checkbox" checked={f.lunsj} onChange={(e) => sett({ lunsj: e.target.checked })} /> Hadde lunsj ({hvem.lunsj_min ?? 30} min trekkes)</label>
           )}
@@ -169,7 +181,7 @@ export function Timer() {
                     <div key={t.id} className={`item ${t.status === "godkjent" ? "godkjent" : "venter"}`}>
                       <div style={{ minWidth: 0 }}>
                         <div className="t">{hhmm(t.fra)}–{hhmm(t.til)} · {t2(t.timer)} t</div>
-                        <div className="s">{prosjektNavn(t.prosjekt_id)}{t.prosjekt_id && t.fakturerbar === false ? " · ikke fakturerbart" : ""}{t.lunsj_min ? ` · lunsj ${t.lunsj_min} min` : ""}{t.km ? ` · ${t2(t.km)} km` : ""}{t.reisetid ? ` · reise ${t2(t.reisetid)} t` : ""}</div>
+                        <div className="s">{prosjektNavn(t.prosjekt_id)}{t.reklamasjon_id ? ` · reklamasjon: ${(d.reklamasjoner ?? []).find((r) => r.id === t.reklamasjon_id)?.tittel ?? ""}` : t.prosjekt_id && t.fakturerbar === false ? " · ikke fakturerbart" : ""}{t.lunsj_min ? ` · lunsj ${t.lunsj_min} min` : ""}{t.km ? ` · ${t2(t.km)} km` : ""}{t.reisetid ? ` · reise ${t2(t.reisetid)} t` : ""}</div>
                         {t.beskrivelse && <div className="s">{t.beskrivelse}</div>}
                       </div>
                       <div className="acts">

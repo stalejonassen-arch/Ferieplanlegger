@@ -1,3 +1,5 @@
+import { PROFIL } from "../lib/profil";
+
 const REGLER: [string, string, string][] = [
   ["§ 5", "Hvor mye ferie", "Loven gir 25 virkedager (lørdag teller), altså 4 uker og 1 dag. Hos oss teller vi feriedager mandag–fredag, og de ansatte har 25 feriedager, altså 5 uker. Ansatte som fyller 60 år i løpet av ferieåret får én uke ekstra."],
   ["§ 6", "Hvem bestemmer tidspunktet", "Arbeidsgiver fastsetter ferien etter å ha drøftet den med den ansatte eller tillitsvalgt. Den ansatte har rett til å få vite tidspunktet senest 2 måneder før ferien starter, med mindre noe annet er avtalt."],
@@ -17,9 +19,9 @@ export function Regler() {
         <p className="muted">Sammendrag for bruk i appen. Det er selve loven og eventuell tariffavtale som gjelder. Les hele ferieloven på <a href="https://lovdata.no/dokument/NL/lov/1988-04-29-21" target="_blank" rel="noopener">Lovdata</a>.</p>
       </section>
       <div className="rules">
-        {REGLER.map(([ref, tittel, tekst]) => (
+        {REGLER.map(([ref, tittel, tekst0]) => { const tekst = tekst0.replace("Hos N L Austnes", "Hos oss"); return (
           <div key={tittel} className="rule"><span className="ref">Ferieloven {ref}</span><h3>{tittel}</h3><p>{tekst}</p></div>
-        ))}
+        ); })}
       </div>
       <section className="panel" style={{ gap: 6 }}>
         <h3>Dette sjekker appen automatisk</h3>

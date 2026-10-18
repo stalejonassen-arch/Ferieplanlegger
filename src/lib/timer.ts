@@ -4,16 +4,18 @@ import { arbeidsdager } from "./fravaer";
 import { addDays, helligdag, ukedag, type Ansatt, type Data } from "./ferie";
 
 export interface Kunde { id: string; visma_nr: number | null; navn: string; adresse: string; postnr: string; poststed: string; telefon: string; epost: string; aktiv: boolean }
-export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string; fra_svenn?: boolean; faktura_kunde_id?: string | null; fastpris?: boolean; fakturert_full?: boolean; kommunenr?: string; kommune?: string; gnr?: number | null; bnr?: number | null; fnr?: number | null; snr?: number | null; bruksenhet?: string; boligmappe_nr?: string; fag?: string }
+export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string; fra_svenn?: boolean; faktura_kunde_id?: string | null; fastpris?: boolean; fakturert_full?: boolean; kommunenr?: string; kommune?: string; gnr?: number | null; bnr?: number | null; fnr?: number | null; snr?: number | null; bruksenhet?: string; boligmappe_nr?: string; fag?: string; kontakt_navn?: string; kontakt_telefon?: string; selger_id?: string | null; snekker_id?: string | null; adresse_manuell?: boolean; slatt_sammen_med?: string | null }
 export interface Time {
   id: string; ansatt_id: string; prosjekt_id: string | null; dato: string;
   fra: string; til: string; lunsj_min: number; timer: number; lunsj_unntak: boolean;
   km: number; reisetid: number; beskrivelse: string; status: "levert" | "godkjent"; fakturerbar?: boolean;
+  /** Timer brukt på å utbedre en reklamasjon */
+  reklamasjon_id?: string | null;
   /** stempel = logget inn/ut i sanntid, manuell = ført i etterkant, endret = stempel som er rettet, svenn = importert fra Svenn */
   kilde?: "stempel" | "manuell" | "endret" | "svenn";
 }
 /** Pågående innlogging på jobb */
-export interface Stempling { ansatt_id: string; prosjekt_id: string | null; dato: string; fra: string; startet: string }
+export interface Stempling { ansatt_id: string; prosjekt_id: string | null; dato: string; fra: string; startet: string; reklamasjon_id?: string | null }
 export type NyTime = Omit<Time, "id" | "timer" | "lunsj_unntak" | "status" | "kilde"> & { id?: string };
 
 /** Pause etter arbeidsmiljøloven § 10-9: rett på pause når arbeidstiden er over 5,5 timer. */

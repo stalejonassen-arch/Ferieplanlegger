@@ -10,6 +10,9 @@ import { Maal } from "./Maal";
 import { Omsetning } from "./Omsetning";
 import { Fakturering } from "./Fakturering";
 import { liteFakturert, prosjektFakturering } from "../lib/faktura";
+import { PROFIL } from "../lib/profil";
+import { avstandTekst, telLenke } from "../lib/kart";
+import { useAvstander, useFirmaPunkt } from "../lib/useAvstander";
 
 export function Prosjekter() {
   const { d, meg, leder, kjor } = useApp();
@@ -20,6 +23,7 @@ export function Prosjekter() {
   const [nyKunde, setNyKunde] = useState("");
   const [estimat, setEstimat] = useState("");
   const [valgt, setValgt] = useState<string | null>(null);
+  const [nyApen, setNyApen] = useState(false);
   const brukt = prosjektTimer(d);
   const fakt = leder && (d.fakturerteTimer ?? []).length ? prosjektFakturering(d) : null;
   const [visma, setVisma] = useState<{ tid: string; ok: boolean; melding: string } | null>(null);
@@ -34,13 +38,17 @@ export function Prosjekter() {
     .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q))
     .sort((a, b) => (sist.get(b.id) ?? "").localeCompare(sist.get(a.id) ?? "") || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
   const fraVisma = d.prosjekter.some((p) => p.visma_nr);
+  // Adresse for utførelse, ellers kundens adresse
+  const adresseFor = (p: (typeof d.prosjekter)[number]) => { const kk = d.kunder.find((x) => x.id === p.kunde_id); return p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", "); };
+  const base = useFirmaPunkt(d.bedrift);
+  const avstand = useAvstander(base, d.prosjekter.filter((p) => p.aktiv).map((p) => ({ id: p.id, adresse: adresseFor(p), kommunenr: p.kommunenr, gnr: p.gnr, bnr: p.bnr })));
 
   const leggTil = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!navn.trim()) return;
     const ok = await kjor(() => api.lagreProsjekt({ navn: navn.trim(), kunde_id: kundeId || null, estimert_timer: Number(estimat.replace(",", ".")) || null }, kundeId ? undefined : nyKunde),
       `Prosjektet «${navn.trim()}» er lagt til`);
-    if (ok) { setNavn(""); setKundeId(""); setNyKunde(""); setEstimat(""); }
+    if (ok) { setNavn(""); setKundeId(""); setNyKunde(""); setEstimat(""); setNyApen(false); }
   };
 
   const vp = valgt ? d.prosjekter.find((p) => p.id === valgt) : undefined;
@@ -48,10 +56,34 @@ export function Prosjekter() {
 
   return (
     <>
-      {leder && <Omsetning />}
-      {leder && <Maal />}
-      {leder && <Fordeling />}
-      {leder && <Fakturering />}
+      {(
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button className={`btn ${nyApen ? "" : "primary"}`} aria-expanded={nyApen} onClick={() => setNyApen((x) => !x)}>{nyApen ? "Lukk" : "+ Nytt prosjekt"}</button>
+        </div>
+      )}
+      {nyApen && (
+        <form className="panel" onSubmit={leggTil} style={{ gap: 10 }}>
+          <h2 style={{ margin: 0 }}>Nytt prosjekt</h2>
+          <div className="row">
+            <label className="field"><span className="label">Prosjektnavn</span>
+              <input type="text" value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="F.eks. Skifte vindu" required autoFocus /></label>
+            <label className="field"><span className="label">Kunde</span>
+              <select value={kundeId} onChange={(e) => setKundeId(e.target.value)}>
+                <option value="">Ny kunde …</option>
+                {d.kunder.map((k) => <option key={k.id} value={k.id}>{k.navn}</option>)}
+              </select></label>
+            {!kundeId && <label className="field"><span className="label">Navn på ny kunde</span>
+              <input type="text" value={nyKunde} onChange={(e) => setNyKunde(e.target.value)} placeholder="Valgfritt" /></label>}
+            <label className="field kort"><span className="label">Estimert (timer)</span>
+              <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
+          </div>
+          <p className="small muted" style={{ margin: 0 }}>{leder ? "Når prosjektet er opprettet i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over." : "Prosjektet kan brukes med en gang. Leder kobler det til Visma-prosjektet senere, og da følger timer, bilder og dagbok med."}</p>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button>
+            <button type="button" className="btn" onClick={() => setNyApen(false)}>Avbryt</button>
+          </div>
+        </form>
+      )}
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Prosjekter</h2>
@@ -75,11 +107,15 @@ export function Prosjekter() {
                   const b = brukt.get(p.id) ?? 0, est = p.estimert_timer ? Number(p.estimert_timer) : null;
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
-                      <td className="n">{p.visma_nr ?? "–"}</td>
+                      <td className="n">{p.visma_nr ?? (leder ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
                       <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
-                        {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id); const a = p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-                          return a ? <div className="small"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`} target="_blank" rel="noreferrer">{a}</a></div> : null; })()}
+                        {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id);
+                          const navn = p.kontakt_navn ?? "", tlf = p.kontakt_telefon || (p.kontakt_navn ? "" : kk?.telefon ?? "");
+                          return navn || tlf ? <div className="small">Kontakt: {navn && <b>{navn}</b>}{navn && tlf ? " · " : ""}{tlf && <a href={telLenke(tlf)}>{tlf}</a>}</div> : null; })()}
+                        {(p.selger_id || p.snekker_id) && <div className="small muted">{[p.selger_id && `Selger: ${d.ansatte.find((a) => a.id === p.selger_id)?.navn ?? ""}`, p.snekker_id && `Snekker: ${d.ansatte.find((a) => a.id === p.snekker_id)?.navn ?? ""}`].filter(Boolean).join(" · ")}</div>}
+                        {(() => { const a = adresseFor(p); const av = avstand.get(p.id);
+                          return a ? <div className="small"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`} target="_blank" rel="noreferrer">{a}</a>{av && <span className="muted" title={av.luftlinje ? "Fant ikke kjørerute – rett linje" : `Kjøreavstand fra ${PROFIL.firma}`}> · {avstandTekst(av)}</span>}</div> : null; })()}
                         {(() => { const f = fakt?.get(p.id); return f && liteFakturert(f) ? (
                           <div className="small" style={{ color: "var(--warn)" }} title="Registrerte fakturerbare timer mot «Arbeid» fakturert og på ordre i Visma (og beregnet fastpris)">
                             Lite fakturert: {t2(Math.round(f.fakturert + f.fastpris))} av {t2(Math.round(f.registrert))} t{f.aapent ? `, ${t2(Math.round(f.aapent))} t på åpen ordre` : ""}
@@ -101,27 +137,10 @@ export function Prosjekter() {
           </div>
         ) : <div className="empty">{q ? "Ingen prosjekter passer søket." : "Ingen prosjekter ennå."}</div>}
       </section>
-
-      {leder && (
-        <form className="panel" onSubmit={leggTil}>
-          <h2>Nytt prosjekt</h2>
-          <p className="small muted">Bruk dette bare for prosjekter som ikke finnes i Visma.</p>
-          <div className="row">
-            <label className="field"><span className="label">Prosjektnavn</span>
-              <input type="text" value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="F.eks. Skifte vindu" required /></label>
-            <label className="field"><span className="label">Kunde</span>
-              <select value={kundeId} onChange={(e) => setKundeId(e.target.value)}>
-                <option value="">Ny kunde …</option>
-                {d.kunder.map((k) => <option key={k.id} value={k.id}>{k.navn}</option>)}
-              </select></label>
-            {!kundeId && <label className="field"><span className="label">Navn på ny kunde</span>
-              <input type="text" value={nyKunde} onChange={(e) => setNyKunde(e.target.value)} placeholder="Valgfritt" /></label>}
-            <label className="field"><span className="label">Estimert (timer)</span>
-              <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
-          </div>
-          <div><button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button></div>
-        </form>
-      )}
+      {leder && <Omsetning />}
+      {leder && <Maal />}
+      {leder && <Fordeling />}
+      {leder && <Fakturering />}
     </>
   );
 }

@@ -1,5 +1,6 @@
 // Push-varsler for ByggLogg (Web Push), også når appen er lukket.
-// Kalles fra databasen (pg_net) med { type: "melding" | "prosjekt", id } når noe nytt legges inn.
+// Kalles fra databasen (pg_net) med { type: "melding" | "prosjekt" | "oppgave", id } når noe nytt legges inn,
+// og med { type: "stemplet", id: ansatt } når noen har vært stemplet inn lenge (sjekkes hvert 5. minutt).
 // Funksjonen stoler ikke på innholdet i kallet: den leser meldingen/prosjektet selv, finner mottakerne,
 // og logger hvert varsel slik at det aldri går ut to ganger. Publiseres uten JWT-sjekk.
 // VAPID-nøklene ligger i tabellen push_noekler (bare tjenestenøkkelen kan lese den).
@@ -31,9 +32,102 @@ async function send(mottakere: Ansatt[], lag: (a: Ansatt) => Varsel) {
   return { sendt, fjernet };
 }
 
+const hm = (t: string) => t.slice(0, 5);
+const varighet = (min: number) => `${Math.floor(min / 60)} t${min % 60 ? ` ${min % 60} min` : ""}`;
+const varighetPl = (min: number) => `${Math.floor(min / 60)} godz.${min % 60 ? ` ${min % 60} min` : ""}`;
+
+/** Fortsatt stemplet inn etter grensen: databasen sjekker selv, så kallet kan ikke brukes til å sende falske varsler */
+async function stemplet(ansattId: string) {
+  const { data: rader } = await sb.rpc("stemplet_lenge");
+  const r = (rader as { ansatt_id: string; dato: string; start: string; minutter: number }[] | null)?.find((x) => x.ansatt_id === ansattId);
+  if (!r) return new Response("ikke aktuelt");
+  // Én gang per ansatt per dag
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `stemplet:${r.dato}`, id: ansattId });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: a } = await sb.from("ansatte").select("id, navn, sprak").eq("id", ansattId).maybeSingle();
+  if (!a) return new Response("finnes ikke", { status: 404 });
+  const res = await send([a], (x) => x.sprak === "pl"
+    ? { tittel: "Nadal zalogowany?", tekst: `Jesteś zalogowany od ${hm(r.start)} (${varighetPl(r.minutter)}). Pamiętaj, aby się wylogować, gdy kończysz pracę.`, url: "/#timer", tag: "stemplet" }
+    : { tittel: "Fortsatt stemplet inn?", tekst: `Du har vært stemplet inn siden ${hm(r.start)} (${varighet(r.minutter)}). Husk å stemple ut når du går for dagen.`, url: "/#timer", tag: "stemplet" });
+  return Response.json(res);
+}
+
+const MND = ["jan.", "feb.", "mar.", "apr.", "mai", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "des."];
+const dato = (iso: string) => `${Number(iso.slice(8, 10))}. ${MND[Number(iso.slice(5, 7)) - 1]}`;
+
+/** Nytt arbeid i planen: varsle dem som har fått oppgaven og ikke er varslet om den før (ikke den som la den inn) */
+async function oppgave(id: string) {
+  const { data: o } = await sb.from("oppgaver").select("id, bedrift_id, prosjekt_id, tittel, fra, til, ansatte, status, opprettet_av").eq("id", id).maybeSingle();
+  if (!o) return new Response("finnes ikke", { status: 404 });
+  if (o.status === "ferdig") return new Response("ferdig, hoppet over");
+  const nye: string[] = [];
+  for (const a of (o.ansatte ?? []) as string[]) {
+    if (a === o.opprettet_av) continue;
+    const { error } = await sb.from("push_logg").insert({ type: `oppgave:${a}`, id: o.id });
+    if (!error) nye.push(a);
+  }
+  if (!nye.length) return new Response("ingen nye");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: mottakere } = await sb.from("ansatte").select("id, navn, sprak").in("id", nye).eq("bedrift_id", o.bedrift_id).eq("aktiv", true);
+  const { data: p } = await sb.from("prosjekter").select("navn, adresse").eq("id", o.prosjekt_id).maybeSingle();
+  const naar = o.fra === o.til ? dato(o.fra) : `${dato(o.fra)} – ${dato(o.til)}`;
+  const r = await send(mottakere ?? [], (a) => ({
+    tittel: a.sprak === "pl" ? `Nowa praca: ${kort(o.tittel, 60)}` : `Nytt arbeid: ${kort(o.tittel, 60)}`,
+    tekst: [p?.navn, naar, p?.adresse].filter(Boolean).join(" · "),
+    url: "/#plan", tag: `oppgave-${o.id}`,
+  }));
+  return Response.json(r);
+}
+
+/** Bestilling fra byggeplassen: ny → butikk/prosjektleder; klar, levert eller avvist → den som bestilte */
+async function bestilling(id: string) {
+  const { data: b } = await sb.from("bestillinger").select("id, bedrift_id, prosjekt_id, bestilt_av, status, linjer, svar, onsket_dato").eq("id", id).maybeSingle();
+  if (!b || !["ny", "klar", "levert", "avvist"].includes(b.status)) return new Response("ikke aktuelt");
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `bestilling:${b.status}`, id: b.id });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: p } = await sb.from("prosjekter").select("navn").eq("id", b.prosjekt_id).maybeSingle();
+  const { data: alle } = await sb.from("ansatte").select("id, navn, sprak, rolle, prosjektleder").eq("bedrift_id", b.bedrift_id).eq("aktiv", true);
+  const linjer = (b.linjer ?? []) as { beskrivelse: string; antall?: number; enhet?: string }[];
+  const varer = kort(linjer.map((l) => `${l.antall ? `${l.antall} ${l.enhet ?? ""} `.replace("  ", " ") : ""}${l.beskrivelse}`).join(", "), 150);
+  if (b.status === "ny") {
+    const bestiller = (alle ?? []).find((a) => a.id === b.bestilt_av)?.navn ?? "Byggeplassen";
+    const mottakere = (alle ?? []).filter((a) => (a.rolle === "leder" || a.prosjektleder) && a.id !== b.bestilt_av);
+    const r = await send(mottakere, (a) => ({
+      tittel: a.sprak === "pl" ? `Nowe zamówienie: ${kort(p?.navn ?? "", 40)}` : `Ny bestilling: ${kort(p?.navn ?? "", 40)}`,
+      tekst: `${bestiller}${b.onsket_dato ? ` (til ${dato(b.onsket_dato)})` : ""}: ${varer}`,
+      url: "/#plan", tag: `bestilling-${b.id}`,
+    }));
+    return Response.json(r);
+  }
+  const meg = (alle ?? []).filter((a) => a.id === b.bestilt_av);
+  const tekst: Record<string, [string, string]> = {
+    klar: ["Bestillingen er klar", "Zamówienie jest gotowe"],
+    levert: ["Bestillingen er levert", "Zamówienie dostarczone"],
+    avvist: ["Bestillingen kan ikke leveres", "Zamówienie nie może zostać zrealizowane"],
+  };
+  const r = await send(meg, (a) => ({
+    tittel: tekst[b.status]![a.sprak === "pl" ? 1 : 0],
+    tekst: [p?.navn, b.svar || varer].filter(Boolean).join(" · "),
+    url: "/#prosjekter", tag: `bestilling-${b.id}`,
+  }));
+  return Response.json(r);
+}
+
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling"].includes(type)) return new Response("ugyldig", { status: 400 });
+
+  if (type === "stemplet") return stemplet(id);
+  if (type === "oppgave") return oppgave(id);
+  if (type === "bestilling") return bestilling(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });

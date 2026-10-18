@@ -109,3 +109,9 @@ export function lagZip(filer: { navn: string; data: Uint8Array }[]): Uint8Array 
   for (const x of alle) { ut.set(x, o); o += x.length; }
   return ut;
 }
+
+/** Filnavn for Boligmappa: «Sluttdokumentasjon - Storgata 1 - 2026-10-15.pdf» */
+export function rapportFilnavn(adresse: string | undefined, tittel: string, isoDato: string) {
+  const sted = (adresse || tittel).split(",")[0]!.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  return `Sluttdokumentasjon - ${sted} - ${isoDato}.pdf`;
+}

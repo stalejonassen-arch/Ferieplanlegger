@@ -24,11 +24,18 @@ export interface Ansatt {
   lunsjtrekk?: boolean;
   /** Ansattnummer som i Svenn/lønnssystemet */
   ansattnr?: string | null;
+  /** Kan planlegge, dele ut arbeid og styre materiell uten å være leder (f.eks. butikk/prosjektleder) */
+  prosjektleder?: boolean;
+  /** HMS-kort (byggekort) */
+  hms_kort_nr?: string;
+  hms_kort_gyldig?: string | null;
   /** Språk i appen: nb (norsk) eller pl (polsk) */
   sprak?: "nb" | "pl";
   tema?: Tema;
   /** Får push-varsel om nye prosjekter */
   varsel_prosjekt?: boolean;
+  /** Push-varsel når den ansatte har vært stemplet inn så mange minutter (null = av) */
+  varsel_stemplet_min?: number | null;
   /** Vis kampanjer fra Byggfag (DM) i appen */
   vis_kampanjer?: boolean;
   /** Kampanjer den ansatte har skjult */
@@ -77,6 +84,19 @@ export interface Data {
   bedrift?: Bedrift;
   /** Kampanjer fra Byggfag (DM) */
   kampanjer?: Kampanje[];
+  /** Arbeidsplan og materialliste (alle i bedriften ser dem) */
+  oppgaver?: import("./plan").Oppgave[];
+  leveranser?: import("./plan").Leveranse[];
+  materialer?: import("./plan").Materiale[];
+  /** Deler av appen leder har slått av */
+  modulerAv?: string[];
+  /** Sjekklister, SJA og bestillinger */
+  sjekklister?: import("./kvalitet").Sjekkliste[];
+  sja?: import("./kvalitet").Sja[];
+  bestillinger?: import("./kvalitet").Bestilling[];
+  /** Reklamasjoner og bedriftens faste reklamasjonsprosjekt */
+  reklamasjoner?: import("./reklamasjon").Reklamasjon[];
+  reklamasjonProsjekt?: string | null;
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
   /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */

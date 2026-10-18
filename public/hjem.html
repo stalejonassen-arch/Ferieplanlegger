@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:title" content="ByggLogg">
+<meta property="og:description" content="Appen for byggefirma: stempling, timer, arbeidsplan, materiell, egenkontroll, reklamasjon, ferie og chat – koblet til Visma Business NXT og Tripletex.">
+<meta property="og:image" content="https://bygglogg.app/skjerm/tidsplan-pc.webp">
+<title>ByggLogg</title>
+<meta name="description" content="ByggLogg er appen for byggefirma: stempling, timer, arbeidsplan, materiell, egenkontroll, reklamasjon, ferie og chat – koblet til Visma Business NXT og Tripletex.">
+<meta property="og:image:alt" content="ByggLogg på telefonen">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: navy byggeplass-hero med telefon, gul målebånd-stripe som skillelinje mellom seksjonene, deretter rolige lyse seksjoner */
+:root {
+  --navy: #0B1F5C; --navy-2: #07154A; --blue: #0A1EBE; --yellow: #FFCD00; --yellow-ink: #1A1400;
+  --bg: #F3F5FA; --surface: #FFFFFF; --fg: #0E1430; --muted: #4A5372; --line: #D6DCEA;
+  --hero-fg: #FFFFFF; --hero-muted: #C3CBEA;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0A0E20; --surface: #141B38; --fg: #F2F4FC; --muted: #B4BCDD; --line: #2B356B; --blue: #A9B3FF;
+  --navy: #0B1640; --navy-2: #060C26; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0A0E20; --surface: #141B38; --fg: #F2F4FC; --muted: #B4BCDD; --line: #2B356B; --blue: #A9B3FF;
+  --navy: #0B1640; --navy-2: #060C26; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 17px; line-height: 1.55; }
+a { color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; line-height: 1.02; }
+h2 { font-size: clamp(34px, 5vw, 48px); font-weight: 700; }
+h3 { font-size: 24px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); font-weight: 600; }
+.lead { color: var(--muted); max-width: 62ch; font-size: 18.5px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 6px; font-weight: 700; font-size: 17px; text-decoration: none; border: 2px solid transparent; }
+.btn.gul { background: var(--yellow); color: var(--yellow-ink); }
+.btn.gul:hover { background: #FFD933; }
+.btn.strek { border-color: currentColor; }
+.btn:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+
+/* Topplinje */
+.topp { background: var(--navy-2); color: var(--hero-fg); }
+.topp .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
+.merke { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.merke svg { width: 36px; height: 36px; flex: none; }
+.merke b { font-family: var(--f-display); font-style: italic; font-weight: 800; font-size: 28px; letter-spacing: .01em; }
+.topp nav { display: flex; gap: 22px; font-weight: 600; font-size: 16px; }
+.topp nav a { text-decoration: none; color: var(--hero-muted); }
+.topp nav a:hover { color: var(--hero-fg); }
+@media (max-width: 720px) { .topp nav { display: none; } }
+
+/* Hero */
+.hero { background: radial-gradient(1200px 500px at 85% -10%, #1B37A8 0%, transparent 60%), var(--navy); color: var(--hero-fg); }
+.hero .wrap { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; padding-block: 64px 72px; }
+.hero .eyebrow { color: var(--yellow); }
+.hero h1 { font-size: clamp(48px, 7.4vw, 86px); font-style: italic; font-weight: 800; margin-top: 14px; letter-spacing: -.005em; }
+.hero h1 em { font-style: italic; color: var(--yellow); }
+.hero .lead { color: var(--hero-muted); margin-top: 20px; }
+.hero .knapper { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero .fakta { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 28px; font-size: 15px; color: var(--hero-muted); }
+.hero .fakta span::before { content: "✓"; color: var(--yellow); font-weight: 700; margin-right: 7px; }
+@media (max-width: 860px) { .hero .wrap { grid-template-columns: 1fr; padding-block: 44px 56px; } }
+
+/* Telefon */
+.telefon { justify-self: center; width: min(300px, 100%); aspect-ratio: 9 / 18.5; max-width: 100%; border-radius: 38px; background: #050A1E; padding: 11px;
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.7), inset 0 0 0 2px #2A3566; }
+.skjerm { height: 100%; border-radius: 28px; overflow: hidden; background: #0A0E20; display: flex; flex-direction: column; font-size: 12px; color: #F2F4FC; }
+.skjerm img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.skjerm .app-topp { background: linear-gradient(#0A1EBE, #07158A); padding: 22px 14px 0; }
+.skjerm .app-topp small { font-family: var(--f-display); font-style: italic; font-weight: 700; color: var(--yellow); font-size: 11px; }
+.skjerm .app-topp b { display: block; font-family: var(--f-display); font-style: italic; font-weight: 800; font-size: 25px; line-height: 1; margin: 2px 0 10px; }
+.maal { height: 10px; background: var(--yellow) repeating-linear-gradient(90deg, #1A1400 0 1px, transparent 1px 8px); background-size: 8px 4px; background-repeat: repeat-x; background-position: 0 0; margin: 0 -14px; }
+.skjerm .innhold { padding: 14px; display: grid; gap: 10px; }
+.skjerm .kort { background: #141B38; border: 1px solid #2B356B; border-radius: 12px; padding: 12px; }
+.skjerm .kort .t { color: #B4BCDD; font-size: 11px; }
+.skjerm .klokke { font-family: var(--f-display); font-weight: 700; font-size: 46px; line-height: .95; letter-spacing: -.01em; }
+.skjerm .prosj { font-weight: 600; font-size: 13px; margin-top: 4px; }
+.skjerm .stopp { margin-top: 10px; background: var(--yellow); color: var(--yellow-ink); text-align: center; font-weight: 700; border-radius: 8px; padding: 9px; font-size: 13px; }
+.skjerm .rad { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid #252E62; }
+.skjerm .rad:first-of-type { border-top: 0; }
+.skjerm .rad span:last-child { font-family: var(--f-mono); color: #FFCD00; }
+.skjerm .faner { margin-top: auto; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #252E62; padding: 9px 4px 14px; text-align: center; color: #B4BCDD; font-size: 10.5px; }
+.skjerm .faner .aktiv { color: #FFCD00; font-weight: 700; }
+
+/* Skjermbilder fra appen */
+.galleri { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; }
+.galleri figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+.galleri figcaption { color: var(--muted); font-size: 15px; }
+.galleri figcaption b { color: var(--fg); }
+.vindu { border-radius: 12px; overflow: hidden; background: #0A0E20; border: 1px solid var(--line); box-shadow: 0 24px 50px -28px rgba(7, 21, 74, .55); }
+.vindu .linje { display: flex; gap: 6px; padding: 10px 12px; background: #141B38; border-bottom: 1px solid #2B356B; }
+.vindu .linje i { width: 10px; height: 10px; border-radius: 50%; background: #2B356B; }
+.vindu img { display: block; width: 100%; height: auto; }
+.galleri .side { display: grid; gap: 22px; min-width: 0; }
+@media (max-width: 860px) { .galleri { grid-template-columns: 1fr; } }
+
+/* Målebånd-stripe mellom seksjonene */
+.baand { height: 22px; background-color: var(--yellow);
+  background-image: repeating-linear-gradient(90deg, #1A1400 0 2px, transparent 2px 100px), repeating-linear-gradient(90deg, #1A1400 0 1px, transparent 1px 10px);
+  background-size: 100% 12px, 100% 6px; background-repeat: no-repeat; background-position: 0 0, 0 0; }
+
+section { padding-block: 80px; }
+.seksjon-topp { display: grid; gap: 14px; margin-bottom: 40px; }
+
+/* Funksjoner */
+.funk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.funk article { background: var(--surface); padding: 26px 24px 28px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.funk .ikon { width: 40px; height: 40px; border-radius: 8px; background: var(--navy); display: grid; place-items: center; }
+.funk .ikon svg { width: 22px; height: 22px; }
+.funk h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ny { font-family: var(--f-body); font-style: normal; font-weight: 700; font-size: 12px; background: var(--yellow); color: var(--yellow-ink); border-radius: 99px; padding: 2px 9px; line-height: 1.4; }
+.funk p { color: var(--muted); font-size: 16px; }
+.funk ul { margin: 2px 0 0; padding-left: 18px; color: var(--muted); font-size: 15.5px; display: grid; gap: 3px; }
+@media (max-width: 920px) { .funk { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .funk { grid-template-columns: 1fr; } }
+
+/* Regnskapssystemer og tilpasning */
+.systemer { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.system { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 10px 14px; font-size: 15px; color: var(--muted); min-width: 0; }
+.system b { color: var(--fg); font-size: 16px; }
+.system i { font-style: normal; font-weight: 700; font-size: 12px; background: var(--yellow); color: var(--yellow-ink); border-radius: 99px; padding: 1px 8px; }
+.tilpass { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 48px; }
+.tilpass h3 { margin-bottom: 10px; }
+.tilpass ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); }
+.tilpass .small { margin-top: 14px; color: var(--muted); font-size: 15px; }
+@media (max-width: 760px) { .tilpass { grid-template-columns: 1fr; } }
+/* Visma-flyt */
+.visma { background: var(--surface); border-block: 1px solid var(--line); }
+.flyt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; counter-reset: steg; }
+.flyt li { list-style: none; border-top: 4px solid var(--yellow); padding-top: 16px; display: grid; gap: 8px; min-width: 0; }
+.flyt li::before { counter-increment: steg; content: "Steg " counter(steg); font-family: var(--f-mono); font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); font-weight: 600; }
+.flyt p { color: var(--muted); font-size: 16px; }
+.flyt { padding: 0; margin: 0; }
+@media (max-width: 760px) { .flyt { grid-template-columns: 1fr; } }
+
+/* Tjenester */
+.tjenester { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
+.tjeneste { display: grid; grid-template-columns: 54px 1fr; gap: 4px 16px; padding-block: 22px; border-top: 1px solid var(--line); min-width: 0; }
+.tjeneste .nr { grid-row: span 2; font-family: var(--f-display); font-weight: 700; font-size: 34px; color: var(--blue); line-height: 1; }
+.tjeneste p { color: var(--muted); font-size: 16px; }
+@media (max-width: 760px) { .tjenester { grid-template-columns: 1fr; } }
+
+/* Pris */
+.pris { background: var(--navy); color: var(--hero-fg); }
+.pris .eyebrow { color: var(--yellow); }
+.pris .lead { color: var(--hero-muted); }
+.priskort { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 860px; }
+.priskort > div { border: 1px solid #2E3E86; border-radius: 10px; padding: 28px; display: grid; gap: 6px; align-content: start; background: rgba(255,255,255,.03); min-width: 0; }
+.priskort .fremhevet { border: 2px solid var(--yellow); }
+.priskort .navn { font-weight: 700; font-size: 18px; }
+.priskort .belop { font-family: var(--f-display); font-weight: 700; font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
+.priskort .belop small { font-family: var(--f-body); font-size: 17px; font-weight: 500; color: var(--hero-muted); margin-left: 6px; }
+.priskort .merk { color: var(--hero-muted); font-size: 15px; }
+.priskort .merkelapp { justify-self: start; background: var(--yellow); color: var(--yellow-ink); font-weight: 700; font-size: 13px; border-radius: 99px; padding: 3px 10px; }
+.inkludert { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px 24px; color: var(--hero-muted); font-size: 15.5px; }
+.inkludert span::before { content: "✓"; color: var(--yellow); font-weight: 700; margin-right: 7px; }
+@media (max-width: 680px) { .priskort { grid-template-columns: 1fr; } }
+
+/* Personvern */
+.trygg { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+.trygg dl { margin: 0; display: grid; gap: 0; }
+.trygg dl div { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding-block: 14px; border-top: 1px solid var(--line); }
+.trygg dt { font-weight: 700; }
+.trygg dd { margin: 0; color: var(--muted); }
+@media (max-width: 820px) { .trygg { grid-template-columns: 1fr; gap: 28px; } .trygg dl div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Kontakt */
+.kontakt { background: var(--surface); border-top: 1px solid var(--line); }
+.kontakt .wrap { display: grid; grid-template-columns: 1.2fr .8fr; gap: 40px; align-items: center; }
+.kontaktkort { border: 1px solid var(--line); border-radius: 10px; padding: 26px; display: grid; gap: 6px; background: var(--bg); }
+.kontaktkort .navn { font-family: var(--f-display); font-size: 28px; font-weight: 700; }
+.kontaktkort .epost { font-family: var(--f-mono); font-size: 15px; overflow-wrap: anywhere; user-select: all; }
+.kontaktkort button { justify-self: start; margin-top: 8px; font: inherit; font-size: 15px; font-weight: 600; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+@media (max-width: 820px) { .kontakt .wrap { grid-template-columns: 1fr; } }
+
+footer { background: var(--navy-2); color: var(--hero-muted); font-size: 14.5px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-block: 26px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .telefon { animation: inn .8s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes inn { from { transform: translateY(18px) rotate(1.5deg); } to { transform: none; } }
+}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} img{max-width:100%} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<header class="topp">
+  <div class="wrap">
+    <a class="merke" href="#">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF" fill-opacity=".08"/><g transform="translate(64 64) scale(6)"><path d="M6 30 L32 9 L58 30" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 27 V55 H49 V27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/><path d="M23 41 L30 48 L42 35" fill="none" stroke="#FFCD00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+      <b>ByggLogg</b>
+    </a>
+    <nav aria-label="Hovedmeny">
+      <a href="#funksjoner">Funksjoner</a>
+      <a href="#appen">Se appen</a>
+      <a href="#tjenester">Tjenester</a>
+      <a href="#pris">Pris</a>
+      <a href="#kontakt">Kontakt</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">For byggefirma og håndverkere</p>
+      <h1>Hele byggeplassen <em>i lomma.</em></h1>
+      <p class="lead">ByggLogg samler stempling, timer, arbeidsplan, materiell, egenkontroll, reklamasjon, ferie og chat i én app på telefonen. Prosjektene kommer rett fra Visma Business NXT eller Tripletex, og lønnsgrunnlaget er klart når måneden er slutt.</p>
+      <div class="knapper">
+        <a class="btn gul" href="/?demo" target="_blank" rel="noopener">Prøv demoen →</a>
+        <a class="btn strek" href="#kontakt">Snakk med oss</a>
+      </div>
+      <div class="fakta"><span>Norsk og polsk</span><span>Ingen app-butikk</span><span>Data lagret i EU</span></div>
+    </div>
+    <div class="telefon" aria-label="Skjermbilde av ByggLogg på telefon">
+      <div class="skjerm"><img src="/skjerm/forside-mobil.webp" width="600" height="1298" alt="Forsiden i ByggLogg: snekkeren er logget inn på prosjektet Skifte vindu og ser timene sine for dagen"></div>
+    </div>
+  </div>
+</div>
+<div class="baand" aria-hidden="true"></div>
+
+<section id="funksjoner">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Hva ByggLogg gjør</p>
+      <h2>Laget på en byggevarehandel. Brukt hver dag av snekkerne.</h2>
+      <p class="lead">ByggLogg er utviklet ute i bransjen, sammen med snekkere som bruker appen hver dag, for å bli kvitt lapper, SMS-er og regneark. Alt de ansatte trenger på jobb ligger i én app, og leder får oversikten uten å ringe rundt.</p>
+    </div>
+    <div class="funk">
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg></div>
+        <h3>Stempling og timer</h3>
+        <p>Logg inn og ut med ett trykk, på riktig prosjekt. Dagen vises som et målebånd, så hullene synes.</p>
+        <ul><li>Varsel hvis noen har glemt å logge ut</li><li>Overtid, lunsj og kjøring regnes ut</li><li>Lønnsgrunnlag rett til lønnssystemet</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+        <h3>Prosjekter</h3>
+        <p>Adresse med kart, kontaktperson, selger, snekker og timer brukt mot kalkyle på hvert prosjekt.</p>
+        <ul><li>Hentes fra Visma eller Tripletex</li><li>Søk på nummer, kunde eller adresse</li><li>Slå sammen to prosjekter som er samme jobb</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h6M7 17h9"/></svg></div>
+        <h3>Arbeidsplan <span class="ny">Nyhet</span></h3>
+        <p>Leder deler ut jobber med dato til de ansatte. Ukeplanen viser hvem som er hvor, og hvem som har ferie.</p>
+        <ul><li>Trykk på en dag for å planlegge</li><li>«Mitt arbeid» for hver ansatt</li><li>Push-varsel når du får ny jobb</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></div>
+        <h3>Materiell og bestilling <span class="ny">Nyhet</span></h3>
+        <p>Materiallisten deles i leveranser i riktig rekkefølge. Snekkeren bestiller fra byggeplassen, og butikken plukker.</p>
+        <ul><li>Leveranser med dato og status</li><li>Bestilling rett til butikk og lager</li><li>Huk av det som er levert</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8.5 9 1.5 1.5 3-3M8.5 15l1.5 1.5 3-3"/></svg></div>
+        <h3>Egenkontroll og HMS <span class="ny">Nyhet</span></h3>
+        <p>Sjekklister for våtrom, tetting, vinduer og brann som signeres på stedet, og sikker jobbanalyse før risikoarbeid.</p>
+        <ul><li>SJA som alle kvitterer på</li><li>Mannskapsliste med HMS-kort</li><li>Avvik og uønskede hendelser</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2.5h5L16 6"/></svg></div>
+        <h3>Dokumentasjon</h3>
+        <p>Dagbok, bilder og tilleggsarbeid lagres på prosjektet mens jobben pågår. Kunden signerer tillegg på telefonen.</p>
+        <ul><li>Sluttrapport og FDV til kunden</li><li>Klar for Boligmappa</li><li>Vær fra Meteorologisk institutt</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></div>
+        <h3>Reklamasjon <span class="ny">Nyhet</span></h3>
+        <p>Når kunden melder feil på en ferdig jobb, registreres det på jobben med bilder. Leder vurderer, og utbedringen planlegges.</p>
+        <ul><li>Timer på reklamasjon faktureres ikke</li><li>Kunden kvitterer når det er rettet</li><li>Hva reklamasjoner koster i året</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+        <h3>Ferie og fravær</h3>
+        <p>Søk ferie i appen og se felles feriekalender. Leder godkjenner med ett trykk.</p>
+        <ul><li>Feriedager etter ferieloven</li><li>Egenmelding og sykt barn</li><li>Kalender til mobilen</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></div>
+        <h3>Chat og varsler</h3>
+        <p>Felles chat, egen tråd per prosjekt og private meldinger, med push-varsel på telefonen.</p>
+        <ul><li>Bilder rett i chatten</li><li>Varsel om nye prosjekter og bestillinger</li><li>Hele appen på norsk og polsk</li></ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="appen">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Slik ser det ut</p>
+      <h2>Bygget for telefonen. Like god på PC.</h2>
+      <p class="lead">Snekkerne bruker ByggLogg på telefonen ute. Leder og butikk har den samme appen på PC, med ukeplan, bestillinger og reklamasjoner på én side.</p>
+    </div>
+    <div class="galleri">
+      <figure>
+        <div class="vindu"><div class="linje"><i></i><i></i><i></i></div><img src="/skjerm/tidsplan-pc.webp" width="1400" height="1394" loading="lazy" alt="Ukeplanen i ByggLogg med jobber fordelt på de ansatte"></div>
+        <figcaption><b>Arbeidsplan.</b> Hele uka for alle ansatte. Trykk på en ledig dag for å dele ut en jobb.</figcaption>
+      </figure>
+      <div class="side">
+        <figure>
+          <div class="vindu"><div class="linje"><i></i><i></i><i></i></div><img src="/skjerm/butikk-pc.webp" width="1400" height="864" loading="lazy" alt="Bestillinger fra byggeplassen og reklamasjoner i ByggLogg"></div>
+          <figcaption><b>Butikk og prosjektleder.</b> Bestillinger fra byggeplassen og reklamasjoner som skal følges opp.</figcaption>
+        </figure>
+        <figure>
+          <div class="vindu"><img src="/skjerm/prosjekt-mobil.webp" width="600" height="685" loading="lazy" alt="Delene av et prosjekt i ByggLogg: plan, materiell, egenkontroll, SJA, chat, dagbok og mer"></div>
+          <figcaption><b>Alt om jobben på ett sted.</b> Plan, materiell, egenkontroll, bilder, avvik og sluttdokumentasjon på prosjektet.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="visma">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Regnskap og lønn</p>
+      <h2>Ingen dobbeltføring</h2>
+      <p class="lead">ByggLogg henter prosjekter og kunder automatisk fra regnskapssystemet dere allerede bruker. Det de ansatte registrerer ute, går tilbake som grunnlag for faktura og lønn.</p>
+      <div class="systemer">
+        <span class="system"><b>Visma Business NXT</b> Prosjekter, kunder, materiell og fakturerte timer</span>
+        <span class="system"><b>Tripletex</b><i>Nyhet</i> Prosjekter, kunder og ansatte inn, godkjente timer og lønnsgrunnlag ut</span>
+        <span class="system"><b>Visma Lønn</b><i>Nyhet</i> Timer, overtid, kjøring, ferie og fravær som importfil</span>
+      </div>
+    </div>
+    <ol class="flyt">
+      <li><h3>Prosjektet opprettes</h3><p>Kontoret lager ordren i Visma, eller snekkeren oppretter prosjektet i appen når jobben starter før papirene er klare.</p></li>
+      <li><h3>Jobben gjøres</h3><p>Timer, bilder, avvik og materiell registreres på prosjektet. Prosjekter laget i appen kobles til prosjektet i regnskapet når det kommer.</p></li>
+      <li><h3>Grunnlaget er klart</h3><p>Leder ser timer klare til fakturering, og sender lønnsgrunnlaget for måneden rett til Tripletex eller Visma Lønn – på bedriftens egne lønnsarter, uten å skrive noe av på nytt.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="tjenester">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Tjenester</p>
+      <h2>Vi setter det opp for dere</h2>
+      <p class="lead">Dere skal ikke trenge en IT-avdeling for å komme i gang. Vi gjør jobben, og dere får én person å ringe.</p>
+    </div>
+    <div class="tjenester">
+      <div class="tjeneste"><span class="nr">1</span><h3>Oppsett og import</h3><p>Vi legger inn ansatte, satser, regler for overtid og tillegg, og importerer prosjekter og kunder.</p></div>
+      <div class="tjeneste"><span class="nr">2</span><h3>Kobling til regnskap</h3><p>Vi kobler ByggLogg til Visma Business NXT eller Tripletex, slik at prosjekter og kunder oppdateres av seg selv og timene går rett til lønn.</p></div>
+      <div class="tjeneste"><span class="nr">3</span><h3>Opplæring</h3><p>Kort gjennomgang med de ansatte på morgenmøtet, og egen opplæring for leder og kontor.</p></div>
+      <div class="tjeneste"><span class="nr">4</span><h3>Egen profil</h3><p>Firmanavn og logo i appen, i rapportene og i sluttdokumentasjonen dere sender kunden.</p></div>
+      <div class="tjeneste"><span class="nr">5</span><h3>Brukerstøtte</h3><p>Svar på norsk fra folk som kjenner byggebransjen. Feil rettes fortløpende.</p></div>
+      <div class="tjeneste"><span class="nr">6</span><h3>Videreutvikling</h3><p>Nye funksjoner kommer jevnlig, og mange av dem starter som ønsker fra kundene.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="tilpass">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Tilpass ByggLogg</p>
+      <h2>Satt opp etter hvordan dere jobber</h2>
+      <p class="lead">Hver bedrift er forskjellig. Det meste stilles inn av leder i appen, og resten hjelper vi dere med.</p>
+    </div>
+    <div class="tilpass">
+      <div><h3>Tilpasses per bedrift</h3><ul>
+        <li>Firmanavn, logo og farger i appen og i dokumentene til kunden</li>
+        <li>Avdelinger og hvor mange som kan ha ferie samtidig</li>
+        <li>Normaltid, lunsjtrekk og overtid per ansatt</li>
+        <li>Feriedager etter avtale, med ekstra uke over 60 år</li>
+        <li>Varsel når noen har glemt å stemple ut, med egen grense per ansatt</li>
+        <li>Kvoter for arbeidstøy, verktøy og verneutstyr</li>
+        <li>Slå av deler av appen dere ikke bruker</li>
+        <li>Oversikt for leder: fakturerte timer mot mål, lønnsomhet, kurs og utstyr</li>
+        <li>Prosjektleder-rolle for butikk og kontor</li>
+        <li>Kampanjer fra kjeden på startsiden</li>
+        <li>Norsk eller polsk for hver ansatt</li>
+      </ul></div>
+      <div><h3>Andre koblinger</h3><ul>
+        <li>Kart og kjøreavstand til prosjektet fra Kartverket</li>
+        <li>Sluttdokumentasjon og FDV klar for Boligmappa</li>
+        <li>Ferie og fravær rett i kalenderen på mobilen</li>
+        <li>Værmelding fra Meteorologisk institutt</li>
+        <li>Push-varsler for chat, nye prosjekter, ny jobb og bestillinger</li>
+        <li>Import av timer fra Svenn ved bytte av system</li>
+      </ul>
+      <p class="small">Trenger dere en kobling vi ikke har? Si fra. Mange av funksjonene i ByggLogg startet som ønsker fra kundene.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="pris" id="pris">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Pris</p>
+      <h2>Én pris per bruker</h2>
+      <p class="lead">Dere betaler for de ansatte som bruker appen, måned for måned. Alle funksjoner er med.</p>
+    </div>
+    <div class="priskort">
+      <div class="fremhevet">
+        <span class="navn">ByggLogg</span>
+        <span class="belop">249<small>kr per bruker / mnd</small></span>
+        <span class="merk">eks. mva. · minst 5 brukere</span>
+      </div>
+      <div>
+        <span class="navn">Tillegg: kobling til Visma Business NXT eller Tripletex</span>
+        <span class="belop">490<small>kr per bedrift / mnd</small></span>
+        <span class="merk">eks. mva. · 2 500 kr i oppstart</span>
+      </div>
+    </div>
+    <div class="inkludert"><span>Alle funksjoner</span><span>Brukerstøtte</span><span>Nye versjoner</span><span>Norsk og polsk</span></div>
+  </div>
+</section>
+<div class="baand" aria-hidden="true"></div>
+
+<section>
+  <div class="wrap trygg">
+    <div class="seksjon-topp" style="margin:0">
+      <p class="eyebrow">Personvern og sikkerhet</p>
+      <h2>Trygt for de ansatte</h2>
+      <p class="lead">ByggLogg følger personvernforordningen (GDPR) og arbeidsmiljølovens krav til oversikt over arbeidstid. Vi inngår databehandleravtale med alle kunder. <a href="/?demo#vilkar" target="_blank" rel="noopener">Les avtalevilkårene</a>.</p>
+    </div>
+    <dl>
+      <div><dt>Lagring</dt><dd>Alle opplysninger lagres i EU (Irland).</dd></div>
+      <div><dt>Posisjon</dt><dd>Appen sporer ikke hvor de ansatte er.</dd></div>
+      <div><dt>Sykefravær</dt><dd>Bare typen fravær registreres, aldri diagnose.</dd></div>
+      <div><dt>Innlogging</dt><dd>Engangskode på e-post. Ingen passord å glemme.</dd></div>
+      <div><dt>Tilgang</dt><dd>Ansatte ser sine egne tall. Private meldinger kan bare leses av de to som skriver.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="kontakt" id="kontakt">
+  <div class="wrap">
+    <div class="seksjon-topp" style="margin:0">
+      <p class="eyebrow">Kom i gang</p>
+      <h2>Se ByggLogg i bruk</h2>
+      <p class="lead">Prøv demoen selv, eller ta kontakt for en gjennomgang. Vi viser gjerne hvordan appen brukes på en vanlig arbeidsdag.</p>
+      <div style="margin-top:10px"><a class="btn gul" href="/?demo" target="_blank" rel="noopener">Prøv demoen →</a></div>
+    </div>
+    <div class="kontaktkort">
+      <span class="eyebrow">Kontakt</span>
+      <span class="navn">Ståle Jonassen</span>
+      <span>Jonassen AS</span>
+      <span>Lepsøyvegen 210, 6292 Kjerstad</span>
+      <span class="epost" id="epost">post@bygglogg.app</span>
+      <button type="button" id="kopier">Kopier e-postadresse</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>ByggLogg er et varemerke fra Jonassen AS · Lepsøyvegen 210, 6292 Kjerstad · org.nr. 919 665 319</span>
+    <span><a href="/?demo#vilkar" target="_blank" rel="noopener">Avtalevilkår</a> · <a href="/?demo#personvern" target="_blank" rel="noopener">Personvern</a></span>
+  </div>
+</footer>
+
+<script>
+document.getElementById("kopier").addEventListener("click", function () {
+  var b = this, tekst = document.getElementById("epost").textContent;
+  function ferdig() { b.textContent = "Kopiert"; setTimeout(function () { b.textContent = "Kopier e-postadresse"; }, 1800); }
+  function velg() { var r = document.createRange(); r.selectNodeContents(document.getElementById("epost")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Merket – trykk Kopier"; }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(tekst).then(ferdig, velg); else velg();
+});
+</script>
+
+</body>
+</html>

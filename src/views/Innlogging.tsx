@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { api, feiltekst } from "../lib/api";
 import { PROFIL } from "../lib/profil";
+import { Personvern } from "./Personvern";
+import { Vilkar } from "./Vilkar";
 
 const DEMO = PROFIL.demoBrukere;
 
@@ -9,6 +11,7 @@ export function Innlogging() {
   const [kode, setKode] = useState("");
   const [steg, setSteg] = useState<"epost" | "kode">("epost");
   const [jobber, setJobber] = useState(false);
+  const [vis, setVis] = useState<"personvern" | "vilkar" | null>(() => location.hash === "#personvern" ? "personvern" : location.hash === "#vilkar" ? "vilkar" : null);
   const [feil, setFeil] = useState<string | null>(null);
 
   const send = async (e: React.FormEvent) => {
@@ -65,7 +68,14 @@ export function Innlogging() {
           </form>
         )}
         {feil && <p style={{ color: "var(--warn)" }}>{feil}</p>}
+        <div className="small row" style={{ gap: "4px 14px", flexWrap: "wrap" }}>
+          <button type="button" className="linkbtn" onClick={() => setVis((x) => x === "personvern" ? null : "personvern")}>{vis === "personvern" ? "Skjul personvern" : "Personvern – slik behandler vi opplysningene dine"}</button>
+          <button type="button" className="linkbtn" onClick={() => setVis((x) => x === "vilkar" ? null : "vilkar")}>{vis === "vilkar" ? "Skjul avtalevilkår" : "Avtalevilkår"}</button>
+          <a href="https://bygglogg.app" target="_blank" rel="noopener">Om ByggLogg</a>
+        </div>
       </div>
+      {vis === "personvern" && <Personvern lukk={() => setVis(null)} tilVilkar={() => setVis("vilkar")} />}
+      {vis === "vilkar" && <Vilkar lukk={() => setVis(null)} tilPersonvern={() => setVis("personvern")} />}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // Ferie i lønnskjøringen: godkjente feriedager per ansatt per måned, og CSV-fil for Excel.
 import { MND, sorterAnsatte, virkedager, type Ansatt, type Data } from "./ferie";
 import { lonnTimer, type LonnTimer } from "./timer";
+import { PROFIL } from "./profil";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const sisteDag = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();

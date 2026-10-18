@@ -28,6 +28,18 @@ async function gql(tok: string, query: string, variables: Record<string, unknown
   return j.data;
 }
 
+/**
+ * Visma-prosjektnr → prosjekt i ByggLogg. Et prosjekt som er slått sammen med et annet i appen
+ * peker på prosjektet det ble slått inn i, så ordre, varer og fakturerte timer havner der.
+ */
+async function prosjektKart(bedriftId: number) {
+  let r = await sb.from("prosjekter").select("id, visma_nr, slatt_sammen_med").eq("bedrift_id", bedriftId).not("visma_nr", "is", null);
+  // Eldre database uten sammenslåing
+  if (r.error) r = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", bedriftId).not("visma_nr", "is", null) as typeof r;
+  if (r.error) throw r.error;
+  return new Map((r.data ?? []).map((x) => [Number(x.visma_nr), ((x as { slatt_sammen_med?: string | null }).slatt_sammen_med ?? x.id) as string]));
+}
+
 /** Feltene som finnes på en tabelltype, så vi bare spør etter felt som eksisterer. */
 async function felt(tok: string, type: string) {
   const d = await gql(tok, `query($n: String!) { __type(name: $n) { fields { name } } }`, { n: type });
@@ -85,17 +97,18 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
   const pf = `orgUnit${klasseNr}`;
   const pFelt = await felt(tok, "Product");
   const pInfo = velg(pFelt, ["eanItemNo", "webPage"]);
-  const linjeFelt = ["orderNo", "productNo", pf, ...velg(lf, ["description", "totalQuantity", "orderType"])];
-  const ekstra = [lf.has("joinup_Product") && pInfo.length ? `joinup_Product { ${pInfo.join(" ")} }` : "", lf.has("joinup_Unit") ? "joinup_Unit { description }" : ""].filter(Boolean);
+  const linjeFelt = ["orderNo", "productNo", pf, ...velg(lf, ["description", "totalQuantity", "orderType", "createdDate"])];
+  const ekstra = [lf.has("joinup_Product") && pInfo.length ? `joinup_Product { ${pInfo.join(" ")} }` : "", lf.has("joinup_Unit") ? "joinup_Unit { description }" : "", lf.has("joinup_Order") ? "joinup_Order { orderDate }" : ""].filter(Boolean);
   let linjer: Record<string, unknown>[];
   try { linjer = await alle(tok, b.visma_firma_nr, "orderLine", [...linjeFelt, ...ekstra], `{ ${pf}: { _gt: 0 } }`); }
   catch { linjer = await alle(tok, b.visma_firma_nr, "orderLine", linjeFelt, `{ ${pf}: { _gt: 0 } }`); }
 
-  const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
-  const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
+  const pid = await prosjektKart(b.id);
   // Summer per prosjekt, vare og ordretype. Samme vare kan ligge både på innkjøp og salg; da brukes den største summen.
   const sum = new Map<string, number>();
-  const per = new Map<string, { prosjekt_id: string; varenr: string; beskrivelse: string; antall: number; enhet: string }>();
+  const per = new Map<string, { prosjekt_id: string; varenr: string; beskrivelse: string; antall: number; enhet: string; sist_dato: string | null }>();
+  // Dato på ordrelinjen (ordredato, ellers når linjen ble laget), som «ÅÅÅÅ-MM-DD»
+  const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
   const varer = new Map<string, { varenr: string; beskrivelse: string; nobb_nr: string; ean: string }>();
   for (const l of linjer) {
     const vnr = s(l.productNo), p = pid.get(Number(l[pf]));
@@ -105,8 +118,10 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
     if (!nobb) continue; // fritekstlinjer (frakt, arbeid o.l.) har ikke FDV
     const key = `${p}|${vnr}`, tk = `${key}|${s(l.orderType)}`;
     sum.set(tk, (sum.get(tk) ?? 0) + (Number(l.totalQuantity) || 0));
-    const r = per.get(key) ?? { prosjekt_id: p, varenr: vnr, beskrivelse: s(l.description), antall: 0, enhet: s((l.joinup_Unit as Record<string, unknown> | null)?.description) };
+    const r = per.get(key) ?? { prosjekt_id: p, varenr: vnr, beskrivelse: s(l.description), antall: 0, enhet: s((l.joinup_Unit as Record<string, unknown> | null)?.description), sist_dato: null };
     r.antall = Math.max(r.antall, sum.get(tk)!);
+    const d = dato((l.joinup_Order as Record<string, unknown> | null)?.orderDate) ?? dato(l.createdDate);
+    if (d && (!r.sist_dato || d > r.sist_dato)) r.sist_dato = d;
     per.set(key, r);
     if (!varer.has(vnr)) varer.set(vnr, { varenr: vnr, beskrivelse: s(l.description), nobb_nr: nobb, ean: s(pr.eanItemNo) });
   }
@@ -126,6 +141,31 @@ async function synkVarer(tok: string, b: { id: number; visma_firma_nr: number },
   }
   await sb.from("prosjekt_vare").delete().eq("bedrift_id", b.id).eq("manuell", false).lt("oppdatert", naa);
   return rader.length;
+}
+
+/** Nye ansatte uten utstyrskonto: koble automatisk til Visma-prosjektet med navnet deres
+ *  (f.eks. «Utstyr Mats Lausund»). Kobler bare når det finnes nøyaktig ett ledig prosjekt som passer. */
+async function kobleUtstyrskontoer(b: { id: number }) {
+  const { data: ansatte } = await sb.from("ansatte").select("id, navn, utstyr_prosjekt_id").eq("bedrift_id", b.id).eq("aktiv", true);
+  const uten = (ansatte ?? []).filter((a) => !a.utstyr_prosjekt_id);
+  if (!uten.length) return 0;
+  const brukt = new Set((ansatte ?? []).map((a) => a.utstyr_prosjekt_id).filter(Boolean));
+  const { data: pr } = await sb.from("prosjekter").select("id, navn").eq("bedrift_id", b.id);
+  const ledige = (pr ?? []).filter((p) => !brukt.has(p.id) && /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn ?? ""));
+  const ord = (s: string) => s.toLowerCase().normalize("NFC").split(/[^\p{L}]+/u).filter(Boolean);
+  let antall = 0;
+  for (const a of uten) {
+    const navn = ord(a.navn);
+    if (!navn.length) continue;
+    const har = (p: { navn: string }, deler: string[]) => { const w = new Set(ord(p.navn)); return deler.every((d) => w.has(d)); };
+    // Fornavn må stemme; finnes flere, må også etternavnet stemme (to Lausund-er)
+    let treff = ledige.filter((p) => har(p, [navn[0]]));
+    if (treff.length > 1 && navn.length > 1) treff = treff.filter((p) => har(p, [navn[0], navn[navn.length - 1]]));
+    if (treff.length !== 1) continue;
+    const { error } = await sb.from("ansatte").update({ utstyr_prosjekt_id: treff[0].id }).eq("id", a.id).is("utstyr_prosjekt_id", null);
+    if (!error) { antall++; ledige.splice(ledige.indexOf(treff[0]), 1); }
+  }
+  return antall;
 }
 
 /** Utstyrskontoene (verktøy, arbeidstøy og forbruk per ansatt): alle linjer med dato og pris.
@@ -182,8 +222,7 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
     ["orderNo", "lineNo", "productNo", pf, "totalQuantity", "finished", "unrealisedQuantity", "priceInCurrency", "finishDate", "invoiceNo",
       `joinup_Order { orderDate customerNo transactionType orderType ${pf} }`],
     `{ productNo: { _in: [${varenr.map((v) => JSON.stringify(v)).join(",")}] } }`);
-  const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
-  const pid = new Map((pmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
+  const pid = await prosjektKart(b.id);
   const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
   const kid = new Map((kmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
   const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
@@ -304,8 +343,7 @@ Deno.serve(async (req) => {
         const pf = `orgUnit${pk.nr}`;
         const ofelter = ["orderNo", pf, ...velg(oFelt, ["orderDate", "orderType", "transactionType", "name", "customerNo", "orderSumNetDomestic", "incurredCostTotalDomestic", "grossProfitTotalDomestic", "invoicedAmountTotalDomestic", "finishDate"])];
         const ordrer = await alle(tok, b.visma_firma_nr, "order", ofelter, `{ ${pf}: { _gt: 0 } }`);
-        const { data: pmap } = await sb.from("prosjekter").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
-        const pid = new Map((pmap ?? []).map((x) => [x.visma_nr, x.id]));
+        const pid = await prosjektKart(b.id);
         const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
         const n = (v: unknown) => Number(v) || 0;
         const rader2 = ordrer.filter((o) => pid.has(Number(o[pf]))).map((o) => ({
@@ -342,7 +380,9 @@ Deno.serve(async (req) => {
         catch (e) { vareAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
       let utstyrAntall: number | string = "hoppet over";
-      if (url.searchParams.get("varer") || url.searchParams.get("utstyr") || new Date().getUTCMinutes() < 15) {
+      let nyeKontoer = 0;
+      try { nyeKontoer = await kobleUtstyrskontoer(b); } catch (e) { console.error("Utstyrskonto", e); }
+      if (nyeKontoer || url.searchParams.get("varer") || url.searchParams.get("utstyr") || new Date().getUTCMinutes() < 15) {
         try { utstyrAntall = await synkUtstyr(tok, b, pk.nr); }
         catch (e) { utstyrAntall = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
@@ -352,7 +392,7 @@ Deno.serve(async (req) => {
       let omsetning: number | string = 0;
       try { omsetning = await synkOmsetning(tok, b); }
       catch (e) { omsetning = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, arbeid: arbeidAntall, omsetning, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

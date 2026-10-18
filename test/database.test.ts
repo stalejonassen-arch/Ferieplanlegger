@@ -78,6 +78,20 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0050_flere_bedrifter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0051_tripletex.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0052_lonnsystem.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0040_stemplet_varsel.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0041_koble_prosjekt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0042_ansatte_nytt_prosjekt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0043_prosjekt_kontakt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0044_prosjekt_vare_dato.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0045_prosjekt_selger_snekker.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0046_adresse_manuell.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0047_slaa_sammen_prosjekter.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0048_arbeidsplan_materiell.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0049_oppgave_push.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0053_kvalitet_hms_bestilling.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0054_moduler.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0055_reklamasjon.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0056_plattform_push_adresse.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -182,7 +196,7 @@ describe("timer og prosjekter", () => {
     const [k] = await as<any>(STALE, "insert into public.kunder (visma_nr, navn) values (1001, 'Merete Austnes') returning id");
     await as(STALE, "insert into public.prosjekter (visma_nr, navn, kunde_id, estimert_timer) values (5001, 'Skifte vindu', $1, 38)", [k.id]);
     expect(await as(JIM, "select navn from public.prosjekter")).toEqual([{ navn: "Skifte vindu" }]);
-    await expect(as(JIM, "insert into public.prosjekter (navn) values ('Eget')")).rejects.toThrow();
+    await expect(as(JIM, "insert into public.prosjekter (visma_nr, navn) values (9999, 'Eget')")).rejects.toThrow();
     expect(await as("fremmed@example.no", "select * from public.prosjekter")).toHaveLength(0);
   });
 
@@ -651,5 +665,321 @@ describe("lønnssystem", () => {
     expect(await as(STALE, "select tripletex_id from public.tripletex_lonn")).toHaveLength(1);
     expect(await as(JIM, "select tripletex_id from public.tripletex_lonn")).toHaveLength(0);
     expect(await as(MADS, "select tripletex_id from public.tripletex_lonn")).toHaveLength(0);
+  });
+});
+
+describe("varsel når noen fortsatt er stemplet inn", () => {
+  it("finner den som har passert grensen, én gang per dag, og bare tjenesten kan spørre", async () => {
+    const jim = await idOf("Jim Kato");
+    await db.query("delete from public.stempling where ansatt_id = $1", [jim]);
+    // Stemplet inn for 9 timer siden (norsk tid)
+    await db.query(`insert into public.stempling (ansatt_id, dato, fra)
+      select $1, ((now() at time zone 'Europe/Oslo') - interval '9 hours')::date, ((now() at time zone 'Europe/Oslo') - interval '9 hours')::time`, [jim]);
+    const finn = async () => (await db.query<any>("select * from public.stemplet_lenge() where ansatt_id = $1", [jim])).rows;
+    const [r] = await finn();
+    expect(r.minutter).toBeGreaterThanOrEqual(539);
+    await expect(as(JIM, "select * from public.stemplet_lenge()")).rejects.toThrow();
+
+    // Polske ansatte: 9 t 15 min er ikke passert ennå
+    await db.query("update public.ansatte set varsel_stemplet_min = 555 where id = $1", [jim]);
+    expect(await finn()).toHaveLength(0);
+    await db.query("update public.ansatte set varsel_stemplet_min = 495 where id = $1", [jim]);
+
+    // Allerede varslet i dag
+    await db.query("insert into public.push_logg (type, id) values ('stemplet:' || $2, $1)", [jim, r.dato.toISOString?.().slice(0, 10) ?? r.dato]);
+    expect(await finn()).toHaveLength(0);
+    await db.query("delete from public.push_logg where id = $1", [jim]);
+
+    // Slått av
+    await db.query("update public.ansatte set varsel_stemplet_min = null where id = $1", [jim]);
+    expect(await finn()).toHaveLength(0);
+    await db.query("update public.ansatte set varsel_stemplet_min = 495 where id = $1", [jim]);
+    await db.query("delete from public.stempling where ansatt_id = $1", [jim]);
+  });
+
+  it("de polske får 9 t 15 min som standard", async () => {
+    const r = await db.query<any>("select navn, varsel_stemplet_min from public.ansatte where sprak = 'pl'");
+    for (const a of r.rows) expect(a.varsel_stemplet_min).toBe(555);
+  });
+});
+
+describe("koble app-prosjekt til Visma-prosjekt", () => {
+  it("flytter timer, dagbok, avvik og chat, tar med opplysninger og sletter app-prosjektet", async () => {
+    const jim = await idOf("Jim Kato");
+    const [app] = await as<any>(STALE, "insert into public.prosjekter (navn, adresse, estimert_timer, notat) values ('Nytt bad (app)', 'Gate 1, 6290 Haramsøy', 40, 'Fliser fra butikken') returning id");
+    const [vis] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (7001, 'Bad Hansen') returning id");
+    await as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, lunsj_min) values ($1, $2, '2027-09-06', '07:00', '15:00', 30)", [jim, app.id]);
+    await as(STALE, "update public.timer set status = 'godkjent' where prosjekt_id = $1", [app.id]);
+    await as(JIM, "insert into public.dagbok (prosjekt_id, tekst, vaer, ansatt_id) values ($1, 'Revet bad', 'Sol', $2)", [app.id, jim]);
+    await as(JIM, "insert into public.meldinger (kanal, tekst) values ($1, 'Fliser kommer i morgen')", ["p:" + app.id]);
+    await as(JIM, "select public.marker_kanal_lest($1)", ["p:" + app.id]);
+
+    // Bare leder, og bare fra app-prosjekt til Visma-prosjekt
+    await expect(as(JIM, "select public.koble_prosjekt($1, $2)", [app.id, vis.id])).rejects.toThrow(/leder/);
+    await expect(as(STALE, "select public.koble_prosjekt($1, $2)", [vis.id, app.id])).rejects.toThrow(/allerede fra Visma/);
+
+    const [r] = await as<any>(STALE, "select public.koble_prosjekt($1, $2) as n", [app.id, vis.id]);
+    expect(r.n).toBeGreaterThanOrEqual(3);
+    const q = async (sql: string, p: any[]) => (await db.query<any>(sql, p)).rows;
+    expect(await q("select * from public.prosjekter where id = $1", [app.id])).toHaveLength(0);
+    const [t] = await q("select status, timer from public.timer where prosjekt_id = $1", [vis.id]);
+    expect(t.status).toBe("godkjent");
+    expect(await q("select * from public.dagbok where prosjekt_id = $1", [vis.id])).toHaveLength(1);
+    const [m] = await q("select tekst, endret from public.meldinger where kanal = $1", ["p:" + vis.id]);
+    expect(m.tekst).toBe("Fliser kommer i morgen");
+    expect(m.endret).toBeNull();
+    expect(await q("select * from public.kanal_lest where kanal = $1", ["p:" + vis.id])).toHaveLength(1);
+    expect(await q("select * from public.kanal_lest where kanal = $1", ["p:" + app.id])).toHaveLength(0);
+    const [v] = await q("select adresse, estimert_timer, notat, visma_nr, navn from public.prosjekter where id = $1", [vis.id]);
+    expect(v).toMatchObject({ adresse: "Gate 1, 6290 Haramsøy", notat: "Fliser fra butikken", visma_nr: 7001, navn: "Bad Hansen" });
+    expect(Number(v.estimert_timer)).toBe(40);
+  });
+});
+
+describe("slå sammen prosjekter", () => {
+  const q = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("to Visma-prosjekter: alt flyttes, det ene blir skjult og forblir skjult når Visma oppdaterer det", async () => {
+    const jim = await idOf("Jim Kato");
+    const [k] = await as<any>(STALE, "insert into public.kunder (navn) values ('Hansen') returning id");
+    const [a] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn, kunde_id, adresse) values (8001, 'Bad Hansen', $1, 'Vegen 2') returning id", [k.id]);
+    const [b] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn, estimert_timer) values (8002, 'Hansen bad og vaskerom', 30) returning id");
+    await as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, lunsj_min) values ($1, $2, '2027-10-04', '07:00', '15:00', 30)", [jim, a.id]);
+    await as(JIM, "insert into public.dagbok (prosjekt_id, tekst, vaer, ansatt_id) values ($1, 'Membran', 'Regn', $2)", [a.id, jim]);
+    await db.query("insert into public.prosjekt_vare (prosjekt_id, varenr, antall) values ($1, 'V1', 2), ($1, 'V2', 1), ($2, 'V1', 5)", [a.id, b.id]);
+
+    await expect(as(JIM, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id])).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.slaa_sammen_prosjekter($1, $1)", [a.id])).rejects.toThrow(/annet prosjekt/);
+    await expect(as(STALE, "update public.prosjekter set slatt_sammen_med = $2 where id = $1 returning slatt_sammen_med", [a.id, b.id]))
+      .resolves.toEqual([{ slatt_sammen_med: null }]);
+
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id]);
+    expect(await q("select * from public.timer where prosjekt_id = $1", [b.id])).toHaveLength(1);
+    expect(await q("select * from public.dagbok where prosjekt_id = $1", [b.id])).toHaveLength(1);
+    expect((await q("select varenr, antall from public.prosjekt_vare where prosjekt_id = $1 order by varenr", [b.id])).map((x) => [x.varenr, Number(x.antall)]))
+      .toEqual([["V1", 5], ["V2", 1]]);
+    const [gammel] = await q("select aktiv, slatt_sammen_med from public.prosjekter where id = $1", [a.id]);
+    expect(gammel).toEqual({ aktiv: false, slatt_sammen_med: b.id });
+    const [ny] = await q("select kunde_id, adresse, estimert_timer, navn from public.prosjekter where id = $1", [b.id]);
+    expect(ny).toMatchObject({ kunde_id: k.id, adresse: "Vegen 2", navn: "Hansen bad og vaskerom" });
+
+    // Visma-hentingen oppdaterer det skjulte prosjektet: det forblir skjult og inaktivt
+    await db.exec(`update public.prosjekter set aktiv = true, navn = 'Bad Hansen (Visma)', slatt_sammen_med = null where visma_nr = 8001`);
+    expect((await q("select aktiv, slatt_sammen_med from public.prosjekter where id = $1", [a.id]))[0]).toEqual({ aktiv: false, slatt_sammen_med: b.id });
+    // Kan ikke slås sammen på nytt
+    await expect(as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id])).rejects.toThrow(/allerede slått sammen/);
+  });
+  it("app-prosjekt slås inn i et annet app-prosjekt og slettes; tidligere sammenslåtte peker videre", async () => {
+    const [x] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Garasje Olsen') returning id");
+    const [y] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Olsen garasje tak') returning id");
+    const [v] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (8003, 'Olsen') returning id");
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [v.id, x.id]);
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [x.id, y.id]);
+    expect(await q("select * from public.prosjekter where id = $1", [x.id])).toHaveLength(0);
+    expect((await q("select slatt_sammen_med from public.prosjekter where id = $1", [v.id]))[0].slatt_sammen_med).toBe(y.id);
+  });
+  it("utstyrskontoer kan ikke slås sammen", async () => {
+    const [u] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn) values (8004, 'Utstyr Jim') returning id");
+    const [z] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Noe annet') returning id");
+    await db.query("update public.ansatte set utstyr_prosjekt_id = $1 where navn = 'Jim Kato'", [u.id]);
+    await expect(as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [z.id, u.id])).rejects.toThrow(/Utstyrskontoer/);
+    await db.query("update public.ansatte set utstyr_prosjekt_id = null where navn = 'Jim Kato'");
+  });
+});
+
+describe("ansatte oppretter prosjekt", () => {
+  it("ansatt kan lage prosjekt og kunde uten Visma-nr, men ikke endre eller slette", async () => {
+    const [k] = await as<any>(JIM, "insert into public.kunder (navn) values ('Kunde fra Jim') returning id");
+    const [p] = await as<any>(JIM, "insert into public.prosjekter (navn, kunde_id) values ('Jims prosjekt', $1) returning id, navn", [k.id]);
+    expect(p.navn).toBe("Jims prosjekt");
+    await expect(as(JIM, "insert into public.prosjekter (navn, fastpris) values ('Fastpris', true)")).rejects.toThrow();
+    await expect(as(JIM, "insert into public.kunder (visma_nr, navn) values (4242, 'Falsk')")).rejects.toThrow();
+    expect(await as(JIM, "update public.prosjekter set navn = 'Endret' where id = $1 returning id", [p.id])).toHaveLength(0);
+    expect(await as(JIM, "delete from public.prosjekter where id = $1 returning id", [p.id])).toHaveLength(0);
+    await expect(as("fremmed@example.no", "insert into public.prosjekter (navn) values ('Fremmed')")).rejects.toThrow();
+    await db.query("delete from public.prosjekter where id = $1", [p.id]);
+    await db.query("delete from public.kunder where id = $1", [k.id]);
+  });
+});
+
+describe("adresse lagt inn i appen", () => {
+  it("overskrives ikke av Visma-synken, men leder kan endre den", async () => {
+    await db.exec("create role service_role nologin; grant all on public.prosjekter to service_role;").catch(() => {});
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (visma_nr, navn, adresse) values (7777, 'Adressetest', 'Fra Visma 1') returning id");
+    await as(STALE, "update public.prosjekter set adresse = 'Riktig vei 2', adresse_manuell = true where id = $1", [p.id]);
+    await db.exec(`set role service_role; update public.prosjekter set adresse = 'Fra Visma 1' where visma_nr = 7777; reset role;`);
+    expect((await db.query<any>("select adresse from public.prosjekter where id = $1", [p.id])).rows[0].adresse).toBe("Riktig vei 2");
+    await as(STALE, "update public.prosjekter set adresse = 'Ny vei 3' where id = $1", [p.id]);
+    expect((await db.query<any>("select adresse from public.prosjekter where id = $1", [p.id])).rows[0].adresse).toBe("Ny vei 3");
+    await db.query("delete from public.prosjekter where id = $1", [p.id]);
+  });
+});
+
+describe("arbeidsplan og materialliste", () => {
+  const q = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("leder deler ut arbeid; den som har fått det kan bare endre status, andre ingenting", async () => {
+    const jim = await idOf("Jim Kato"), svein = await idOf("Snekker 2 (navn)");
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Plan-prosjekt') returning id");
+    await expect(as(JIM, "insert into public.oppgaver (prosjekt_id, tittel, fra, til) values ($1, 'Riving', '2027-01-04', '2027-01-05')", [p.id])).rejects.toThrow();
+    await expect(as(STALE, "insert into public.oppgaver (prosjekt_id, tittel, fra, til) values ($1, 'Feil', '2027-01-05', '2027-01-04')", [p.id])).rejects.toThrow();
+    const [o] = await as<any>(STALE, "insert into public.oppgaver (prosjekt_id, tittel, fra, til, ansatte) values ($1, 'Riving', '2027-01-04', '2027-01-05', array[$2::uuid, $2::uuid, gen_random_uuid()]) returning id, ansatte, bedrift_id", [p.id, jim]);
+    expect(o.ansatte).toEqual([jim]);
+    const [o2] = await as<any>(STALE, "insert into public.oppgaver (prosjekt_id, tittel, fra, til, ansatte) values ($1, 'Membran', '2027-01-06', '2027-01-08', array[$2::uuid]) returning id", [p.id, svein]);
+    expect(await as(JIM, "select id from public.oppgaver where prosjekt_id = $1", [p.id])).toHaveLength(2);
+    await as(JIM, "update public.oppgaver set status = 'ferdig', tittel = 'Endret', til = '2027-02-01' where id = $1", [o.id]);
+    const [etter] = await q("select status, tittel, til::text, ferdig_tid from public.oppgaver where id = $1", [o.id]);
+    expect(etter).toMatchObject({ status: "ferdig", tittel: "Riving", til: "2027-01-05" });
+    expect(etter.ferdig_tid).not.toBeNull();
+    expect(await as(JIM, "update public.oppgaver set status = 'ferdig' where id = $1 returning id", [o2.id])).toHaveLength(0);
+    expect(await as(JIM, "delete from public.oppgaver where id = $1 returning id", [o.id])).toHaveLength(0);
+    await as(STALE, "update public.oppgaver set status = 'planlagt' where id = $1", [o.id]);
+    expect((await q("select ferdig_tid from public.oppgaver where id = $1", [o.id]))[0].ferdig_tid).toBeNull();
+  });
+  it("materialliste i leveranser: ansatte kan bare hake av, og sammenslåing tar alt med", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Materiell-prosjekt') returning id");
+    const [p2] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Annet prosjekt') returning id");
+    const [l1] = await as<any>(STALE, "insert into public.leveranser (prosjekt_id, navn, rekkefolge, dato) values ($1, 'Bjelkelag', 1, '2027-01-04') returning id", [p.id]);
+    await expect(as(JIM, "insert into public.leveranser (prosjekt_id, navn) values ($1, 'Jim')", [p.id])).rejects.toThrow(/Bare leder/);
+    const [m] = await as<any>(STALE, "insert into public.materialer (prosjekt_id, leveranse_id, beskrivelse, antall, enhet) values ($1, $2, 'Konstruksjonsvirke 48x198', 24, 'stk') returning id", [p.id, l1.id]);
+    await expect(as(STALE, "insert into public.materialer (prosjekt_id, leveranse_id, beskrivelse) values ($1, $2, 'Feil')", [p2.id, l1.id])).rejects.toThrow(/annet prosjekt/);
+    await as(JIM, "update public.materialer set levert = true, antall = 1 where id = $1", [m.id]);
+    expect((await q("select levert, antall from public.materialer where id = $1", [m.id]))[0]).toMatchObject({ levert: true });
+    expect(Number((await q("select antall from public.materialer where id = $1", [m.id]))[0].antall)).toBe(24);
+    await as(JIM, "update public.leveranser set status = 'levert', navn = 'X' where id = $1", [l1.id]);
+    expect((await q("select status, navn from public.leveranser where id = $1", [l1.id]))[0]).toEqual({ status: "levert", navn: "Bjelkelag" });
+    await as(JIM, "update public.leveranser set status = 'planlagt' where id = $1", [l1.id]);
+    expect((await q("select status from public.leveranser where id = $1", [l1.id]))[0].status).toBe("levert");
+    const jim = await idOf("Jim Kato");
+    await as(STALE, "insert into public.oppgaver (prosjekt_id, tittel, fra, til, ansatte) values ($1, 'Bjelkelag', '2027-01-04', '2027-01-05', array[$2::uuid])", [p.id, jim]);
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [p.id, p2.id]);
+    expect(await q("select id from public.leveranser where prosjekt_id = $1", [p2.id])).toHaveLength(1);
+    expect((await q("select leveranse_id from public.materialer where prosjekt_id = $1", [p2.id]))[0].leveranse_id).toBe(l1.id);
+    expect(await q("select id from public.oppgaver where prosjekt_id = $1", [p2.id])).toHaveLength(1);
+  });
+  it("prosjektleder kan planlegge og styre materiell, men ikke sette seg selv som prosjektleder", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Prosjektleder-test') returning id");
+    await expect(as(JIM, "update public.ansatte set prosjektleder = true where epost = $1 returning id", [JIM])).resolves.toHaveLength(0);
+    await as(STALE, "update public.ansatte set prosjektleder = true where epost = $1", [JIM]);
+    await as(JIM, "insert into public.oppgaver (prosjekt_id, tittel, fra, til) values ($1, 'Fra prosjektleder', '2027-02-01', '2027-02-02')", [p.id]);
+    await as(JIM, "insert into public.leveranser (prosjekt_id, navn) values ($1, 'Leveranse fra butikk')", [p.id]);
+    expect((await as<any>(JIM, "select public.er_planlegger() as x"))[0].x).toBe(true);
+    expect((await as<any>(JIM, "select public.er_leder() as x"))[0].x).toBe(false);
+    await as(STALE, "update public.ansatte set prosjektleder = false where epost = $1", [JIM]);
+    await expect(as(JIM, "insert into public.leveranser (prosjekt_id, navn) values ($1, 'Igjen')", [p.id])).rejects.toThrow();
+  });
+});
+
+describe("sjekklister, SJA, HMS-kort og bestillinger", () => {
+  const q = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("sjekkliste: alle punkter må besvares, signert er låst for ansatte, leder kan åpne igjen", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Sjekkliste-prosjekt') returning id");
+    const punkter = JSON.stringify([{ tekst: "Membran rundt sluk" }, { tekst: "Tykkelse målt" }]);
+    const [s] = await as<any>(JIM, "insert into public.sjekklister (prosjekt_id, navn, punkter, status) values ($1, 'Våtrom', $2::jsonb, 'signert') returning id, status, opprettet_av", [p.id, punkter]);
+    expect(s.status).toBe("pagaar");
+    await expect(as(JIM, "update public.sjekklister set status = 'signert' where id = $1", [s.id])).rejects.toThrow(/besvares/);
+    const svar = JSON.stringify([{ tekst: "Membran rundt sluk", svar: "ok" }, { tekst: "Tykkelse målt", svar: "avvik", kommentar: "0,8 mm, smurt på nytt" }]);
+    await as(JIM, "update public.sjekklister set punkter = $2::jsonb, status = 'signert' where id = $1", [s.id, svar]);
+    const [etter] = await q("select status, signert_av, signert_tid from public.sjekklister where id = $1", [s.id]);
+    expect(etter.status).toBe("signert");
+    expect(etter.signert_av).toBe(await idOf("Jim Kato"));
+    await expect(as(JIM, "update public.sjekklister set navn = 'Endret' where id = $1", [s.id])).rejects.toThrow(/signert/);
+    expect(await as(JIM, "delete from public.sjekklister where id = $1 returning id", [s.id])).toHaveLength(0);
+    await as(STALE, "update public.sjekklister set status = 'pagaar' where id = $1", [s.id]);
+    expect((await q("select signert_av from public.sjekklister where id = $1", [s.id]))[0].signert_av).toBeNull();
+  });
+  it("SJA: bare deltakere kvitterer, og endret innhold krever ny kvittering", async () => {
+    const jim = await idOf("Jim Kato"), mads = await idOf("Mads Kjerstad");
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('SJA-prosjekt') returning id");
+    const risiko = JSON.stringify([{ fare: "Fall fra tak", tiltak: "Sele og stillas med rekkverk" }]);
+    const [s] = await as<any>(STALE, "insert into public.sja (prosjekt_id, arbeid, risikoer, deltakere) values ($1, 'Legge takstein', $2::jsonb, array[$3::uuid]) returning id", [p.id, risiko, jim]);
+    await expect(as(MADS, "select public.kvitter_sja($1)", [s.id])).rejects.toThrow(/deltaker/);
+    await as(JIM, "select public.kvitter_sja($1)", [s.id]);
+    expect(Object.keys((await q("select kvittert from public.sja where id = $1", [s.id]))[0].kvittert)).toEqual([jim]);
+    await expect(as(JIM, "update public.sja set kvittert = '{}'::jsonb, arbeid = 'Jim endret' where id = $1", [s.id])).rejects.toThrow(/Bare den som laget/);
+    await as(STALE, "update public.sja set deltakere = array[$2::uuid, $3::uuid] where id = $1", [s.id, jim, mads]);
+    expect(Object.keys((await q("select kvittert from public.sja where id = $1", [s.id]))[0].kvittert)).toEqual([jim]);
+    await as(STALE, "update public.sja set arbeid = 'Legge takstein og beslag' where id = $1", [s.id]);
+    expect((await q("select kvittert from public.sja where id = $1", [s.id]))[0].kvittert).toEqual({});
+  });
+  it("HMS-kort: hver ansatt kan lagre sitt eget", async () => {
+    await as(JIM, "select public.lagre_mitt_hms_kort(' AB123456 ', '2028-05-01')");
+    const [a] = await q("select hms_kort_nr, hms_kort_gyldig::text g from public.ansatte where epost = $1", [JIM]);
+    expect(a).toEqual({ hms_kort_nr: "AB123456", g: "2028-05-01" });
+  });
+  it("bestilling: snekkeren bestiller og retter til butikken tar i mot; butikken styrer status", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Bestilling-prosjekt') returning id");
+    const linjer = JSON.stringify([{ beskrivelse: "Skruer 5x50", antall: 2, enhet: "pk" }]);
+    await expect(as(JIM, "insert into public.bestillinger (prosjekt_id, linjer) values ($1, '[]'::jsonb)", [p.id])).rejects.toThrow();
+    const [b] = await as<any>(JIM, "insert into public.bestillinger (prosjekt_id, linjer, status) values ($1, $2::jsonb, 'levert') returning id, status", [p.id, linjer]);
+    expect(b.status).toBe("ny");
+    await as(JIM, "update public.bestillinger set merknad = 'Haster' where id = $1", [b.id]);
+    await as(JIM, "update public.bestillinger set status = 'levert' where id = $1", [b.id]);
+    expect((await q("select status, merknad from public.bestillinger where id = $1", [b.id]))[0]).toEqual({ status: "ny", merknad: "Haster" });
+    await expect(as(MADS, "update public.bestillinger set merknad = 'X' where id = $1", [b.id])).rejects.toThrow(/tatt i mot/);
+    await as(STALE, "update public.bestillinger set status = 'plukkes' where id = $1", [b.id]);
+    await expect(as(JIM, "update public.bestillinger set merknad = 'Etterpå' where id = $1", [b.id])).rejects.toThrow(/tatt i mot/);
+    expect((await q("select behandlet_av from public.bestillinger where id = $1", [b.id]))[0].behandlet_av).toBe((await q("select id from public.ansatte where epost = $1", [STALE]))[0].id);
+  });
+});
+
+describe("deler av appen", () => {
+  it("bare leder slår av og på, og bare gyldige navn lagres", async () => {
+    await expect(as(JIM, "select public.lagre_moduler(array['chat'])")).rejects.toThrow(/Bare leder/);
+    await as(STALE, "select public.lagre_moduler(array['chat', 'vaer', 'chat', 'Ugyldig!', 'x'])");
+    expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual(["chat", "vaer"]);
+    await as(STALE, "select public.lagre_moduler(array[]::text[])");
+    expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual([]);
+  });
+});
+
+describe("reklamasjon", () => {
+  const q2 = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("ansatt registrerer, leder vurderer, ansvarlig melder utbedret og kunden kvitterer", async () => {
+    const jim = await idOf("Jim Kato");
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Ferdig bad') returning id");
+    const [r] = await as<any>(JIM, "insert into public.reklamasjoner (prosjekt_id, tittel, status, vurdering) values ($1, 'Fuge sprukket', 'godkjent', 'Ja') returning id, status, vurdering, meldt_av", [p.id]);
+    expect(r).toMatchObject({ status: "ny", vurdering: "", meldt_av: jim });
+    await as(JIM, "update public.reklamasjoner set beskrivelse = 'Ved dusjhjørnet' where id = $1", [r.id]);
+    await expect(as(MADS, "update public.reklamasjoner set status = 'avvist' where id = $1 returning id", [r.id])).resolves.toHaveLength(0);
+    await as(JIM, "update public.reklamasjoner set status = 'godkjent' where id = $1", [r.id]);
+    expect((await q2("select status from public.reklamasjoner where id = $1", [r.id]))[0].status).toBe("ny");
+    await as(STALE, "update public.reklamasjoner set status = 'godkjent', vurdering = 'Vi fuger på nytt', ansvarlig_id = $2 where id = $1", [r.id, jim]);
+    await expect(as(JIM, "update public.reklamasjoner set signatur = 'data:x', signert_navn = 'Kunde' where id = $1", [r.id])).rejects.toThrow(/utbedret/);
+    await as(JIM, "update public.reklamasjoner set status = 'utbedret', vurdering = 'Endret av Jim' where id = $1", [r.id]);
+    await as(JIM, "update public.reklamasjoner set signatur = 'data:x', signert_navn = 'Ola Kunde' where id = $1", [r.id]);
+    const [e] = await q2("select status, vurdering, utbedret_av, signert_navn, signert_tid from public.reklamasjoner where id = $1", [r.id]);
+    expect(e).toMatchObject({ status: "utbedret", vurdering: "Vi fuger på nytt", utbedret_av: jim, signert_navn: "Ola Kunde" });
+    expect(e.signert_tid).not.toBeNull();
+    expect(await as(JIM, "delete from public.reklamasjoner where id = $1 returning id", [r.id])).toHaveLength(0);
+  });
+
+  it("timer på reklamasjon føres på reklamasjonsprosjektet og faktureres ikke, også fra stempling", async () => {
+    const jim = await idOf("Jim Kato");
+    const [orig] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Gammel jobb') returning id");
+    const [rp] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Reklamasjon internt') returning id");
+    await expect(as(JIM, "select public.lagre_reklamasjonsprosjekt($1)", [rp.id])).rejects.toThrow(/Bare leder/);
+    await as(STALE, "select public.lagre_reklamasjonsprosjekt($1)", [rp.id]);
+    const [r] = await as<any>(JIM, "insert into public.reklamasjoner (prosjekt_id, tittel) values ($1, 'Dør går tregt') returning id", [orig.id]);
+    const [t] = await as<any>(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, reklamasjon_id) values ($1, $2, '2027-03-01', '08:00', '10:00', $3) returning prosjekt_id, fakturerbar", [jim, orig.id, r.id]);
+    expect(t).toEqual({ prosjekt_id: rp.id, fakturerbar: false });
+    const [t2] = await as<any>(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til) values ($1, $2, '2027-03-01', '10:00', '11:00') returning fakturerbar, reklamasjon_id", [jim, rp.id]);
+    expect(t2).toEqual({ fakturerbar: false, reklamasjon_id: null });
+    // Stempling: reklamasjonen følger med når timene lages
+    await db.exec(`delete from public.stempling where ansatt_id = '${jim}'`);
+    await db.query("insert into public.stempling (ansatt_id, bedrift_id, prosjekt_id, dato, fra) values ($1, 1, $2, '2027-03-01', '12:00')", [jim, rp.id]);
+    await as(JIM, "select public.stemple_reklamasjon($1)", [r.id]);
+    await db.exec("select set_config('bygglogg.stempel', '1', false)");
+    await db.query("insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til) values ($1, $2, '2027-03-01', '12:00', '14:00')", [jim, rp.id]);
+    await db.exec("select set_config('bygglogg.stempel', '0', false)");
+    expect((await q2("select sum(timer)::float t from public.timer where reklamasjon_id = $1", [r.id]))[0].t).toBeGreaterThan(3);
+    await db.exec(`delete from public.stempling where ansatt_id = '${jim}'`);
+    await as(STALE, "select public.lagre_reklamasjonsprosjekt(null)");
+  });
+
+  it("reklamasjonen flyttes med når prosjekter slås sammen", async () => {
+    const [a] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Dobbel A') returning id");
+    const [b] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Dobbel B') returning id");
+    const [r] = await as<any>(JIM, "insert into public.reklamasjoner (prosjekt_id, tittel) values ($1, 'Lekker') returning id", [a.id]);
+    await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id]);
+    expect((await q2("select prosjekt_id from public.reklamasjoner where id = $1", [r.id]))[0].prosjekt_id).toBe(b.id);
   });
 });

@@ -11,6 +11,8 @@ export interface Profil {
   tema: Tema;
   /** Sted for værmeldingen */
   sted: { navn: string; lat: number; lon: number };
+  /** Bedriftens adresse i kartet (utgangspunkt for km til prosjektene) */
+  base: { lat: number; lon: number };
   /** Navn på kampanjekortet */
   kampanje: string;
   /** Innlogging i demoen: e-post og navn */
@@ -25,8 +27,8 @@ export interface Profil {
 
 const GENERISK: Profil = {
   id: "bygglogg", undertittel: "Demo Bygg AS", firma: "Demo Bygg AS", tema: "byggfag",
-  sted: { navn: "Ålesund", lat: 62.472, lon: 6.155 }, kampanje: "Kampanje fra Byggfag",
-  demoBrukere: [["stale@demo.no", "Kari Hansen (leder)"], ["mads@demo.no", "Ola Berg (snekker)"], ["jim@demo.no", "Jon Lie (lager)"], ["karianne@demo.no", "Anne Dahl (kjøkken)"]],
+  sted: { navn: "Ålesund", lat: 62.472, lon: 6.155 }, base: { lat: 62.4723, lon: 6.1549 }, kampanje: "Månedens kampanje",
+  demoBrukere: [["lars@demo.no", "Lars Berg (daglig leder)"], ["ola@demo.no", "Ola Nordmann (snekker)"], ["tomasz@demo.no", "Tomasz Nowak (lager)"], ["kari@demo.no", "Kari Holm (kjøkken)"]],
   snekkere: true,
   orgnr: "", adresse: "Eksempelvegen 1", postnr: "6000", poststed: "Ålesund", telefon: "",
   beskrivelse: "Tømrer · Byggevarer · Kjøkken og interiør",
@@ -34,8 +36,8 @@ const GENERISK: Profil = {
 
 const THAUGLAND: Profil = {
   id: "thaugland", undertittel: "Thaugland · Trelast og byggevarer siden 1913", firma: "Thaugland", tema: "thaugland",
-  sted: { navn: "Oslo", lat: 59.913, lon: 10.752 }, kampanje: "Månedens tilbud",
-  demoBrukere: [["stale@demo.no", "Kari Thorsen (daglig leder)"], ["mads@demo.no", "Martin Lie (proffsalg)"], ["jim@demo.no", "Erik Dahl (lager og levering)"], ["karianne@demo.no", "Ingrid Berg (butikk)"]],
+  sted: { navn: "Oslo", lat: 59.913, lon: 10.752 }, base: { lat: 59.913, lon: 10.752 }, kampanje: "Månedens tilbud",
+  demoBrukere: [["kari@demo.no", "Kari Thorsen (daglig leder)"], ["martin@demo.no", "Martin Lie (proffsalg)"], ["erik@demo.no", "Erik Dahl (lager og levering)"], ["ingrid@demo.no", "Ingrid Berg (butikk)"]],
   snekkere: false,
   orgnr: "", adresse: "", postnr: "", poststed: "Oslo", telefon: "", beskrivelse: "Trelast og byggevarer",
 };
@@ -47,6 +49,14 @@ const DEMO_LENKER: Record<string, Profil> = { "thaugland-aoaidjjc": THAUGLAND };
 export function demoFraAdresse(): Profil | null {
   const m = location.pathname.match(/^\/demo\/([a-z0-9-]+)\/?$/i);
   return m ? DEMO_LENKER[m[1]!.toLowerCase()] ?? null : null;
+}
+
+/** Er demoen valgt? Samme regler som i api.ts (?demo, /demo/<kode> eller tidligere valgt i denne fanen) */
+function demoAktiv(): boolean {
+  if (/^\/demo\//i.test(location.pathname)) return true;
+  const q = new URLSearchParams(location.search);
+  if (q.has("demo")) return q.get("demo") !== "av";
+  return !!sessionStorage.getItem("bygglogg-demo") || !import.meta.env.VITE_SUPABASE_URL;
 }
 
 function velg(): Profil {
