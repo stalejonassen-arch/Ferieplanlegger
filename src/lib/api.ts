@@ -13,6 +13,7 @@ import type { Kobling, importRader } from "./svenn";
 import type { LeveranseStatus, NyLeveranse, NyOppgave, NyttMateriale, OppgaveStatus } from "./plan";
 import type { Bestilling, BestillingStatus, Bestillingslinje, Punkt, Risiko } from "./kvalitet";
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
+import type { NyReklamasjon, Reklamasjon } from "./reklamasjon";
 
 export interface ProsjektOrdre { visma_ordrenr: number; ordredato: string | null; ordretype: number; transaksjonstype: number; navn: string; sum_netto: number; kostnad: number; dekningsbidrag: number; fakturert: number; ferdig: string | null }
 /** Vare brukt på prosjektet (fra Visma) med FDV-lenke */
@@ -22,7 +23,7 @@ export type DokKategori = "fdv" | "sjekkliste" | "tegning" | "kontrakt" | "annet
 export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string; kategori?: DokKategori; ansatt_id?: string }
 /** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
-export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
+export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; reklamasjon_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 /** Svar fra importen av Svenn-timer */
@@ -68,6 +69,13 @@ export interface Api {
   settMittTema(tema: Tema): Promise<void>;
   /** Deler av appen som er slått av for bedriften */
   lagreModuler(av: string[]): Promise<void>;
+  /** Reklamasjon: registrer eller endre (returnerer id) */
+  lagreReklamasjon(r: NyReklamasjon & { prosjekt_id: string }): Promise<string>;
+  slettReklamasjon(id: string): Promise<void>;
+  /** Leder: bedriftens faste reklamasjonsprosjekt */
+  lagreReklamasjonsprosjekt(id: string | null): Promise<void>;
+  /** Hvilken reklamasjon du jobber med mens du er logget inn */
+  stempleReklamasjon(id: string | null): Promise<void>;
   /** Arbeidsplan: leder deler ut arbeid, den som har fått det endrer status */
   lagreOppgave(o: NyOppgave): Promise<void>;
   slettOppgave(id: string): Promise<void>;
@@ -222,7 +230,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -237,7 +245,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("bedrifter").select("*").limit(1),
         sb.from("rapporter").select("id, tittel, periode, ingress, lenke, sti, publisert, opprettet").order("periode", { ascending: false }).limit(200),
         alle(() => sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").order("rapport_id").order("ansatt_id"), 10000),
-        sb.from("stempling").select("ansatt_id, prosjekt_id, dato, fra, startet"),
+        sb.from("stempling").select("*"),
         alle(() => sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).order("id"), 10000),
         alle(() => sb.from("prosjekt_ordre").select("visma_ordrenr, prosjekt_id, kunde_nr, transaksjonstype, ordretype, fakturert, kostnad, ordredato, ferdig").order("visma_ordrenr"), 20000),
         alle(() => sb.from("fakturerte_timer").select("visma_ordrenr, linjenr, ordredato, fakturadato, fakturanr, kunde_id, prosjekt_id, antall, fakturert, ikke_fakturert, pris").order("visma_ordrenr").order("linjenr"), 20000),
@@ -245,12 +253,13 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("kompetanse").select("*").order("gyldig_til", { ascending: true, nullsFirst: false }).limit(5000),
         sb.from("omsetning_mnd").select("aar, mnd, belop, oppdatert").order("aar").order("mnd"),
         sb.from("kampanjer").select("id, tittel, tekst, fra, til, lenke, sider, opprettet").order("fra", { ascending: false }).limit(100),
-        alle(() => sb.from("oppgaver").select("id, prosjekt_id, tittel, beskrivelse, fra, til, ansatte, rekkefolge, status, opprettet_av, ferdig_tid").order("fra").order("id"), 20000),
+        alle(() => sb.from("oppgaver").select("*").order("fra").order("id"), 20000),
         alle(() => sb.from("leveranser").select("id, prosjekt_id, navn, rekkefolge, dato, status, leverandor, notat").order("rekkefolge").order("id"), 20000),
         alle(() => sb.from("materialer").select("id, prosjekt_id, leveranse_id, rekkefolge, varenr, nobb_nr, beskrivelse, antall, enhet, notat, levert").order("rekkefolge").order("id"), 50000),
         alle(() => sb.from("sjekklister").select("*").order("opprettet").order("id"), 20000),
         alle(() => sb.from("sja").select("*").order("dato", { ascending: false }).order("id"), 20000),
         alle(() => sb.from("bestillinger").select("*").order("opprettet", { ascending: false }).order("id"), 20000),
+        alle(() => sb.from("reklamasjoner").select("*").order("meldt_dato", { ascending: false }).order("id"), 10000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -276,6 +285,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         sjekklister: sjekklister.error ? [] : sjekklister.data,
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
+        reklamasjoner: reklamasjoner.error ? [] : (reklamasjoner.data as Reklamasjon[]).map((r) => ({ ...r, materiell_kost: r.materiell_kost == null ? null : Number(r.materiell_kost) })),
+        reklamasjonProsjekt: (b0.reklamasjon_prosjekt_id as string | null | undefined) ?? null,
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -300,6 +311,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "sjekklister" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "sja" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bestillinger" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "reklamasjoner" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "kampanjer" }, snart)
@@ -355,7 +367,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.jpg`;
       const data = await komprimer(fil);
       ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
-      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
+      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ...(til.reklamasjon_id ? { reklamasjon_id: til.reklamasjon_id } : {}), dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
         ...(til.sjekkliste_id ? { sjekkliste_id: til.sjekkliste_id, sjekkliste_punkt: til.sjekkliste_punkt ?? null } : {}),
         ...(til.svenn_id ? { svenn_id: til.svenn_id, opprettet: til.opprettet } : {}) });
       if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
@@ -517,8 +529,16 @@ function supabaseApi(sb: SupabaseClient): Api {
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
     async lagreModuler(av) { ok(await sb.rpc("lagre_moduler", { av })); },
+    async lagreReklamasjon(x) {
+      const { id, ...rad } = x;
+      const r = id ? await sb.from("reklamasjoner").update(rad).eq("id", id).select("id").single() : await sb.from("reklamasjoner").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettReklamasjon(id) { ok(await sb.from("reklamasjoner").delete().eq("id", id)); },
+    async lagreReklamasjonsprosjekt(id) { ok(await sb.rpc("lagre_reklamasjonsprosjekt", { p: id })); },
+    async stempleReklamasjon(id) { ok(await sb.rpc("stemple_reklamasjon", { r: id })); },
     async lagreOppgave(o) {
-      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}) };
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}), ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}) };
       ok(o.id ? await sb.from("oppgaver").update(rad).eq("id", o.id) : await sb.from("oppgaver").insert(rad));
     },
     async slettOppgave(id) { ok(await sb.from("oppgaver").delete().eq("id", id)); },

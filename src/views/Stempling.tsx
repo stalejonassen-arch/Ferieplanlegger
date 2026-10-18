@@ -5,6 +5,8 @@ import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { ReklamasjonValg } from "./Reklamasjon";
+import { bruker } from "../lib/moduler";
 
 const timerSiden = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
 const min = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
@@ -37,6 +39,11 @@ export function Stempling() {
   const siste = sisteProsjekter(d.timer, meg.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
   const [prosjekt, setProsjekt] = useState<string>(() => siste[0] ?? "");
   const [beskrivelse, setBeskrivelse] = useState("");
+  // Reklamasjonsprosjektet: hvilken reklamasjon arbeidet gjelder
+  const rp = bruker(d, "reklamasjon") ? d.reklamasjonProsjekt ?? null : null;
+  const minRekl = () => { const m = (d.reklamasjoner ?? []).filter((r) => r.ansvarlig_id === meg.id && r.status === "godkjent"); return m.length === 1 ? m[0]!.id : ""; };
+  const [rekl, setRekl] = useState("");
+  useEffect(() => { setRekl(prosjekt && prosjekt === rp ? minRekl() : ""); }, [prosjekt, rp]); // eslint-disable-line react-hooks/exhaustive-deps
   const [til, setTil] = useState("");
   const [venter, setVenter] = useState(false);
   const [, tikk] = useState(0);
@@ -67,7 +74,10 @@ export function Stempling() {
   const fornavn = meg.navn.split(" ")[0];
   const kjorStempel = async (handling: "inn" | "bytt" | "ut", melding: string) => {
     setVenter(true);
-    const ok = await kjor(() => api.stemple(handling, { prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined }), melding);
+    const ok = await kjor(async () => {
+      await api.stemple(handling, { prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined });
+      if (handling !== "ut" && rp && prosjekt === rp && rekl) await api.stempleReklamasjon(rekl);
+    }, melding);
     setVenter(false);
     if (ok) { setBeskrivelse(""); setTil(""); }
   };
@@ -84,6 +94,7 @@ export function Stempling() {
       )}
       <ProsjektVelger value={prosjekt} onChange={setProsjekt} prosjekter={aktive} tom="Internt arbeid (butikk, lager, verksted)"
         forslag={{ tittel: "Siste prosjekter", ider: siste }} />
+      {rp && prosjekt === rp && <ReklamasjonValg value={rekl} onChange={setRekl} />}
     </>
   );
 
@@ -113,6 +124,11 @@ export function Stempling() {
         <div className="small dempet">Logget inn {gammel ? kortDato(s.dato) + " " : ""}kl. {s.fra}</div>
         {!gammel && <div className="klokke">{Math.floor(timer)}<small>t</small> {String(Math.floor((timer % 1) * 60)).padStart(2, "0")}<small>min</small></div>}
         <div style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>{navn(s.prosjekt_id)}</div>
+        {rp && s.prosjekt_id === rp && !gammel && (
+          <div style={{ marginTop: 6 }}>
+            <ReklamasjonValg value={s.reklamasjon_id ?? ""} onChange={(id) => kjor(() => api.stempleReklamasjon(id || null), id ? "Timene føres på reklamasjonen" : "Lagret")} />
+          </div>
+        )}
         {s.prosjekt_id && <div style={{ marginTop: 8 }}><ProsjektForbruk prosjektId={s.prosjekt_id} lys /></div>}
         {kolleger.length > 0 && (
           <div className="kolleger">

@@ -14,6 +14,7 @@ import { Lonn } from "./views/Lonn";
 import { Tidsplan } from "./views/Plan";
 import { Leveranseoversikt } from "./views/Materiell";
 import { Bestillingsoversikt } from "./views/Bestilling";
+import { Reklamasjoner } from "./views/Reklamasjon";
 import { bruker, type Modul } from "./lib/moduler";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
@@ -209,7 +210,9 @@ export function App() {
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
   const planlegger = leder || !!meg?.prosjektleder;
   const b = (m: Modul) => bruker(d, m);
-  const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling")));
+  // Reklamasjoner som er gitt til meg og ikke er ferdige
+  const mineReklamasjoner = b("reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => r.ansvarlig_id === meg.id && (r.status === "godkjent" || (r.status === "utbedret" && !r.signatur))).length : 0;
+  const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling") || b("reklamasjon"))) || mineReklamasjoner > 0;
   const faner: [Fane, string][] = [["timer", "Timer"], ...(b("chat") ? [["chat", "Chat"] as [Fane, string]] : []), ["prosjekter", "Prosjekter"],
     ...(visPlanFane ? [["plan", planlegger ? "Butikk/prosjektleder" : "Plan"] as [Fane, string]] : []),
     ...(b("avvik") ? [["avvik", "Avvik"] as [Fane, string]] : []),
@@ -225,8 +228,10 @@ export function App() {
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
   const y0 = Number(idag.slice(0, 4));
   // Butikk/prosjektleder: nye bestillinger. Alle andre: SJA de ikke har kvittert på.
-  const planVarsel = planlegger ? (bruker(d, "bestilling") ? (d.bestillinger ?? []).filter((x) => x.status === "ny").length : 0)
-    : bruker(d, "sja") ? (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length : 0;
+  // Butikk/prosjektleder: også nye reklamasjoner som ikke er vurdert. Den som har fått en reklamasjon: den også.
+  const planVarsel = (planlegger ? (bruker(d, "bestilling") ? (d.bestillinger ?? []).filter((x) => x.status === "ny").length : 0)
+      + (bruker(d, "reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => r.status === "ny").length : 0)
+    : (bruker(d, "sja") ? (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length : 0) + mineReklamasjoner);
   const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
@@ -316,7 +321,7 @@ export function App() {
           </div>
         )}
         {aktiv === "lonn" && <Lonn />}
-        {aktiv === "plan" && <>{planlegger && b("bestilling") && <Bestillingsoversikt />}{b("plan") && <Tidsplan />}{planlegger && b("materiell") && <Leveranseoversikt />}</>}
+        {aktiv === "plan" && <>{planlegger && b("bestilling") && <Bestillingsoversikt />}{b("reklamasjon") && (planlegger || mineReklamasjoner > 0) && <Reklamasjoner />}{b("plan") && <Tidsplan />}{planlegger && b("materiell") && <Leveranseoversikt />}</>}
         {aktiv === "oppsett" && <Oppsett />}
         {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
         {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}
