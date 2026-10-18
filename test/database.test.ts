@@ -88,6 +88,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0050_kvalitet_hms_bestilling.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0051_moduler.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0052_reklamasjon.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0053_logo_drakt.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -832,6 +833,26 @@ describe("deler av appen", () => {
     expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual(["chat", "vaer"]);
     await as(STALE, "select public.lagre_moduler(array[]::text[])");
     expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual([]);
+  });
+});
+
+describe("logo og firmafarger", () => {
+  const LOGO = "data:image/png;base64,iVBORw0KGgo=";
+  it("bare leder lagrer, fargene kontrolleres, og fjernet drakt gir ByggLogg-blå", async () => {
+    await expect(as(JIM, "select public.lagre_drakt($1, null, '{\"hoved\":\"#0a1ebe\",\"aksent\":\"#ffcd00\"}')", [LOGO])).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.lagre_drakt($1, null, '{\"hoved\":\"blå\",\"aksent\":\"#ffcd00\"}')", [LOGO])).rejects.toThrow(/RRGGBB/);
+    await expect(as(STALE, "select public.lagre_drakt('javascript:alert(1)', null, null)")).rejects.toThrow();
+    await as(STALE, "select public.lagre_drakt($1, null, '{\"hoved\":\"#0a1ebe\",\"aksent\":\"#ffcd00\",\"x\":1}')", [LOGO]);
+    const b = (await db.query<any>("select logo, drakt from public.bedrifter where id = 1")).rows[0];
+    expect(b).toEqual({ logo: LOGO, drakt: { hoved: "#0A1EBE", aksent: "#FFCD00" } });
+    await as(JIM, "select public.sett_mitt_tema('egen')");
+    expect((await db.query<any>("select tema from public.ansatte where epost = $1", [JIM])).rows[0].tema).toBe("egen");
+    await as(STALE, "select public.lagre_drakt(null, null, null)");
+    expect((await db.query<any>("select tema from public.ansatte where epost = $1", [JIM])).rows[0].tema).toBe("byggfag");
+    expect((await db.query<any>("select logo, drakt from public.bedrifter where id = 1")).rows[0]).toEqual({ logo: null, drakt: null });
+    await as(STALE, "select public.lagre_drakt($1, null, '{\"hoved\":\"#0a1ebe\",\"aksent\":\"#ffcd00\"}', true)", [LOGO]);
+    expect((await db.query<any>("select count(*)::int n from public.ansatte where tema <> 'egen' and bedrift_id = 1")).rows[0].n).toBe(0);
+    await as(STALE, "select public.lagre_drakt(null, null, null)");
   });
 });
 

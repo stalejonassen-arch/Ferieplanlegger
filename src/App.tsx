@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, feiltekst } from "./lib/api";
 import { isoOf, type Ansatt, type Data, type Tema } from "./lib/ferie";
 import { settSprak, type Sprak } from "./lib/sprak";
+import { draktVariabler } from "./lib/drakt";
 import { Innlogging } from "./views/Innlogging";
 import { MinFerie } from "./views/MinFerie";
 import { Kalender } from "./views/Kalender";
@@ -134,11 +135,18 @@ export function App() {
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
   const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id !== "austnes") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
   useEffect(() => { if (meg?.tema) settTema(meg.tema); }, [meg?.tema]);
+  const drakt = d?.drakt ?? null;
+  // Firmafarger uten lagret drakt (fjernet av leder) blir ByggLogg-blå
+  const visTema: Tema = tema === "egen" && !drakt && d ? "byggfag" : tema;
   useEffect(() => {
-    document.documentElement.dataset.tema = tema;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : tema === "byggfag" ? "#0B1F5C" : tema === "bfportal" ? "#F8F9FA" : tema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
+    const rot = document.documentElement;
+    rot.dataset.tema = visTema;
+    const vars = visTema === "egen" && drakt ? draktVariabler(drakt) : {};
+    for (const k of Array.from(rot.style)) if (k.startsWith("--")) rot.style.removeProperty(k);
+    for (const [k, v] of Object.entries(vars)) rot.style.setProperty(k, v);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", visTema === "egen" ? (vars["--navy"] ?? "#0B1F5C") : visTema === "fargerik" ? "#D6409F" : visTema === "mork" ? "#0A0E20" : visTema === "byggfag" ? "#0B1F5C" : visTema === "bfportal" ? "#F8F9FA" : visTema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
     if (PROFIL.id === "austnes") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
-  }, [tema]);
+  }, [tema, visTema, drakt?.hoved, drakt?.aksent]);
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
     try { await fn(); if (ok) visToast(ok); await last(); return true; }
@@ -241,17 +249,20 @@ export function App() {
         <div className="toppfelt">
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
         <header className="top">
-          <div className="brand"><small>{PROFIL.undertittel}</small>
-            <h1><svg className="hjelm" viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
+          <div className={d.logo ? "brand-rad" : undefined}>
+            {d.logo && <img className={d.logoMork ? "firmalogo" : "firmalogo plate"} src={d.logoMork ?? d.logo} alt={PROFIL.undertittel} />}
+            <div className="brand"><small>{PROFIL.undertittel}</small>
+              <h1><svg className="hjelm" viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
+          </div>
           <div className="who">
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
             <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
               onChange={(e) => { const s = e.target.value as Sprak; kjor(() => api.settMittSprak(s)).then(() => settSprak(s)); }}>
               <option value="nb">Norsk</option><option value="pl">Polski</option>
             </select>
-            <select aria-label="Farger" className="temavalg" value={tema}
+            <select aria-label="Farger" className="temavalg" value={visTema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              {PROFIL.id === "thaugland" && <option value="thaugland">Thaugland</option>}<option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              {PROFIL.id === "thaugland" && <option value="thaugland">Thaugland</option>}{drakt && <option value="egen">Firmafarger</option>}<option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>

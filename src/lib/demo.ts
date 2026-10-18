@@ -506,6 +506,13 @@ export function demoApi(): Api {
     async slettReklamasjon(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.reklamasjoner = (d.reklamasjoner ?? []).filter((r) => r.id !== id); endret(); },
     async lagreReklamasjonsprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge reklamasjonsprosjekt."); d.reklamasjonProsjekt = id; endret(); },
     async stempleReklamasjon(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.reklamasjon_id = id; endret(); },
+    async lagreDrakt(logo, logoMork, drakt, forAlle) {
+      if (!leder()) throw new Error("Bare leder kan endre logo og farger.");
+      d.logo = logo; d.logoMork = logoMork; d.drakt = drakt;
+      if (!drakt) for (const a of d.ansatte) { if (a.tema === "egen") a.tema = "byggfag"; }
+      else if (forAlle) for (const a of d.ansatte) a.tema = "egen";
+      endret();
+    },
     async lagreModuler(av) { if (!leder()) throw new Error("Bare leder kan endre hvilke deler av appen som brukes."); d.modulerAv = [...new Set(av)]; endret(); },
     async lagreOppgave(o) {
       if (!planlegger()) throw new Error("Bare leder og prosjektleder kan legge inn arbeid i planen.");

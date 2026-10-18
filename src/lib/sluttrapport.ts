@@ -4,6 +4,8 @@
 import { PDFDocument, PDFName, PDFString, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 
+import { draktVariabler, rgb as rgbFraHex, type Drakt } from "./drakt";
+
 export interface RapportData {
   firma: { navn: string; linje: string; adresse: string; orgnr: string; tlf: string };
   tittel: string;
@@ -25,13 +27,20 @@ export interface RapportData {
   egenkontroll?: { navn: string; signert: string; punkter: { tekst: string; svar: "ok" | "avvik" | "na"; kommentar?: string }[] }[];
   vedlegg: { navn: string; data: Uint8Array }[];
   boligmappa: boolean;
+  /** Bedriftens logo som PNG (plate = trenger hvit bunn på det mørke feltet) og firmafarger */
+  logo?: { png: Uint8Array; plate: boolean } | null;
+  drakt?: Drakt | null;
 }
 
 const A4 = { w: 595.28, h: 841.89 };
 const M = 50;                      // marg
 const BREDDE = A4.w - 2 * M;
-const NAVY = rgb(0x0b / 255, 0x1f / 255, 0x5c / 255);
-const GUL = rgb(1, 0xcd / 255, 0);
+const NAVY_STD = rgb(0x0b / 255, 0x1f / 255, 0x5c / 255);
+const GUL_STD = rgb(1, 0xcd / 255, 0);
+// Settes per rapport: firmafargene hvis bedriften har dem
+let NAVY = NAVY_STD;
+let GUL = GUL_STD;
+const hexRgb = (h: string) => { const [r, g, b] = rgbFraHex(h); return rgb(r / 255, g / 255, b / 255); };
 const TEKST = rgb(0x1b / 255, 0x22 / 255, 0x36 / 255);
 const DEMPET = rgb(0x5a / 255, 0x62 / 255, 0x78 / 255);
 const LINJE = rgb(0xd5 / 255, 0xda / 255, 0xe6 / 255);
@@ -105,6 +114,9 @@ function merke(page: PDFPage, x: number, y: number, s: number, farge = HVIT, hak
 export async function lagSluttrapport(d: RapportData, fonter?: { R: Uint8Array; B: Uint8Array; T: Uint8Array }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
+  const dv = d.drakt ? draktVariabler(d.drakt) : null;
+  NAVY = dv ? hexRgb(dv["--navy"]!) : NAVY_STD;
+  GUL = dv ? hexRgb(dv["--bf-yellow"]!) : GUL_STD;
   const [fR, fB, fT] = fonter ? [fonter.R, fonter.B, fonter.T] : await Promise.all([
     hentFont("/fonter/Barlow-Regular.ttf"), hentFont("/fonter/Barlow-SemiBold.ttf"), hentFont("/fonter/BarlowCondensed-ExtraBoldItalic.ttf"),
   ]);
@@ -124,9 +136,18 @@ export async function lagSluttrapport(d: RapportData, fonter?: { R: Uint8Array; 
   // målebånd
   f.drawRectangle({ x: 0, y: A4.h - 342, width: A4.w, height: 12, color: GUL });
   for (let x = 0, i = 0; x < A4.w; x += 7.5, i++) f.drawLine({ start: { x, y: A4.h - 330 }, end: { x, y: A4.h - 330 - (i % 10 === 0 ? 9 : i % 5 === 0 ? 6 : 3.5) }, thickness: 0.7, color: TEKST });
-  merke(f, M, A4.h - 100, 0.9);
-  f.drawText(d.firma.navn, { x: M + 70, y: A4.h - 66, size: 18, font: B, color: HVIT });
-  if (d.firma.linje) f.drawText(d.firma.linje, { x: M + 70, y: A4.h - 84, size: 10.5, font: R, color: rgb(0.78, 0.81, 0.92) });
+  let navnX = M + 70;
+  const logo = d.logo ? await doc.embedPng(d.logo.png).catch(() => null) : null;
+  if (logo) {
+    // Logoen der ByggLogg-merket ellers står: inntil 58 pt høy og 150 pt bred
+    const sk = Math.min(58 / logo.height, 150 / logo.width);
+    const w = logo.width * sk, h = logo.height * sk, y0 = A4.h - 42 - h;
+    if (d.logo!.plate) f.drawRectangle({ x: M - 5, y: y0 - 5, width: w + 10, height: h + 10, color: HVIT });
+    f.drawImage(logo, { x: M, y: y0, width: w, height: h });
+    navnX = M + w + 16;
+  } else merke(f, M, A4.h - 100, 0.9);
+  f.drawText(d.firma.navn, { x: navnX, y: A4.h - 66, size: 18, font: B, color: HVIT });
+  if (d.firma.linje) f.drawText(d.firma.linje, { x: navnX, y: A4.h - 84, size: 10.5, font: R, color: rgb(0.78, 0.81, 0.92) });
   f.drawText("SLUTTDOKUMENTASJON", { x: M, y: A4.h - 175, size: 12, font: B, color: GUL });
   let ty = A4.h - 215;
   for (const l of brytLinjer(d.tittel, T, 40, BREDDE).slice(0, 3)) { f.drawText(l, { x: M, y: ty, size: 40, font: T, color: HVIT }); ty -= 42; }

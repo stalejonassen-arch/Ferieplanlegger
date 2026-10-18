@@ -9,6 +9,7 @@ import type { SvennResultat } from "../lib/api";
 import { KampanjeOppsett } from "./Kampanjer";
 import { MODULER, bruker, type Modul } from "../lib/moduler";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { DraktOppsett } from "./Drakt";
 
 /** Valg for varsel når noen fortsatt er stemplet inn: 7 t 30 min til 11 t, hvert kvarter */
 const VARSEL_STEMPLET = Array.from({ length: 15 }, (_, i) => 450 + i * 15);
@@ -40,7 +41,7 @@ export function Oppsett() {
   return (
     <>
       <nav className="oppsett-meny" aria-label="Deler av oppsettet">
-        {[["opp-ansatte", "Ansatte"], ["opp-deler", "Deler av appen"], ["opp-bemanning", "Bemanning"],
+        {[["opp-ansatte", "Ansatte"], ["opp-logo", "Logo og farger"], ["opp-deler", "Deler av appen"], ["opp-bemanning", "Bemanning"],
           ...(bruker(d, "kampanjer") ? [["opp-kampanjer", "Kampanjer"]] : []), ...(bruker(d, "utstyr") ? [["opp-utstyr", "Utstyr"]] : []), ["opp-svenn", "Import fra Svenn"]]
           .map(([id, t]) => <a key={id} href={`#oppsett`} onClick={(e) => { e.preventDefault(); document.getElementById(id!)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{t}</a>)}
       </nav>
@@ -87,6 +88,8 @@ export function Oppsett() {
           <button className="btn" disabled={!nyNavn.trim()}>Legg til</button>
         </form>
       </section>
+
+      <DraktOppsett />
 
       <ModulOppsett />
 

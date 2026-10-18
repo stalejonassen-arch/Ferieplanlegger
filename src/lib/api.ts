@@ -69,6 +69,8 @@ export interface Api {
   settMittTema(tema: Tema): Promise<void>;
   /** Deler av appen som er slått av for bedriften */
   lagreModuler(av: string[]): Promise<void>;
+  /** Leder: logo og firmafarger. Null fjerner. forAlle setter firmafargene på alle ansatte. */
+  lagreDrakt(logo: string | null, logoMork: string | null, drakt: import("./drakt").Drakt | null, forAlle: boolean): Promise<void>;
   /** Reklamasjon: registrer eller endre (returnerer id) */
   lagreReklamasjon(r: NyReklamasjon & { prosjekt_id: string }): Promise<string>;
   slettReklamasjon(id: string): Promise<void>;
@@ -272,6 +274,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         ordrer: ordrer.error ? [] : (ordrer.data as any[]).map((o) => ({ ...o, fakturert: Number(o.fakturert), kostnad: Number(o.kostnad), transaksjonstype: Number(o.transaksjonstype), ordretype: Number(o.ordretype), kunde_nr: o.kunde_nr == null ? null : Number(o.kunde_nr) })),
         egetKundenr: b0.eget_kundenr == null ? null : Number(b0.eget_kundenr),
         modulerAv: (b0.moduler_av as string[] | undefined) ?? [],
+        logo: b0.logo ?? null, logoMork: b0.logo_mork ?? null, drakt: b0.drakt ?? null,
         timepris: b0.timepris == null ? null : Number(b0.timepris),
         fakturerteTimer: fakt.error ? [] : (fakt.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), fakturert: Number(x.fakturert), ikke_fakturert: Number(x.ikke_fakturert), pris: Number(x.pris) })),
         kompetanse: kompetanse.error ? [] : kompetanse.data,
@@ -529,6 +532,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
     async lagreModuler(av) { ok(await sb.rpc("lagre_moduler", { av })); },
+    async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },
     async lagreReklamasjon(x) {
       const { id, ...rad } = x;
       const r = id ? await sb.from("reklamasjoner").update(rad).eq("id", id).select("id").single() : await sb.from("reklamasjoner").insert(rad).select("id").single();

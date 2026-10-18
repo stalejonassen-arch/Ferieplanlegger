@@ -12,7 +12,7 @@ import type { Avvik, Bilde, Dagbok, Tillegg } from "./hms";
 
 export type Status = "venter" | "godkjent" | "avslatt";
 export type Rolle = "ansatt" | "leder";
-export type Tema = "standard" | "byggfag" | "bfportal" | "fargerik" | "mork" | "thaugland";
+export type Tema = "standard" | "byggfag" | "bfportal" | "fargerik" | "mork" | "thaugland" | "egen";
 
 export interface Avdeling { id: number; navn: string; maks_borte: number; rekkefolge: number }
 export interface Ansatt {
@@ -81,6 +81,10 @@ export interface Data {
   materialer?: import("./plan").Materiale[];
   /** Deler av appen leder har slått av */
   modulerAv?: string[];
+  /** Bedriftens logo (og variant for mørk bakgrunn) og firmafargene laget av den */
+  logo?: string | null;
+  logoMork?: string | null;
+  drakt?: import("./drakt").Drakt | null;
   /** Sjekklister, SJA og bestillinger */
   sjekklister?: import("./kvalitet").Sjekkliste[];
   sja?: import("./kvalitet").Sja[];

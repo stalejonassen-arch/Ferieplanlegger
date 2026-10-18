@@ -58,6 +58,13 @@ describe("sluttrapport (PDF)", () => {
     expect(n).toBeGreaterThanOrEqual(3 + 3 + 1);
     if (process.env.SLUTTRAPPORT_UT) writeFileSync(process.env.SLUTTRAPPORT_UT, pdf);
   });
+  it("tar med firmalogo og firmafarger på forsiden", async () => {
+    const pdf = await lagSluttrapport(data({ logo: { png, plate: true }, drakt: { hoved: "#007A3D", aksent: "#F28C00" } }), fonter);
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBeGreaterThanOrEqual(2);
+    if (process.env.SLUTTRAPPORT_LOGO) writeFileSync(process.env.SLUTTRAPPORT_LOGO, pdf);
+    // Ødelagt logo hopper over logoen i stedet for å feile
+    await expect(lagSluttrapport(data({ logo: { png: new Uint8Array([1, 2, 3]), plate: false } }), fonter)).resolves.toBeInstanceOf(Uint8Array);
+  });
   it("virker uten bilder, dagbok og vedlegg", async () => {
     const pdf = await lagSluttrapport(data({ dagbok: [], bilder: [], tillegg: [], varer: [], innledning: undefined, kunde: undefined, matrikkel: undefined }), fonter);
     expect((await PDFDocument.load(pdf)).getPageCount()).toBe(2);

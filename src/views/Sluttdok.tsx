@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api, nobbLenke, type FdvDok, type FdvVare } from "../lib/api";
 import { langDato } from "../lib/ferie";
+import { logoSomPng } from "../lib/drakt";
 import { PROFIL } from "../lib/profil";
 import { t2, type Prosjekt } from "../lib/timer";
 import type { RapportData } from "../lib/sluttrapport";
@@ -83,7 +84,10 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
     }
     status("Lager PDF …");
     const { lagSluttrapport } = await import("../lib/sluttrapport");
+    const logoKilde = d.logoMork ?? d.logo ?? null;
+    const logoPng = logoKilde ? await logoSomPng(logoKilde) : null;
     return lagSluttrapport({
+      logo: logoPng ? { png: logoPng, plate: !d.logoMork } : null, drakt: d.drakt ?? null,
       firma: { navn: PROFIL.firma, linje: PROFIL.bedrift.linje, adresse: PROFIL.bedrift.adresse, orgnr: PROFIL.bedrift.orgnr, tlf: PROFIL.bedrift.tlf },
       tittel: p.navn, prosjektnr: p.visma_nr ? String(p.visma_nr) : undefined, kunde: k?.navn,
       adresse: adr ? `${adr}${e.bruksenhet ? `, bruksenhet ${e.bruksenhet}` : ""}` : undefined,
@@ -196,7 +200,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
       <article className="panel utskrift rapport">
         <header className="rp-topp">
           <div className="rp-merke">
-            <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg>
+            {d.logo ? <img className="rp-logo" src={d.logo} alt="" /> : <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg>}
             <div><b>{PROFIL.firma}</b><span>{PROFIL.bedrift.linje}</span></div>
           </div>
           <div className="rp-firma">{PROFIL.bedrift.adresse}{PROFIL.bedrift.orgnr && <><br />Org.nr. {PROFIL.bedrift.orgnr}</>}{PROFIL.bedrift.tlf && <><br />Tlf. {PROFIL.bedrift.tlf}</>}</div>
