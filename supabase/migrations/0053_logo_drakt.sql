@@ -47,3 +47,15 @@ begin
 end $$;
 revoke all on function public.lagre_drakt(text, text, jsonb, boolean) from public, anon;
 grant execute on function public.lagre_drakt(text, text, jsonb, boolean) to authenticated;
+
+-- Vis en skjult kampanje igjen (angre «Skjul denne kampanjen»). Uten id vises alle skjulte igjen.
+create or replace function public.vis_kampanje(kampanje uuid default null) returns void
+language sql security definer set search_path = public as $$
+  update public.ansatte
+     set skjulte_kampanjer = case when vis_kampanje.kampanje is null then '{}'
+                                  else array_remove(skjulte_kampanjer, vis_kampanje.kampanje) end,
+         vis_kampanjer = true
+   where id = public.mitt_ansatt_id();
+$$;
+revoke all on function public.vis_kampanje(uuid) from public, anon;
+grant execute on function public.vis_kampanje(uuid) to authenticated;

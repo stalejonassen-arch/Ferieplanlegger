@@ -116,6 +116,8 @@ export interface Api {
   settVisKampanjer(vis: boolean): Promise<void>;
   /** Skjul én kampanje for meg */
   skjulKampanje(id: string): Promise<void>;
+  /** Vis skjult kampanje igjen (uten id: alle) og slå på kampanjer */
+  visKampanje(id?: string): Promise<void>;
   /** Meldinger (chat): alle kanaler jeg kan se, siste ~3000 */
   meldinger(): Promise<Melding[]>;
   kanalLest(): Promise<Lest>;
@@ -614,6 +616,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async lagrePush(endpoint, p256dh, auth) { ok(await sb.rpc("lagre_push", { endpoint, p256dh, auth })); },
     async slettPush(endpoint) { ok(await sb.rpc("slett_push", { endpoint })); },
     async skjulKampanje(kampanje) { ok(await sb.rpc("skjul_kampanje", { kampanje })); },
+    async visKampanje(kampanje) { ok(await sb.rpc("vis_kampanje", { kampanje: kampanje ?? null })); },
     async meldinger() {
       const r = await sb.from("meldinger").select("id, ansatt_id, kanal, tekst, bilde_sti, opprettet, endret").order("opprettet", { ascending: false }).limit(3000);
       return r.error ? [] : (r.data as Melding[]).reverse();

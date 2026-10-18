@@ -836,6 +836,17 @@ describe("deler av appen", () => {
   });
 });
 
+describe("skjulte kampanjer", () => {
+  it("ansatt kan vise en skjult kampanje igjen", async () => {
+    const [k] = await as<any>(STALE, "insert into public.kampanjer (tittel, fra, til, sider) values ('DM10', current_date, current_date + 7, array['a.png']) returning id");
+    await as(JIM, "select public.skjul_kampanje($1)", [k.id]);
+    await as(JIM, "select public.sett_vis_kampanjer(false)");
+    expect((await db.query<any>("select skjulte_kampanjer, vis_kampanjer from public.ansatte where epost = $1", [JIM])).rows[0]).toEqual({ skjulte_kampanjer: [k.id], vis_kampanjer: false });
+    await as(JIM, "select public.vis_kampanje($1)", [k.id]);
+    expect((await db.query<any>("select skjulte_kampanjer, vis_kampanjer from public.ansatte where epost = $1", [JIM])).rows[0]).toEqual({ skjulte_kampanjer: [], vis_kampanjer: true });
+  });
+});
+
 describe("logo og firmafarger", () => {
   const LOGO = "data:image/png;base64,iVBORw0KGgo=";
   it("bare leder lagrer, fargene kontrolleres, og fjernet drakt gir ByggLogg-blå", async () => {

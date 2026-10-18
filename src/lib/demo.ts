@@ -629,6 +629,7 @@ export function demoApi(): Api {
     async lagrePush() { /* ikke i demo */ },
     async slettPush() { /* ikke i demo */ },
     async settVisKampanjer(vis) { const m = meg(); if (m) m.vis_kampanjer = vis; endret(); },
+    async visKampanje(id) { const m = meg(); if (m) { m.skjulte_kampanjer = id ? (m.skjulte_kampanjer ?? []).filter((x) => x !== id) : []; m.vis_kampanjer = true; } endret(); },
     async skjulKampanje(id) { const m = meg(); if (m) m.skjulte_kampanjer = [...(m.skjulte_kampanjer ?? []), id]; endret(); },
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },
     async lagreEiendom(id, e) { const p = d.prosjekter.find((x) => x.id === id); if (p) Object.assign(p, e); endret(); },

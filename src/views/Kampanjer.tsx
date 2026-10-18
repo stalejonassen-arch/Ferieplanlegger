@@ -92,13 +92,21 @@ export function KampanjeKort() {
   );
 }
 
-/** Liten linje nederst når kampanjer er slått av, så de kan slås på igjen */
+/** Liten linje nederst når kampanjer er slått av eller noen er skjult, så de kan vises igjen */
 export function KampanjerAv() {
-  const { meg, kjor } = useApp();
-  if (meg.vis_kampanjer !== false) return null;
+  const { d, meg, idag, kjor } = useApp();
+  const skjult = new Set(meg.skjulte_kampanjer ?? []);
+  const skjulteNa = (d.kampanjer ?? []).filter((k) => k.fra <= idag && k.til >= idag && k.sider.length > 0 && skjult.has(k.id));
+  if (meg.vis_kampanjer === false) return (
+    <p className="small muted kampanjer-av">
+      Kampanjer fra Byggfag er slått av. <button className="lenkeknapp" onClick={() => kjor(() => api.visKampanje(), "Kampanjer vises igjen")}>Slå på</button>
+    </p>
+  );
+  if (!skjulteNa.length) return null;
   return (
     <p className="small muted kampanjer-av">
-      Kampanjer fra Byggfag er slått av. <button className="lenkeknapp" onClick={() => kjor(() => api.settVisKampanjer(true), "Kampanjer vises igjen")}>Slå på</button>
+      {skjulteNa.length === 1 ? <>Du har skjult kampanjen «{skjulteNa[0]!.tittel}».</> : <>Du har skjult {skjulteNa.length} kampanjer.</>}{" "}
+      <button className="lenkeknapp" onClick={() => kjor(() => api.visKampanje(), skjulteNa.length === 1 ? "Kampanjen vises igjen" : "Kampanjene vises igjen")}>Vis igjen</button>
     </p>
   );
 }
