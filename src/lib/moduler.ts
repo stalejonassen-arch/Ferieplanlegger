@@ -3,7 +3,7 @@
 import type { Data } from "./ferie";
 
 export type Modul =
-  | "chat" | "plan" | "materiell" | "bestilling" | "egenkontroll" | "sja" | "avvik" | "dagbok" | "tillegg"
+  | "chat" | "plan" | "materiell" | "bestilling" | "egenkontroll" | "sja" | "avvik" | "reklamasjon" | "dagbok" | "tillegg"
   | "utstyr" | "kurs" | "rapporter" | "kampanjer" | "vaer" | "okonomi" | "sluttdok";
 
 export const MODULER: { id: Modul; navn: string; hva: string }[] = [
@@ -14,6 +14,7 @@ export const MODULER: { id: Modul; navn: string; hva: string }[] = [
   { id: "egenkontroll", navn: "Egenkontroll", hva: "Sjekklister som fylles ut og signeres på prosjektet" },
   { id: "sja", navn: "SJA og mannskapsliste", hva: "Sikker jobbanalyse, mannskapsliste og HMS-kort" },
   { id: "avvik", navn: "Avvik og RUH", hva: "Melde og følge opp avvik og uønskede hendelser" },
+  { id: "reklamasjon", navn: "Reklamasjon", hva: "Kunden melder feil på ferdig jobb – vurdering, utbedring og kostnad" },
   { id: "dagbok", navn: "Dagbok", hva: "Dagbok på prosjektet" },
   { id: "tillegg", navn: "Tilleggsarbeid", hva: "Tilleggsarbeid som kunden signerer" },
   { id: "utstyr", navn: "Utstyr og arbeidstøy", hva: "Verktøy, arbeidstøy og forbruk per ansatt" },

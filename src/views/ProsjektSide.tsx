@@ -22,8 +22,9 @@ import { Mannskap, SjaDel, Sjekklister } from "./Kvalitet";
 import { BestillDel } from "./Bestilling";
 import { bruker, type Modul } from "../lib/moduler";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { Reklamasjoner } from "./Reklamasjon";
 
-type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder, meg, chat } = useApp();
@@ -46,13 +47,15 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     ["hms", "SJA og mannskap", (d.sja ?? []).filter((s) => s.prosjekt_id === p.id && s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length || null],
     ["chat", "Chat", ulesteChat(chat.meldinger, chat.lest, meg.id).get(prosjektKanal(p.id)) ?? null], ["historikk", "Historikk", null], ["dagbok", "Dagbok", antall.dagbok],
     ["tillegg", "Tillegg", antall.tillegg], ["bilder", "Bilder", antall.bilder], ["dokumenter", "Dokumenter", antallDok],
-    ["avvik", "Avvik", antall.avvik], ["statistikk", "Statistikk", null],
+    ["avvik", "Avvik", antall.avvik],
+    ["reklamasjon", "Reklamasjon", (d.reklamasjoner ?? []).filter((r) => r.prosjekt_id === p.id && (r.status === "ny" || r.status === "godkjent")).length || null],
+    ["statistikk", "Statistikk", null],
     ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
   ];
   const deler = alleDeler.filter(([x]) => {
     // Deler leder har slått av for bedriften
     const m: Partial<Record<Del, Modul[]>> = { plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
-      dagbok: ["dagbok"], tillegg: ["tillegg"], avvik: ["avvik"], okonomi: ["okonomi"], sluttdok: ["sluttdok"] };
+      dagbok: ["dagbok"], tillegg: ["tillegg"], avvik: ["avvik"], reklamasjon: ["reklamasjon"], okonomi: ["okonomi"], sluttdok: ["sluttdok"] };
     return !m[x] || m[x]!.some((y) => bruker(d, y));
   });
 
@@ -92,6 +95,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
       {del === "bilder" && <section className="panel"><Bilder bilder={d.bilder.filter((b) => b.prosjekt_id === p.id)} til={{ prosjekt_id: p.id }} tittel="Bilder fra prosjektet" /></section>}
       {del === "dokumenter" && <Dokumenter p={p} onEndret={setAntallDok} />}
       {del === "avvik" && <Avvik prosjektId={p.id} />}
+      {del === "reklamasjon" && <Reklamasjoner p={p} />}
       {del === "statistikk" && <Statistikk p={p} />}
       {del === "okonomi" && <Lonnsomhet p={p} />}
       {del === "sluttdok" && <Sluttdok p={p} />}
@@ -107,6 +111,7 @@ const DEL_IKON: Record<string, React.ReactNode> = {
   egenkontroll: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="m8.5 9 1.5 1.5 3-3M8.5 15l1.5 1.5 3-3" /><path d="M15 9.5h1M15 15.5h1" /></>,
   hms: <><path d="M4 14a8 8 0 0 1 16 0v2H4z" /><path d="M12 6v4M2 18h20" /></>,
   historikk: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  reklamasjon: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></>,
   dagbok: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M8 17h2" /></>,
   tillegg: <><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" /></>,
   bilder: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-9 8" /></>,

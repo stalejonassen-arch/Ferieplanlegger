@@ -54,6 +54,8 @@ function startdata(): Data {
   const prosjekter = [
     { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "Keiser Wilhelms gate 22, 6003 Ålesund", kontakt_navn: "Merete", kontakt_telefon: "900 00 000", selger_id: "stale", snekker_id: "mads", estimert_timer: 38, start: null, slutt: null, aktiv: true },
     { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
+    { id: "p3", visma_nr: 10712, navn: "Nytt kjøkken og gulv", kunde_id: "k1", adresse: "Storgata 14, 6260 Skodje", estimert_timer: 90, start: null, slutt: `${y0 - 1}-11-20`, aktiv: false },
+    { id: "prek", visma_nr: 900, navn: "Reklamasjon", kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: true },
   ];
   // Forrige uke: Ola har litt overtid, Snekker 3 har glemt lunsj én dag
   const m0 = addDays(mandag(isoOf(new Date())), -7);
@@ -104,7 +106,7 @@ function demoPlan(m: string): Pick<Data, "oppgaver" | "leveranser" | "materialer
 }
 
 /** Sjekkliste, SJA og en bestilling i demoen */
-function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestillinger"> {
+function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestillinger" | "reklamasjoner" | "reklamasjonProsjekt"> {
   const naa = new Date().toISOString();
   const sjekklister: Sjekkliste[] = [{
     id: "sk1", prosjekt_id: "p2", navn: "Våtrom – membran og sluk", mal: "vatrom", status: "pagaar", opprettet_av: "snekker3", opprettet: naa, endret: naa, signert_av: null, signert_tid: null,
@@ -127,7 +129,21 @@ function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestilling
     linjer: [{ beskrivelse: "Rørmansjett 15 mm", antall: 2, enhet: "stk" }, { beskrivelse: "Skruer 5x50 rustfri", antall: 1, enhet: "pk" }],
     status: "ny", svar: "", behandlet_av: null, leveranse_id: null, opprettet: naa, endret: naa,
   }];
-  return { sjekklister, sja, bestillinger };
+  return { sjekklister, sja, bestillinger, ...demoReklamasjon(m) };
+}
+
+/** En reklamasjon på en ferdig jobb i demoen */
+function demoReklamasjon(m: string): Pick<Data, "reklamasjoner" | "reklamasjonProsjekt"> {
+  const naa = new Date().toISOString();
+  return {
+    reklamasjonProsjekt: "prek",
+    reklamasjoner: [{
+      id: "rk1", prosjekt_id: "p3", meldt_av: "stale", meldt_dato: addDays(m, -9), kontakt: "Merete ringte butikken",
+      tittel: "Gulvlist har løsnet ved kjøkkenøya", beskrivelse: "Lista har sluppet på ca. 1 meter, og det er en glipe mellom gulv og list.",
+      status: "godkjent", vurdering: "Godkjent. Vi limer og spikrer lista på nytt.", ansvarlig_id: "mads", frist: addDays(m, 3), materiell_kost: null,
+      behandlet_av: "stale", utbedret_av: null, utbedret_tid: null, signert_navn: "", signatur: "", signert_tid: null, opprettet: naa, endret: naa,
+    }],
+  };
 }
 
 function demoUtstyr(): Utstyr[] {
@@ -258,6 +274,8 @@ export function demoApi(): Api {
       const gammel = n.id ? d.timer.find((t) => t.id === n.id) : undefined;
       if (gammel?.status === "godkjent" && !leder()) throw new Error("Timene er godkjent og kan bare endres av leder.");
       const ny = { ...(gammel ?? { id: nyId(), lunsj_unntak: false, status: "levert" as const }), ...n, timer: varighet(n.fra, n.til, n.lunsj_min) } as Time;
+      if (ny.reklamasjon_id && d.reklamasjonProsjekt) ny.prosjekt_id = d.reklamasjonProsjekt;
+      if (ny.reklamasjon_id || (d.reklamasjonProsjekt && ny.prosjekt_id === d.reklamasjonProsjekt)) ny.fakturerbar = false;
       if (gammel) Object.assign(gammel, ny); else d.timer.push(ny);
       endret();
     },
@@ -296,7 +314,7 @@ export function demoApi(): Api {
     },
     async lastOppBilde(fil, til) {
       const sti = URL.createObjectURL(fil);
-      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
+      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, reklamasjon_id: til.reklamasjon_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
       if (til.svenn_id) svennFiler.add(til.svenn_id);
       endret();
     },
@@ -347,7 +365,7 @@ export function demoApi(): Api {
         if (!s) throw new Error("Du er ikke logget inn.");
         if (s.dato !== idag) { if (!o.til) throw new Error("Du ble ikke logget ut. Skriv inn når du sluttet."); slutt = o.til; }
         if (slutt > s.fra) d.timer.push({ id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
-          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id, kilde: "stempel" });
+          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null });
         d.stempling = d.stempling.filter((x) => x.ansatt_id !== m.id);
       }
       if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
@@ -465,13 +483,36 @@ export function demoApi(): Api {
     async bildeUrler(stier) { return Object.fromEntries(stier.map((s) => [s, s])); },
     async settMittSprak(sprak) { const m = meg(); if (m) m.sprak = sprak; endret(); },
     async settMittTema(tema) { const m = meg(); if (m) m.tema = tema; endret(); },
+    async lagreReklamasjon(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const liste = (d.reklamasjoner ??= []);
+      const naa = new Date().toISOString();
+      const g = x.id ? liste.find((r) => r.id === x.id) : undefined;
+      if (g) {
+        if (!planlegger() && !(g.ansvarlig_id === m.id) && !(g.meldt_av === m.id && g.status === "ny")) throw new Error("Bare leder eller prosjektleder kan behandle reklamasjonen.");
+        if (x.signatur && (x.status ?? g.status) !== "utbedret") throw new Error("Kunden kan kvittere når reklamasjonen er utbedret.");
+        const forStatus = g.status;
+        Object.assign(g, x, { endret: naa });
+        if (g.status === "utbedret" && forStatus !== "utbedret") { g.utbedret_av = m.id; g.utbedret_tid = naa; }
+        if (x.signatur) g.signert_tid = naa;
+        endret(); return g.id;
+      }
+      const id = nyId();
+      liste.unshift({ id, prosjekt_id: x.prosjekt_id, meldt_av: m.id, meldt_dato: x.meldt_dato ?? naa.slice(0, 10), kontakt: x.kontakt ?? "", tittel: x.tittel ?? "", beskrivelse: x.beskrivelse ?? "",
+        status: planlegger() ? x.status ?? "ny" : "ny", vurdering: planlegger() ? x.vurdering ?? "" : "", ansvarlig_id: planlegger() ? x.ansvarlig_id ?? null : null, frist: planlegger() ? x.frist ?? null : null,
+        materiell_kost: null, behandlet_av: null, utbedret_av: null, utbedret_tid: null, signert_navn: "", signatur: "", signert_tid: null, opprettet: naa, endret: naa });
+      endret(); return id;
+    },
+    async slettReklamasjon(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.reklamasjoner = (d.reklamasjoner ?? []).filter((r) => r.id !== id); endret(); },
+    async lagreReklamasjonsprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge reklamasjonsprosjekt."); d.reklamasjonProsjekt = id; endret(); },
+    async stempleReklamasjon(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.reklamasjon_id = id; endret(); },
     async lagreModuler(av) { if (!leder()) throw new Error("Bare leder kan endre hvilke deler av appen som brukes."); d.modulerAv = [...new Set(av)]; endret(); },
     async lagreOppgave(o) {
       if (!planlegger()) throw new Error("Bare leder og prosjektleder kan legge inn arbeid i planen.");
       if (o.til < o.fra) throw new Error("Sluttdatoen er før startdatoen.");
       const liste = (d.oppgaver ??= []);
       const g = o.id ? liste.find((x) => x.id === o.id) : undefined;
-      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)] };
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)], ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}) };
       if (g) Object.assign(g, rad, o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {});
       else liste.push({ id: nyId(), ...rad, rekkefolge: o.rekkefolge ?? 0, status: "planlagt", opprettet_av: meg()?.id ?? null, ferdig_tid: null });
       endret();
@@ -596,7 +637,7 @@ export function demoApi(): Api {
       const a = d.prosjekter.find((x) => x.id === fra), b = d.prosjekter.find((x) => x.id === til);
       if (!a || !b) throw new Error("Fant ikke prosjektet.");
       if (a.id === b.id) throw new Error("Velg et annet prosjekt.");
-      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? [], d.oppgaver ?? [], d.leveranser ?? [], d.materialer ?? [], d.sjekklister ?? [], d.sja ?? [], d.bestillinger ?? []] as { prosjekt_id?: string | null }[][])
+      for (const liste of [d.timer, d.dagbok, d.tillegg, d.bilder, d.avvik, d.stempling, d.utstyr ?? [], d.oppgaver ?? [], d.leveranser ?? [], d.materialer ?? [], d.sjekklister ?? [], d.sja ?? [], d.bestillinger ?? [], d.reklamasjoner ?? []] as { prosjekt_id?: string | null }[][])
         for (const x of liste) if (x.prosjekt_id === fra) x.prosjekt_id = til;
       if (!b.adresse && a.adresse) b.adresse = a.adresse;
       if (b.estimert_timer == null && a.estimert_timer != null) b.estimert_timer = a.estimert_timer;

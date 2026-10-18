@@ -23,7 +23,7 @@ const farge = (id: string) => FARGER[[...id].reduce((n, c) => (n * 31 + c.charCo
 // ------------------------------------------------------------ Skjema
 
 /** Ny eller endret oppgave. Varsler hvis noen har ferie, fravær eller annet arbeid i perioden. */
-function OppgaveSkjema({ start, prosjekt, ferdig }: { start?: Partial<NyOppgave> & { id?: string }; prosjekt?: Prosjekt; ferdig: () => void }) {
+export function OppgaveSkjema({ start, prosjekt, ferdig }: { start?: Partial<NyOppgave> & { id?: string }; prosjekt?: Prosjekt; ferdig: () => void }) {
   const { d, kjor, idag } = useApp();
   const [f, setF] = useState<NyOppgave & { id?: string }>({
     prosjekt_id: prosjekt?.id ?? start?.prosjekt_id ?? "", tittel: "", beskrivelse: "", fra: idag, til: idag, ansatte: [], ...start,

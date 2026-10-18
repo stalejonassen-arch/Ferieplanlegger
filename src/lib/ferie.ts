@@ -85,6 +85,9 @@ export interface Data {
   sjekklister?: import("./kvalitet").Sjekkliste[];
   sja?: import("./kvalitet").Sja[];
   bestillinger?: import("./kvalitet").Bestilling[];
+  /** Reklamasjoner og bedriftens faste reklamasjonsprosjekt */
+  reklamasjoner?: import("./reklamasjon").Reklamasjon[];
+  reklamasjonProsjekt?: string | null;
   /** Arbeid-linjer fra Visma (bare leder) */
   fakturerteTimer?: FakturertTime[];
   /** Ordrer på prosjektene (bare leder), firmaets eget kundenummer og timepris for fastprisberegning */

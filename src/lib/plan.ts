@@ -6,8 +6,10 @@ export type OppgaveStatus = "planlagt" | "pagaar" | "ferdig";
 export interface Oppgave {
   id: string; prosjekt_id: string; tittel: string; beskrivelse: string; fra: string; til: string;
   ansatte: string[]; rekkefolge: number; status: OppgaveStatus; opprettet_av: string | null; ferdig_tid: string | null;
+  /** Arbeidet gjelder utbedring av en reklamasjon */
+  reklamasjon_id?: string | null;
 }
-export type NyOppgave = Pick<Oppgave, "prosjekt_id" | "tittel" | "beskrivelse" | "fra" | "til" | "ansatte"> & { id?: string; rekkefolge?: number };
+export type NyOppgave = Pick<Oppgave, "prosjekt_id" | "tittel" | "beskrivelse" | "fra" | "til" | "ansatte"> & { id?: string; rekkefolge?: number; reklamasjon_id?: string | null };
 
 export type LeveranseStatus = "planlagt" | "bestilt" | "levert";
 export interface Leveranse {

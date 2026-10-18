@@ -48,7 +48,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
   const adr = p.adresse || [k?.adresse, [k?.postnr, k?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const dagbok = [...d.dagbok.filter((x) => x.prosjekt_id === p.id)].sort((a, b) => a.dato.localeCompare(b.dato));
   const tillegg = d.tillegg.filter((x) => x.prosjekt_id === p.id && (x.status === "signert" || x.status === "fakturert"));
-  const bilder = d.bilder.filter((b) => b.prosjekt_id === p.id && !b.avvik_id);
+  const bilder = d.bilder.filter((b) => b.prosjekt_id === p.id && !b.avvik_id && !b.reklamasjon_id);
   const timer = d.timer.filter((t) => t.prosjekt_id === p.id && t.fakturerbar !== false);
   const sumT = timer.reduce((n, t) => n + Number(t.timer), 0);
   const datoer = timer.map((t) => t.dato).sort();

@@ -8,6 +8,7 @@ import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, 
 import type { SvennResultat } from "../lib/api";
 import { KampanjeOppsett } from "./Kampanjer";
 import { MODULER, bruker, type Modul } from "../lib/moduler";
+import { ProsjektVelger } from "./ProsjektVelger";
 
 /** Valg for varsel når noen fortsatt er stemplet inn: 7 t 30 min til 11 t, hvert kvarter */
 const VARSEL_STEMPLET = Array.from({ length: 15 }, (_, i) => 450 + i * 15);
@@ -225,7 +226,22 @@ function ModulOppsett() {
           </li>
         ))}
       </ul>
+      {bruker(d, "reklamasjon") && <ReklamasjonsprosjektValg />}
     </section>
+  );
+}
+
+/** Det faste prosjektet i Visma der timer på reklamasjon føres */
+function ReklamasjonsprosjektValg() {
+  const { d, kjor } = useApp();
+  return (
+    <div className="oppsett-under" style={{ marginTop: 12 }}>
+      <h3 style={{ margin: "0 0 4px" }}>Reklamasjon</h3>
+      <p className="small muted" style={{ marginTop: 0 }}>Velg det interne prosjektet i Visma der timer på reklamasjon føres. Timene merkes med hvilken jobb og reklamasjon de gjelder, og blir aldri fakturert. Uten et valgt prosjekt føres timene på originaljobben, men faktureres ikke.</p>
+      <ProsjektVelger label="Reklamasjonsprosjekt" placeholder="Ikke valgt" value={d.reklamasjonProsjekt ?? ""} tom="Ikke valgt"
+        prosjekter={d.prosjekter.filter((p) => p.aktiv || p.id === d.reklamasjonProsjekt)}
+        onChange={(id) => kjor(() => api.lagreReklamasjonsprosjekt(id || null), id ? "Reklamasjonsprosjektet er valgt" : "Reklamasjonsprosjektet er fjernet")} />
+    </div>
   );
 }
 
