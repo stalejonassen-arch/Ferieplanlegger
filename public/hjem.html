@@ -6,10 +6,11 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:title" content="ByggLogg">
-<meta property="og:description" content="Appen for byggefirma: stempling, timer, prosjekter, dokumentasjon, ferie og chat – koblet til Visma Business NXT og Tripletex.">
-<meta property="og:image" content="https://bygglogg.app/icon-512.png">
+<meta property="og:description" content="Appen for byggefirma: stempling, timer, arbeidsplan, materiell, egenkontroll, reklamasjon, ferie og chat – koblet til Visma Business NXT og Tripletex.">
+<meta property="og:image" content="https://bygglogg.app/skjerm/tidsplan-pc.webp">
 <title>ByggLogg</title>
-<meta name="description" content="ByggLogg er appen for byggefirma: stempling, timer, prosjekter, dokumentasjon, ferie og chat – koblet til Visma Business NXT.">
+<meta name="description" content="ByggLogg er appen for byggefirma: stempling, timer, arbeidsplan, materiell, egenkontroll, reklamasjon, ferie og chat – koblet til Visma Business NXT og Tripletex.">
+<meta property="og:image:alt" content="ByggLogg på telefonen">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
 <style>
@@ -72,6 +73,7 @@ p { margin: 0; }
 .telefon { justify-self: center; width: min(300px, 100%); aspect-ratio: 9 / 18.5; max-width: 100%; border-radius: 38px; background: #050A1E; padding: 11px;
   box-shadow: 0 40px 80px -30px rgba(0,0,0,.7), inset 0 0 0 2px #2A3566; }
 .skjerm { height: 100%; border-radius: 28px; overflow: hidden; background: #0A0E20; display: flex; flex-direction: column; font-size: 12px; color: #F2F4FC; }
+.skjerm img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .skjerm .app-topp { background: linear-gradient(#0A1EBE, #07158A); padding: 22px 14px 0; }
 .skjerm .app-topp small { font-family: var(--f-display); font-style: italic; font-weight: 700; color: var(--yellow); font-size: 11px; }
 .skjerm .app-topp b { display: block; font-family: var(--f-display); font-style: italic; font-weight: 800; font-size: 25px; line-height: 1; margin: 2px 0 10px; }
@@ -88,6 +90,18 @@ p { margin: 0; }
 .skjerm .faner { margin-top: auto; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #252E62; padding: 9px 4px 14px; text-align: center; color: #B4BCDD; font-size: 10.5px; }
 .skjerm .faner .aktiv { color: #FFCD00; font-weight: 700; }
 
+/* Skjermbilder fra appen */
+.galleri { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; }
+.galleri figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+.galleri figcaption { color: var(--muted); font-size: 15px; }
+.galleri figcaption b { color: var(--fg); }
+.vindu { border-radius: 12px; overflow: hidden; background: #0A0E20; border: 1px solid var(--line); box-shadow: 0 24px 50px -28px rgba(7, 21, 74, .55); }
+.vindu .linje { display: flex; gap: 6px; padding: 10px 12px; background: #141B38; border-bottom: 1px solid #2B356B; }
+.vindu .linje i { width: 10px; height: 10px; border-radius: 50%; background: #2B356B; }
+.vindu img { display: block; width: 100%; height: auto; }
+.galleri .side { display: grid; gap: 22px; min-width: 0; }
+@media (max-width: 860px) { .galleri { grid-template-columns: 1fr; } }
+
 /* Målebånd-stripe mellom seksjonene */
 .baand { height: 22px; background-color: var(--yellow);
   background-image: repeating-linear-gradient(90deg, #1A1400 0 2px, transparent 2px 100px), repeating-linear-gradient(90deg, #1A1400 0 1px, transparent 1px 10px);
@@ -101,6 +115,8 @@ section { padding-block: 80px; }
 .funk article { background: var(--surface); padding: 26px 24px 28px; display: grid; gap: 10px; align-content: start; min-width: 0; }
 .funk .ikon { width: 40px; height: 40px; border-radius: 8px; background: var(--navy); display: grid; place-items: center; }
 .funk .ikon svg { width: 22px; height: 22px; }
+.funk h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ny { font-family: var(--f-body); font-style: normal; font-weight: 700; font-size: 12px; background: var(--yellow); color: var(--yellow-ink); border-radius: 99px; padding: 2px 9px; line-height: 1.4; }
 .funk p { color: var(--muted); font-size: 16px; }
 .funk ul { margin: 2px 0 0; padding-left: 18px; color: var(--muted); font-size: 15.5px; display: grid; gap: 3px; }
 @media (max-width: 920px) { .funk { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -186,6 +202,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     </a>
     <nav aria-label="Hovedmeny">
       <a href="#funksjoner">Funksjoner</a>
+      <a href="#appen">Se appen</a>
       <a href="#tjenester">Tjenester</a>
       <a href="#pris">Pris</a>
       <a href="#kontakt">Kontakt</a>
@@ -198,7 +215,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     <div>
       <p class="eyebrow">For byggefirma og håndverkere</p>
       <h1>Hele byggeplassen <em>i lomma.</em></h1>
-      <p class="lead">ByggLogg samler stempling, timer, prosjekter, bilder, avvik, ferie og chat i én app på telefonen. Prosjektene kommer rett fra Visma Business NXT eller Tripletex, og lønnsgrunnlaget er klart når måneden er slutt.</p>
+      <p class="lead">ByggLogg samler stempling, timer, arbeidsplan, materiell, egenkontroll, reklamasjon, ferie og chat i én app på telefonen. Prosjektene kommer rett fra Visma Business NXT eller Tripletex, og lønnsgrunnlaget er klart når måneden er slutt.</p>
       <div class="knapper">
         <a class="btn gul" href="/?demo" target="_blank" rel="noopener">Prøv demoen →</a>
         <a class="btn strek" href="#kontakt">Snakk med oss</a>
@@ -206,24 +223,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       <div class="fakta"><span>Norsk og polsk</span><span>Ingen app-butikk</span><span>Data lagret i EU</span></div>
     </div>
     <div class="telefon" aria-label="Skjermbilde av ByggLogg på telefon">
-      <div class="skjerm">
-        <div class="app-topp"><small>Demo Bygg AS</small><b>ByggLogg</b><div class="maal"></div></div>
-        <div class="innhold">
-          <div class="kort">
-            <div class="t">Stemplet inn 07:00</div>
-            <div class="klokke">06:42</div>
-            <div class="prosj">24117 Tilbygg Myrvang</div>
-            <div class="stopp">Stemple ut</div>
-          </div>
-          <div class="kort">
-            <div class="t" style="margin-bottom:4px">Denne uka</div>
-            <div class="rad"><span>Timer</span><span>31,5 t</span></div>
-            <div class="rad"><span>Overtid</span><span>1,5 t</span></div>
-            <div class="rad"><span>Feriedager igjen</span><span>14</span></div>
-          </div>
-        </div>
-        <div class="faner"><span class="aktiv">Timer</span><span>Prosjekter</span><span>Chat</span><span>Ferie</span></div>
-      </div>
+      <div class="skjerm"><img src="/skjerm/forside-mobil.webp" width="600" height="1298" alt="Forsiden i ByggLogg: snekkeren er logget inn på prosjektet Skifte vindu og ser timene sine for dagen"></div>
     </div>
   </div>
 </div>
@@ -238,22 +238,46 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     </div>
     <div class="funk">
       <article>
-        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg></div>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg></div>
         <h3>Stempling og timer</h3>
-        <p>Stemple inn og ut med ett trykk, og før timene på riktig prosjekt.</p>
-        <ul><li>Varsel hvis noen har glemt å stemple ut</li><li>Overtid og tillegg regnes ut</li><li>Lønnsgrunnlag rett til lønnssystemet</li></ul>
+        <p>Logg inn og ut med ett trykk, på riktig prosjekt. Dagen vises som et målebånd, så hullene synes.</p>
+        <ul><li>Varsel hvis noen har glemt å logge ut</li><li>Overtid, lunsj og kjøring regnes ut</li><li>Lønnsgrunnlag rett til lønnssystemet</li></ul>
       </article>
       <article>
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
         <h3>Prosjekter</h3>
-        <p>Adresse med kart, kjøreavstand, kontaktperson, selger og snekker på hvert prosjekt.</p>
-        <ul><li>Hentes fra Visma eller Tripletex</li><li>Nye prosjekter kan opprettes ute</li><li>Materiell som er hentet ut</li></ul>
+        <p>Adresse med kart, kontaktperson, selger, snekker og timer brukt mot kalkyle på hvert prosjekt.</p>
+        <ul><li>Hentes fra Visma eller Tripletex</li><li>Søk på nummer, kunde eller adresse</li><li>Slå sammen to prosjekter som er samme jobb</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h6M7 17h9"/></svg></div>
+        <h3>Arbeidsplan <span class="ny">Nyhet</span></h3>
+        <p>Leder deler ut jobber med dato til de ansatte. Ukeplanen viser hvem som er hvor, og hvem som har ferie.</p>
+        <ul><li>Trykk på en dag for å planlegge</li><li>«Mitt arbeid» for hver ansatt</li><li>Push-varsel når du får ny jobb</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></div>
+        <h3>Materiell og bestilling <span class="ny">Nyhet</span></h3>
+        <p>Materiallisten deles i leveranser i riktig rekkefølge. Snekkeren bestiller fra byggeplassen, og butikken plukker.</p>
+        <ul><li>Leveranser med dato og status</li><li>Bestilling rett til butikk og lager</li><li>Huk av det som er levert</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8.5 9 1.5 1.5 3-3M8.5 15l1.5 1.5 3-3"/></svg></div>
+        <h3>Egenkontroll og HMS <span class="ny">Nyhet</span></h3>
+        <p>Sjekklister for våtrom, tetting, vinduer og brann som signeres på stedet, og sikker jobbanalyse før risikoarbeid.</p>
+        <ul><li>SJA som alle kvitterer på</li><li>Mannskapsliste med HMS-kort</li><li>Avvik og uønskede hendelser</li></ul>
       </article>
       <article>
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2.5h5L16 6"/></svg></div>
         <h3>Dokumentasjon</h3>
-        <p>Dagbok, bilder, avvik og tilleggsarbeid lagres på prosjektet mens jobben pågår.</p>
-        <ul><li>Sluttdokumentasjon og FDV</li><li>Rapporter til kunden</li><li>Vær fra Meteorologisk institutt</li></ul>
+        <p>Dagbok, bilder og tilleggsarbeid lagres på prosjektet mens jobben pågår. Kunden signerer tillegg på telefonen.</p>
+        <ul><li>Sluttrapport og FDV til kunden</li><li>Klar for Boligmappa</li><li>Vær fra Meteorologisk institutt</li></ul>
+      </article>
+      <article>
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></div>
+        <h3>Reklamasjon <span class="ny">Nyhet</span></h3>
+        <p>Når kunden melder feil på en ferdig jobb, registreres det på jobben med bilder. Leder vurderer, og utbedringen planlegges.</p>
+        <ul><li>Timer på reklamasjon faktureres ikke</li><li>Kunden kvitterer når det er rettet</li><li>Hva reklamasjoner koster i året</li></ul>
       </article>
       <article>
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
@@ -265,14 +289,34 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></div>
         <h3>Chat og varsler</h3>
         <p>Felles chat, egen tråd per prosjekt og private meldinger, med push-varsel på telefonen.</p>
-        <ul><li>Bilder rett i chatten</li><li>Varsel om nye prosjekter</li><li>Hele appen på norsk og polsk</li></ul>
+        <ul><li>Bilder rett i chatten</li><li>Varsel om nye prosjekter og bestillinger</li><li>Hele appen på norsk og polsk</li></ul>
       </article>
-      <article>
-        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
-        <h3>Oversikt for leder</h3>
-        <p>Se hva som er klart til fakturering, hvordan prosjektene går og hvem som har hvilke kurs.</p>
-        <ul><li>Fakturerte timer mot mål</li><li>Kurs og kompetansebevis</li><li>Utstyr og arbeidstøy</li></ul>
-      </article>
+    </div>
+  </div>
+</section>
+
+<section id="appen">
+  <div class="wrap">
+    <div class="seksjon-topp">
+      <p class="eyebrow">Slik ser det ut</p>
+      <h2>Bygget for telefonen. Like god på PC.</h2>
+      <p class="lead">Snekkerne bruker ByggLogg på telefonen ute. Leder og butikk har den samme appen på PC, med ukeplan, bestillinger og reklamasjoner på én side.</p>
+    </div>
+    <div class="galleri">
+      <figure>
+        <div class="vindu"><div class="linje"><i></i><i></i><i></i></div><img src="/skjerm/tidsplan-pc.webp" width="1400" height="1394" loading="lazy" alt="Ukeplanen i ByggLogg med jobber fordelt på de ansatte"></div>
+        <figcaption><b>Arbeidsplan.</b> Hele uka for alle ansatte. Trykk på en ledig dag for å dele ut en jobb.</figcaption>
+      </figure>
+      <div class="side">
+        <figure>
+          <div class="vindu"><div class="linje"><i></i><i></i><i></i></div><img src="/skjerm/butikk-pc.webp" width="1400" height="864" loading="lazy" alt="Bestillinger fra byggeplassen og reklamasjoner i ByggLogg"></div>
+          <figcaption><b>Butikk og prosjektleder.</b> Bestillinger fra byggeplassen og reklamasjoner som skal følges opp.</figcaption>
+        </figure>
+        <figure>
+          <div class="vindu"><img src="/skjerm/prosjekt-mobil.webp" width="600" height="685" loading="lazy" alt="Delene av et prosjekt i ByggLogg: plan, materiell, egenkontroll, SJA, chat, dagbok og mer"></div>
+          <figcaption><b>Alt om jobben på ett sted.</b> Plan, materiell, egenkontroll, bilder, avvik og sluttdokumentasjon på prosjektet.</figcaption>
+        </figure>
+      </div>
     </div>
   </div>
 </section>
@@ -330,6 +374,9 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <li>Feriedager etter avtale, med ekstra uke over 60 år</li>
         <li>Varsel når noen har glemt å stemple ut, med egen grense per ansatt</li>
         <li>Kvoter for arbeidstøy, verktøy og verneutstyr</li>
+        <li>Slå av deler av appen dere ikke bruker</li>
+        <li>Oversikt for leder: fakturerte timer mot mål, lønnsomhet, kurs og utstyr</li>
+        <li>Prosjektleder-rolle for butikk og kontor</li>
         <li>Kampanjer fra kjeden på startsiden</li>
         <li>Norsk eller polsk for hver ansatt</li>
       </ul></div>
@@ -338,7 +385,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <li>Sluttdokumentasjon og FDV klar for Boligmappa</li>
         <li>Ferie og fravær rett i kalenderen på mobilen</li>
         <li>Værmelding fra Meteorologisk institutt</li>
-        <li>Push-varsler for chat, nye prosjekter og stempling</li>
+        <li>Push-varsler for chat, nye prosjekter, ny jobb og bestillinger</li>
         <li>Import av timer fra Svenn ved bytte av system</li>
       </ul>
       <p class="small">Trenger dere en kobling vi ikke har? Si fra. Mange av funksjonene i ByggLogg startet som ønsker fra kundene.</p></div>
