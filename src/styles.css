@@ -71,7 +71,7 @@ header.top select.sprakvalg option { color: #10162E; }
 
 /* ---------- Skjemafelt ---------- */
 select, input, textarea, button { font: inherit; color: inherit; }
-select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input[type=email], input[type=number], textarea {
+select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input:not([type]), input[type=tel], input[type=email], input[type=number], textarea {
   background: var(--sunk); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-width: 0; font-size: 16px;
   transition: border-color .15s, background .15s; }
 select:hover, input:hover, textarea:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
@@ -515,7 +515,8 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 @media (max-width: 640px) { .panel.prosjekthode h2 { font-size: 26px; } }
 
 /* Prosjektdelene: kort med ikon, valgt = mørkeblått med gul strek */
-.seksjoner { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 8px; }
+.seksjoner { grid-template-columns: repeat(auto-fill, minmax(min(176px, calc(50% - 4px)), 1fr)); gap: 8px; }
+.seksjoner button { min-width: 0; }
 .seksjoner button { justify-content: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 17px; font-weight: 700; font-style: italic;
   box-shadow: 0 1px 2px rgba(14, 20, 48, .06), 0 6px 14px -10px rgba(14, 20, 48, .35); }
 .seksjoner button .ikon { width: 22px; height: 22px; flex: none; color: var(--navy-2); }
@@ -760,7 +761,7 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 :root[data-tema="standard"] .btn.primary { box-shadow: 0 6px 14px -8px rgba(63, 107, 74, .75); }
 :root[data-tema="standard"] .btn.gul { background: var(--accent); border-color: var(--accent); color: #FFFFFF; box-shadow: 0 6px 14px -8px rgba(63, 107, 74, .8); }
 :root[data-tema="standard"] .btn.ok { background: color-mix(in srgb, var(--approved) 12%, var(--surface)); }
-:root[data-tema="standard"] :is(select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input[type=email], input[type=number], textarea) {
+:root[data-tema="standard"] :is(select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input:not([type]), input[type=tel], input[type=email], input[type=number], textarea) {
   background: var(--surface); border-radius: 12px; }
 :root[data-tema="standard"] .banner { border-radius: 16px; background: color-mix(in srgb, var(--pending) 12%, var(--surface)); border-color: color-mix(in srgb, var(--pending) 30%, transparent); }
 :root[data-tema="standard"] .scroll { border-radius: 16px; }
@@ -869,7 +870,7 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 :root[data-tema="bfportal"] .btn.ok { background: linear-gradient(310deg, #17AD37, #98EC2D); color: #FFFFFF; border: 0; }
 :root[data-tema="bfportal"] .btn.no { background: #FFFFFF; }
 :root[data-tema="bfportal"] .linkbtn, :root[data-tema="bfportal"] a { color: var(--accent); }
-:root[data-tema="bfportal"] :is(select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input[type=email], input[type=number], textarea) {
+:root[data-tema="bfportal"] :is(select, input[type=date], input[type=time], input[type=month], input[type=search], input[type=text], input:not([type]), input[type=tel], input[type=email], input[type=number], textarea) {
   background: #FFFFFF; border: 1px solid var(--line); border-radius: 8px; font-size: 14.5px; }
 :root[data-tema="bfportal"] :is(select, input, textarea):focus { border-color: #2152FF; box-shadow: 0 0 0 2px rgba(33, 82, 255, .18); outline: none; }
 :root[data-tema="bfportal"] .banner { border: 0; border-radius: 12px; background: #FFFFFF; box-shadow: var(--shadow); border-left: 4px solid var(--pending); }
@@ -1241,11 +1242,11 @@ header.top select.temavalg option { color: #10162E; }
 .plan-uke tr.meg .plan-navn { font-weight: 700; }
 .plan-navn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plan-borte { display: block; font-size: 12px; font-weight: 700; color: var(--muted); padding: 2px 6px; border-radius: 6px; background: repeating-linear-gradient(45deg, var(--sunk), var(--sunk) 4px, var(--hatch) 4px, var(--hatch) 8px); margin-bottom: 3px; }
-.plan-brikke { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; border: 0; border-radius: 6px; color: #fff; padding: 3px 6px; margin-bottom: 3px; font: inherit; cursor: pointer; }
+.plan-brikke { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-width: 0; overflow: hidden; white-space: normal; text-align: left; border: 0; border-radius: 6px; color: #fff; padding: 3px 6px; margin-bottom: 3px; font: inherit; cursor: pointer; }
 .plan-brikke:disabled { cursor: default; opacity: 1; }
 .plan-brikke.ferdig { opacity: .45; }
 .plan-brikke .p { font-size: 11px; opacity: .9; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plan-brikke .t { font-size: 12.5px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.plan-brikke .t { font-size: 12.5px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; white-space: normal; max-width: 100%; }
 .plan-ledig { width: 100%; min-height: 32px; border: 1px dashed var(--line); background: none; color: var(--accent, var(--muted)); font-size: 1.1rem; border-radius: 6px; padding: 4px; cursor: pointer; opacity: .75; }
 .plan-ledig.liten { min-height: 22px; font-size: .9rem; padding: 0; opacity: .45; margin-top: 2px; }
 .plan-ledig:hover, .plan-ledig:focus-visible { opacity: 1; border-style: solid; }
