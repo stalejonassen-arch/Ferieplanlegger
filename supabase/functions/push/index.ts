@@ -46,7 +46,7 @@ async function stemplet(ansattId: string) {
   if (finnes) return new Response("allerede sendt");
   const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
   if (!n) return new Response("mangler nøkler", { status: 500 });
-  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
   const { data: a } = await sb.from("ansatte").select("id, navn, sprak").eq("id", ansattId).maybeSingle();
   if (!a) return new Response("finnes ikke", { status: 404 });
   const res = await send([a], (x) => x.sprak === "pl"
@@ -72,7 +72,7 @@ async function oppgave(id: string) {
   if (!nye.length) return new Response("ingen nye");
   const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
   if (!n) return new Response("mangler nøkler", { status: 500 });
-  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
   const { data: mottakere } = await sb.from("ansatte").select("id, navn, sprak").in("id", nye).eq("bedrift_id", o.bedrift_id).eq("aktiv", true);
   const { data: p } = await sb.from("prosjekter").select("navn, adresse").eq("id", o.prosjekt_id).maybeSingle();
   const naar = o.fra === o.til ? dato(o.fra) : `${dato(o.fra)} – ${dato(o.til)}`;
@@ -92,7 +92,7 @@ async function bestilling(id: string) {
   if (finnes) return new Response("allerede sendt");
   const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
   if (!n) return new Response("mangler nøkler", { status: 500 });
-  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
   const { data: p } = await sb.from("prosjekter").select("navn").eq("id", b.prosjekt_id).maybeSingle();
   const { data: alle } = await sb.from("ansatte").select("id, navn, sprak, rolle, prosjektleder").eq("bedrift_id", b.bedrift_id).eq("aktiv", true);
   const linjer = (b.linjer ?? []) as { beskrivelse: string; antall?: number; enhet?: string }[];
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
 
   const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
   if (!n) return new Response("mangler nøkler", { status: 500 });
-  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
 
   if (type === "melding") {
     const { data: m } = await sb.from("meldinger").select("id, bedrift_id, ansatt_id, kanal, tekst, bilde_sti").eq("id", id).maybeSingle();

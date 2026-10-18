@@ -2,7 +2,7 @@
 import { api } from "./api";
 
 /** Offentlig VAPID-nøkkel (den private ligger bare i databasen for edge-funksjonen) */
-const VAPID = "BIpUakLOtPoEUM_gDi8W0HOIFO8Cskq225YFZSLodh0OkedQQJX55RYY1v0LQC4c715-Aef9dpPpuUJo8vOZfcE";
+const VAPID = "BJ-SocAiKKaMiOcP8wCte5ONtwP1T8C8yTfa5khV1jO0qY9o7Tw8MUGzNSq5Jt-J1v66DFUZ87XL9_e0CUkJNrw";
 
 export type PushStatus = "på" | "av" | "blokkert" | "installer-først" | "ikke-støttet";
 
