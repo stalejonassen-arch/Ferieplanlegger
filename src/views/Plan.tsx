@@ -5,7 +5,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { addDays, borteDag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { fravaerPaa } from "../lib/fravaer";
-import { OPPGAVE_STATUS, forsinket, oppgaverPaa, sorterOppgaver, ukeDager, type NyOppgave, type Oppgave, type OppgaveStatus } from "../lib/plan";
+import { OPPGAVE_STATUS, arbeidsdagerFor, hverdag, forsinket, oppgaverPaa, sorterOppgaver, ukeDager, type NyOppgave, type Oppgave, type OppgaveStatus } from "../lib/plan";
 import { ukenr, type Prosjekt } from "../lib/timer";
 import { ProsjektVelger } from "./ProsjektVelger";
 
@@ -13,7 +13,7 @@ import { ProsjektVelger } from "./ProsjektVelger";
 export function usePlanlegger() { const { leder, meg } = useApp(); return leder || !!meg.prosjektleder; }
 
 const DAG = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
-const periodeTekst = (o: Pick<Oppgave, "fra" | "til">) => (o.fra === o.til ? kortDato(o.fra) : `${kortDato(o.fra)} – ${kortDato(o.til)}`);
+const periodeTekst = (o: Pick<Oppgave, "fra" | "til" | "helg">) => (o.fra === o.til ? kortDato(o.fra) : `${kortDato(o.fra)} – ${kortDato(o.til)}${o.helg ? " (også helg)" : ""}`);
 const STATUS_CHIP: Record<OppgaveStatus, string> = { planlagt: "demo", pagaar: "venter", ferdig: "godkjent" };
 
 /** Farge per prosjekt i tidsplanen (samme prosjekt får alltid samme farge) */
@@ -27,22 +27,23 @@ export function OppgaveSkjema({ start, prosjekt, ferdig }: { start?: Partial<NyO
   const { d, kjor, idag } = useApp();
   const [f, setF] = useState<NyOppgave & { id?: string }>({
     prosjekt_id: prosjekt?.id ?? start?.prosjekt_id ?? "", tittel: "", beskrivelse: "", fra: idag, til: idag, ansatte: [], ...start,
+    // Planlegger du fra en lørdag/søndag/helligdag, gjelder arbeidet helgen
+    helg: start?.helg ?? (!!start?.fra && !hverdag(start.fra) && (start.til ?? start.fra) === start.fra),
   });
   const ansatte = sorterAnsatte(d).filter((a) => a.aktiv);
   const prosjekter = d.prosjekter.filter((p) => p.aktiv || p.id === f.prosjekt_id);
-  const dager: string[] = [];
-  for (let x = f.fra; x && f.til && x <= f.til && dager.length < 120; x = addDays(x, 1)) dager.push(x);
+  const dager = arbeidsdagerFor(f);
   const varsler = f.ansatte.flatMap((id) => {
     const a = d.ansatte.find((x) => x.id === id);
     if (!a) return [];
     const borte = dager.filter((x) => borteDag(d.soknader.filter((s) => s.ansatt_id === id && s.status === "godkjent"), x).length || fravaerPaa(d.fravaer ?? [], id, x));
-    const annet = (d.oppgaver ?? []).filter((o) => o.id !== f.id && o.status !== "ferdig" && o.ansatte.includes(id) && o.fra <= f.til && o.til >= f.fra);
+    const annet = (d.oppgaver ?? []).filter((o) => o.id !== f.id && o.status !== "ferdig" && o.ansatte.includes(id) && o.fra <= f.til && o.til >= f.fra && arbeidsdagerFor(o).some((x) => dager.includes(x)));
     return [
       ...(borte.length ? [`${a.navn} er borte ${borte.length === 1 ? kortDato(borte[0]) : `${borte.length} dager i perioden`} (ferie eller fravær).`] : []),
       ...annet.map((o) => `${a.navn} har også «${o.tittel}» på ${d.prosjekter.find((p) => p.id === o.prosjekt_id)?.navn ?? "et annet prosjekt"} (${periodeTekst(o)}).`),
     ];
   });
-  const kan = f.prosjekt_id && f.tittel.trim() && f.fra && f.til && f.til >= f.fra;
+  const kan = f.prosjekt_id && f.tittel.trim() && f.fra && f.til && f.til >= f.fra && dager.length > 0;
   const lagre = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!kan) return;
@@ -69,6 +70,15 @@ export function OppgaveSkjema({ start, prosjekt, ferdig }: { start?: Partial<NyO
         <label className="field kort"><span className="label">Til</span>
           <input id="oppgave-til" type="date" value={f.til} min={f.fra} onChange={(e) => setF({ ...f, til: e.target.value })} required /></label>
       </div>
+      <label className="small" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <input type="checkbox" style={{ width: "auto", flex: "none" }} checked={!!f.helg} onChange={(e) => setF({ ...f, helg: e.target.checked })} />
+        Jobbes også lørdag, søndag og helligdager
+      </label>
+      {f.fra && f.til && f.til >= f.fra && (
+        dager.length
+          ? <span className="small muted" style={{ marginTop: -4 }}>{dager.length} {dager.length === 1 ? "arbeidsdag" : "arbeidsdager"}{f.helg ? "" : " (mandag–fredag, uten helligdager)"}</span>
+          : <span className="small" style={{ color: "var(--warn)", marginTop: -4 }}>Perioden har ingen hverdager. Kryss av for helg hvis det skal jobbes da.</span>
+      )}
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="label" style={{ marginBottom: 6 }}>Hvem skal gjøre det</legend>
         <div className="plan-velg">

@@ -547,7 +547,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async stempleReklamasjon(id) { ok(await sb.rpc("stemple_reklamasjon", { r: id })); },
     async stempleTillegg(id) { ok(await sb.rpc("stemple_tillegg", { t: id })); },
     async lagreOppgave(o) {
-      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}), ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}) };
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}), ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}), helg: !!o.helg };
       ok(o.id ? await sb.from("oppgaver").update(rad).eq("id", o.id) : await sb.from("oppgaver").insert(rad));
     },
     async slettOppgave(id) { ok(await sb.from("oppgaver").delete().eq("id", id)); },

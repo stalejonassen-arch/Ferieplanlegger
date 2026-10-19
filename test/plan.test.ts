@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { forsinket, grupperMateriell, nyeFraVisma, oppgaverPaa, sorterOppgaver, ukeDager, type Leveranse, type Materiale, type Oppgave } from "../src/lib/plan";
+import { arbeidsdagerFor, hverdag, forsinket, grupperMateriell, nyeFraVisma, oppgaverPaa, sorterOppgaver, ukeDager, type Leveranse, type Materiale, type Oppgave } from "../src/lib/plan";
 
 const o = (id: string, fra: string, til: string, ansatte: string[], rekkefolge = 0, status: Oppgave["status"] = "planlagt"): Oppgave =>
   ({ id, prosjekt_id: "p", tittel: id, beskrivelse: "", fra, til, ansatte, rekkefolge, status, opprettet_av: null, ferdig_tid: null });
@@ -28,5 +28,21 @@ describe("materialliste", () => {
   it("henter bare varer fra Visma som ikke allerede står i listen", () => {
     const nye = nyeFraVisma([{ varenr: "1", beskrivelse: "A", antall: 1, enhet: "STK" }, { varenr: "2", beskrivelse: "B", antall: 2, enhet: "STK" }, { varenr: "", beskrivelse: "Frakt", antall: 1, enhet: "" }], [m("a", null, "1")]);
     expect(nye.map((v) => v.varenr)).toEqual(["2"]);
+  });
+});
+
+describe("helg i planen", () => {
+  // 2026-10-23 er fredag, 24.–25. er helg; 2026-12-25 er 1. juledag
+  const o = (x: Partial<Oppgave> = {}): Oppgave => ({ id: "1", prosjekt_id: "p", tittel: "Tak", beskrivelse: "", fra: "2026-10-22", til: "2026-10-27", ansatte: ["a"], rekkefolge: 0, status: "planlagt", opprettet_av: null, ferdig_tid: null, ...x });
+  it("lørdag, søndag og helligdager tas ikke med uten avkryssing", () => {
+    expect(arbeidsdagerFor(o())).toEqual(["2026-10-22", "2026-10-23", "2026-10-26", "2026-10-27"]);
+    expect(oppgaverPaa([o()], "a", "2026-10-24")).toHaveLength(0);
+    expect(oppgaverPaa([o()], "a", "2026-10-26")).toHaveLength(1);
+    expect(arbeidsdagerFor(o({ fra: "2026-12-24", til: "2026-12-28" }))).toEqual(["2026-12-24", "2026-12-28"]);
+  });
+  it("med helg avkrysset tas alle dager med", () => {
+    expect(arbeidsdagerFor(o({ helg: true }))).toHaveLength(6);
+    expect(oppgaverPaa([o({ helg: true })], "a", "2026-10-24")).toHaveLength(1);
+    expect(hverdag("2026-10-24")).toBe(false);
   });
 });

@@ -530,7 +530,7 @@ export function demoApi(): Api {
       if (o.til < o.fra) throw new Error("Sluttdatoen er før startdatoen.");
       const liste = (d.oppgaver ??= []);
       const g = o.id ? liste.find((x) => x.id === o.id) : undefined;
-      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)], ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}) };
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)], ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}), helg: !!o.helg };
       if (g) Object.assign(g, rad, o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {});
       else liste.push({ id: nyId(), ...rad, rekkefolge: o.rekkefolge ?? 0, status: "planlagt", opprettet_av: meg()?.id ?? null, ferdig_tid: null });
       endret();
