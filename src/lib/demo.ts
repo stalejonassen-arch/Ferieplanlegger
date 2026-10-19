@@ -755,7 +755,7 @@ function thauglandDrakt(d: Data): Data {
 /** Standardregler for DG-kategoriene (samme som i databasen) */
 export const STANDARD_DG: import("./dg").DgKategori[] = [
   { id: "vinduer", navn: "Vinduer", med: ["vindu", "nordan", "natre", "h-karmen", "takv mh", "skyvedør"], uten: ["base", "kitt", "pensel", "holder", "vindusvr", "vrider", "deponer", "maling", "frakt", "beslag", "lås", "sålbenk", "rullesett"] },
-  { id: "tak", navn: "Takplater", med: ["takpl", "takplate", "takpakke", "powertekk", "takpanne", "takshingel", "takstein", "plannja", "tata steel", "tata click", "tata takpl", "decra", "ruukki", "falstak", "click fals"], uten: ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv"] },
+  { id: "tak", navn: "Takplater", med: ["takpl", "takplate", "takpakke", "powertekk", "takpanne", "takshingel", "takstein", "plannja", "tata steel", "tata click", "tata takpl", "decra", "ruukki", "falstak", "click fals"], uten: ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv", "spiker", "skrue", "huntonit", "trefib", "kraning"] },
 ];
 
 /** Oppdiktet salg av vinduer og takplater de siste 14 månedene */

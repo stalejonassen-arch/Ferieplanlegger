@@ -10,7 +10,7 @@ alter table public.bedrifter add column if not exists dg_kategorier jsonb not nu
    "uten": ["base", "kitt", "pensel", "holder", "vindusvr", "vrider", "deponer", "maling", "frakt", "beslag", "lås", "sålbenk", "rullesett"]},
   {"id": "tak", "navn": "Takplater",
    "med":  ["takpl", "takplate", "takpakke", "powertekk", "takpanne", "takshingel", "takstein", "plannja", "tata steel", "tata click", "tata takpl", "decra", "ruukki", "falstak", "click fals"],
-   "uten": ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv"]}
+   "uten": ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv", "spiker", "skrue", "huntonit", "trefib", "kraning"]}
 ]'::jsonb;
 
 create or replace function public.lagre_dg_kategorier(k jsonb) returns void
