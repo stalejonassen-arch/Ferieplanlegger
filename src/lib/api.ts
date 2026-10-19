@@ -162,7 +162,7 @@ export interface Api {
   lagreRapport(r: NyRapport): Promise<void>;
   slettRapport(id: string, sti: string): Promise<void>;
   /** Logg inn/bytt/ut. til = sluttid når man glemte å logge ut en tidligere dag. */
-  stemple(handling: "inn" | "bytt" | "ut", o?: { prosjekt?: string | null; beskrivelse?: string; lunsj?: number; til?: string }): Promise<void>;
+  stemple(handling: "inn" | "bytt" | "ut", o?: { prosjekt?: string | null; beskrivelse?: string; lunsj?: number; til?: string; tid?: string }): Promise<void>;
   /** Registrer eller rett sykefravær (egenmelding, sykmelding, sykt barn) */
   lagreFravaer(f: { id?: string; ansatt_id: string; type: FravaerType; fra: string; til: string; grad?: number; merknad?: string }): Promise<void>;
   slettFravaer(id: string): Promise<void>;
@@ -477,7 +477,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (sti) await sb.storage.from("dokumenter").remove([sti]);
     },
     async stemple(handling, o = {}) {
-      ok(await sb.rpc("stemple", { handling, prosjekt: o.prosjekt || null, beskrivelse: o.beskrivelse ?? "", lunsj: o.lunsj ?? 0, til: o.til || null }));
+      ok(await sb.rpc("stemple", { handling, prosjekt: o.prosjekt || null, beskrivelse: o.beskrivelse ?? "", lunsj: o.lunsj ?? 0, til: o.til || null, ...(o.tid ? { tid: o.tid } : {}) }));
     },
     async lagreFravaer(f) {
       const { id, ...rad } = f;

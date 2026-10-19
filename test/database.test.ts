@@ -93,6 +93,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0055_oppgave_helg.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0056_personrapport.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0057_sikring_push_oversikt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0058_stemple_uten_nett.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -895,6 +896,23 @@ describe("personlige månedsrapporter og DG", () => {
     expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(1);
     await as(STALE, "select public.lagre_dg_kategorier($1)", [JSON.stringify(std)]);
     expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(0);
+  });
+});
+
+describe("stempling uten nett", () => {
+  it("køet stempling bruker tidspunktet da den ble trykket, og for gamle avvises", async () => {
+    const jim = await idOf("Jim Kato");
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+    await db.query("delete from public.stempling where ansatt_id=$1", [jim]);
+    const inn = (await db.query<any>("select (date_trunc('day', now() at time zone 'Europe/Oslo') + interval '1 minute') at time zone 'Europe/Oslo' t")).rows[0].t;
+    const ut = (await db.query<any>("select now() - interval '1 minute' t")).rows[0].t;
+    await as(JIM, "select public.stemple('inn', null, '', 0, null, $1)", [inn]);
+    expect((await db.query<any>("select fra from public.stempling where ansatt_id=$1", [jim])).rows[0].fra).toBe("00:00:00");
+    await as(JIM, "select public.stemple('ut', null, 'Uten nett', 0, null, $1)", [ut]);
+    const t = await as<any>(JIM, "select fra, beskrivelse from public.timer where ansatt_id=$1", [jim]);
+    if (t.length) expect(t[0]).toMatchObject({ fra: "00:00:00", beskrivelse: "Uten nett" });
+    await expect(as(JIM, "select public.stemple('inn', null, '', 0, null, now() - interval '4 days')")).rejects.toThrow(/for gammel/);
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
   });
 });
 

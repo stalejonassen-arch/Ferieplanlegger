@@ -15,7 +15,7 @@ import { bruker } from "../lib/moduler";
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
 export function Timer() {
-  const { d, meg, leder, idag, kjor } = useApp();
+  const { d, meg, leder, idag, kjor, kjorKo } = useApp();
   const [hvemId, setHvemId] = useState(meg.id);
   const [uke, setUke] = useState(() => mandag(idag));
   const hvem = d.ansatte.find((a) => a.id === hvemId) ?? meg;
@@ -65,12 +65,12 @@ export function Timer() {
   const lagre = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gyldig) return;
-    const ok = await kjor(() => api.lagreTime({
+    const ok = await kjorKo({ type: "time", time: {
       id: f.id, ansatt_id: hvem.id, prosjekt_id: f.prosjekt_id || null, dato: f.dato, fra: f.fra, til: f.til,
       lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar && !erRekl,
       ...(visRekl || f.id ? { reklamasjon_id: visRekl ? f.reklamasjon_id || null : null } : {}),
       ...(f.tillegg_id || f.id ? { tillegg_id: visTillegg ? f.tillegg_id || null : null } : {}),
-    }), f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
+    } }, f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
     if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, tillegg_id: f.tillegg_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
   };
   const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false, reklamasjon_id: t.reklamasjon_id ?? "", tillegg_id: t.tillegg_id ?? "" });

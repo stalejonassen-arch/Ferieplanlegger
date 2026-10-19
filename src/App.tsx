@@ -36,6 +36,15 @@ import { Vaer } from "./views/Vaer";
 import { PROFIL } from "./lib/profil";
 import { VarselBanner } from "./views/Varsler";
 import { fornyPush } from "./lib/push";
+import { anvendKo, erNettfeil, hentKo, hentKopi, koTekst, lagreKo, lagreKopi, slettKopi, type KoOp } from "./lib/offline";
+
+type KoUtenId = { type: "stemple"; handling: "inn" | "bytt" | "ut"; prosjekt: string | null; beskrivelse: string; lunsj: number; til?: string } | { type: "time"; time: import("./lib/timer").NyTime };
+
+/** Utfører én føring fra køen mot serveren */
+async function utfor(op: KoOp) {
+  if (op.type === "stemple") await api.stemple(op.handling, { prosjekt: op.prosjekt, beskrivelse: op.beskrivelse, lunsj: op.lunsj, til: op.til, tid: op.tid });
+  else await api.lagreTime(op.time);
+}
 
 export interface Ctx {
   d: Data;
@@ -45,6 +54,8 @@ export interface Ctx {
   idag: string;
   /** Kjør en lagring, vis bekreftelse eller feilmelding, og hent data på nytt. */
   kjor: (fn: () => Promise<void>, ok?: string) => Promise<boolean>;
+  /** Stempling og timeføring som legges i kø og sendes senere hvis det ikke er nett */
+  kjorKo: (op: KoUtenId, ok?: string) => Promise<boolean>;
   /** Meldinger (chat) – lastes for seg selv og oppdateres i sanntid */
   chat: { meldinger: Melding[]; lest: Lest; oppdater: () => void; markerLest: (kanal: string) => void };
 }
@@ -102,14 +113,74 @@ export function App() {
   };
 
   useEffect(() => {
-    api.epost().then(setEpost);
-    return api.onEpost(setEpost);
+    // Uten nett kan innloggingen ikke fornyes; da brukes sist innloggede e-post så appen kan vises og føre i kø
+    const sist = () => { try { return localStorage.getItem("sist-epost"); } catch { return null; } };
+    const sett = (e: string | null) => {
+      if (e) { try { localStorage.setItem("sist-epost", e); } catch { /* privat modus */ } setEpost(e); }
+      else setEpost(!navigator.onLine && api.modus !== "demo" ? sist() : null);
+    };
+    api.epost().then(sett).catch(() => sett(null));
+    return api.onEpost((e) => { if (e) sett(e); else if (navigator.onLine) { const s = sist(); if (s) slettKopi(s); try { localStorage.removeItem("sist-epost"); } catch { /* */ } setEpost(null); } });
   }, []);
 
+  // ---- Uten nett: sist hentede data og kø for stempling/timer
+  const [ko, setKo] = useState<KoOp[]>([]);
+  const koRef = useRef<KoOp[]>([]);
+  const [utenNett, setUtenNett] = useState<string | null>(null);
+  const serverData = useRef<Data | null>(null);
+  const megId = (x: Data | null) => x?.ansatte.find((a) => a.aktiv && a.epost?.toLowerCase() === epost?.toLowerCase())?.id;
+  const settKo = (k: KoOp[]) => { koRef.current = k; setKo(k); if (epost) lagreKo(epost, k); };
+  const vis = (x: Data) => setD(anvendKo(x, koRef.current, megId(x)));
+
   const last = useCallback(async () => {
-    try { setD(await api.hent()); setFeil(null); }
-    catch (e) { setFeil(feiltekst(e)); }
-  }, []);
+    try {
+      const x = await api.hent();
+      serverData.current = x; vis(x); setFeil(null); setUtenNett(null);
+      if (epost && api.modus !== "demo") lagreKopi(epost, x);
+    } catch (e) {
+      if (erNettfeil(e) && epost) {
+        const k = serverData.current ? null : await hentKopi(epost);
+        if (k) { serverData.current = k.d; vis(k.d); }
+        setUtenNett((u) => u ?? k?.tid ?? new Date().toISOString());
+        if (serverData.current) { setFeil(null); return; }
+      }
+      setFeil(feiltekst(e));
+    }
+  }, [epost]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Sender køen i rekkefølge. Stopper ved nettfeil; avviste føringer tas ut og vises som feil. */
+  const sender = useRef(false);
+  const sendKo = useCallback(async () => {
+    if (sender.current || !koRef.current.length) return;
+    sender.current = true;
+    let sendt = 0;
+    try {
+      while (koRef.current.length) {
+        const op = koRef.current[0]!;
+        try { await utfor(op); sendt++; }
+        catch (e) {
+          if (erNettfeil(e)) break;
+          const kl = new Date(op.tid).toLocaleString("nb-NO", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+          visToast(`Kunne ikke lagre ${op.type === "stemple" ? "stemplingen" : "timeføringen"} fra ${kl}: ${feiltekst(e)}`, true);
+        }
+        settKo(koRef.current.slice(1));
+      }
+    } finally { sender.current = false; }
+    if (sendt) { visToast(`${sendt} ${sendt === 1 ? "føring" : "føringer"} fra da du var uten nett er lagret`); await last(); }
+  }, [last]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!epost) { koRef.current = []; setKo([]); return; }
+    // Vis siste kopi med en gang (rask oppstart), og hent køen som ikke er sendt
+    if (api.modus !== "demo") {
+      hentKo(epost).then((k) => { koRef.current = k; setKo(k); if (k.length) sendKo(); });
+      hentKopi(epost).then((k) => { if (k && !serverData.current) { serverData.current = k.d; vis(k.d); } });
+    }
+    const paa = () => { sendKo().then(last); };
+    window.addEventListener("online", paa);
+    const i = window.setInterval(() => { if (koRef.current.length) sendKo(); }, 30000);
+    return () => { window.removeEventListener("online", paa); clearInterval(i); };
+  }, [epost]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!epost) { setD(null); return; }
@@ -151,8 +222,23 @@ export function App() {
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
     try { await fn(); if (ok) visToast(ok); await last(); return true; }
-    catch (e) { visToast(feiltekst(e), true); await last(); return false; }
+    catch (e) { visToast(erNettfeil(e) ? "Ingen nett akkurat nå. Prøv igjen når du har dekning." : feiltekst(e), true); await last(); return false; }
   }, [last]);
+
+  /** Stempling/timer: prøv med en gang; uten nett legges den i kø med tidspunktet nå og sendes senere */
+  const kjorKo = useCallback(async (u: KoUtenId, ok?: string) => {
+    const op = { ...u, id: Math.random().toString(36).slice(2), tid: new Date().toISOString() } as KoOp;
+    if (!koRef.current.length) {
+      try { await utfor(op); if (ok) visToast(ok); await last(); return true; }
+      catch (e) { if (!erNettfeil(e)) { visToast(feiltekst(e), true); await last(); return false; } }
+    }
+    settKo([...koRef.current, op]);
+    if (serverData.current) vis(serverData.current);
+    setUtenNett((x) => x ?? new Date().toISOString());
+    visToast("Uten nett – lagres automatisk når du får dekning igjen");
+    if (navigator.onLine) sendKo();
+    return true;
+  }, [last]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Meldinger
   const [meldinger, setMeldinger] = useState<Melding[]>([]);
@@ -246,7 +332,7 @@ export function App() {
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
   return (
-    <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor, chat: { meldinger, lest, oppdater: lastChat, markerLest } }}>
+    <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor, kjorKo, chat: { meldinger, lest, oppdater: lastChat, markerLest } }}>
       <div className="wrap">
         <div className="toppfelt">
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
@@ -291,6 +377,12 @@ export function App() {
           <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg. <a href="https://bygglogg.app" target="_blank" rel="noopener">Les mer om ByggLogg</a></span>{import.meta.env.VITE_SUPABASE_URL && PROFIL.id === "demo" && !/^(www\.)?bygglogg\.app$/.test(location.hostname) && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
+        {(utenNett || ko.length > 0) && (
+          <div className="banner uten-nett" role="status"><span>{utenNett
+            ? `📵 Uten nett – viser det som ble hentet ${new Date(utenNett).toLocaleString("nb-NO", { weekday: "short", hour: "2-digit", minute: "2-digit" })}.`
+            : "Sender det du førte uten nett …"}{ko.length ? ` ${koTekst(ko)} venter og sendes automatisk.` : ""}</span>
+            {utenNett && <button className="btn sm" onClick={() => { sendKo().then(last); }}>Prøv nå</button>}</div>
+        )}
         {nyePersonlige[0] && aktiv !== "rapporter" && b("rapporter") && (
           <div className="banner"><span>Din månedsrapport for <b>{periodeNavn(nyePersonlige[0].periode)}</b> er klar</span>
             <button className="btn sm primary" onClick={() => velg("rapporter")}>Se den</button></div>

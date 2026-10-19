@@ -1,6 +1,11 @@
 // Polsk oversettelse av brukerflaten (generert fra norske tekster i koden).
 // Nøkkel = norsk tekst slik den står på skjermen. Mangler en tekst, vises den norske.
 export const PL_TEKST: Record<string, string> = {
+"Stemplingen er for gammel til å sendes automatisk. Før timene manuelt.": "Rejestracja jest za stara, aby wysłać ją automatycznie. Wpisz godziny ręcznie.",
+"Prøv nå": "Spróbuj teraz",
+"Sender det du førte uten nett …": "Wysyłanie tego, co zapisano bez sieci …",
+"Ingen nett akkurat nå. Prøv igjen når du har dekning.": "Brak sieci. Spróbuj ponownie, gdy będzie zasięg.",
+"Uten nett – lagres automatisk når du får dekning igjen": "Brak sieci – zostanie zapisane automatycznie, gdy wróci zasięg",
 "Nytt arbeid i planen, meldinger, bestillinger og månedsrapporten din – også når appen er lukket.": "Nowa praca w planie, wiadomości, zamówienia i Twój raport miesięczny – także gdy aplikacja jest zamknięta.",
 "Velg måned": "Wybierz miesiąc",
 "Kampanjene vises igjen": "Kampanie są znowu widoczne",
@@ -789,6 +794,9 @@ export const PL_TEKST: Record<string, string> = {
 "Antall feriedager mandag–fredag med norske helligdager trukket fra, saldo, 2 måneders varsel, hovedferie i sommerperioden, overlapp med egne søknader og at ikke for mange i samme avdeling er borte samtidig.": "Liczba dni urlopu pon.–pt. bez norweskich świąt, saldo, 2 miesiące wyprzedzenia, urlop główny latem, nakładanie się z własnymi wnioskami oraz to, czy zbyt wielu z tego samego działu nie jest nieobecnych jednocześnie."
 };
 export const PL_MALER: [string, string][] = [
+["^📵 Uten nett – viser det som ble hentet (.+)\\.$", "📵 Brak sieci – pokazuje dane pobrane $1."],
+["^([\\d]+) (stempling|stemplinger)( og [\\d]+ timeføringe?r?)? venter og sendes automatisk\\.$", "Oczekujące rejestracje: $1 – zostaną wysłane automatycznie."],
+["^([\\d]+) føringe?r? fra da du var uten nett er lagret$", "Zapisano $1 wpisów z czasu bez sieci"],
 ["^Tillegg: (.+) \\(ikke signert\\)$", "Prace dodatkowe: $1 (niepodpisane)"],
 ["^Tillegg: (.+) \\(avvist\\)$", "Prace dodatkowe: $1 (odrzucone)"],
 ["^Tillegg: (.+)$", "Prace dodatkowe: $1"],

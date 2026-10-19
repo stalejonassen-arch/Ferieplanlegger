@@ -1412,3 +1412,4 @@ header.top select.temavalg option { color: #10162E; }
 .prapport-stolpe span { min-width: 2px; }
 .prapport-punkt { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .prapport-kommentar { border-left: 4px solid var(--accent); background: var(--sunk); border-radius: 0 10px 10px 0; padding: 10px 12px; }
+.banner.uten-nett { border-left-color: var(--pending); background: color-mix(in srgb, var(--pending) 14%, var(--surface)); }

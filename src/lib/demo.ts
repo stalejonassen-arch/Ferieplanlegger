@@ -207,6 +207,7 @@ export function demoApi(): Api {
     async bekreftKode(e) { epost = e; authLyttere.forEach((f) => f(epost)); },
     async loggUt() { epost = null; authLyttere.forEach((f) => f(null)); },
     async hent() {
+      utenNett();
       await vent();
       const kopi = structuredClone(d);
       if (!leder()) kopi.utstyr = (kopi.utstyr ?? []).filter((x) => x.ansatt_id === meg()?.id);
@@ -267,6 +268,7 @@ export function demoApi(): Api {
     async kalenderToken(ny) { return ny ? crypto.randomUUID() : "00000000-0000-4000-8000-000000000000"; },
     kalenderUrl(token, alle) { return `https://demo.invalid/kalender?t=${token}${alle ? "&alle=1" : ""}`; },
     async lagreTime(n) {
+      utenNett();
       const m = meg();
       if (!m || (!leder() && n.ansatt_id !== m.id)) throw new Error("Du har ikke tilgang til å gjøre dette.");
       if (n.til <= n.fra) throw new Error("Sluttid må være etter starttid, og lunsjen kan ikke være lengre enn arbeidsøkta.");
@@ -361,6 +363,7 @@ export function demoApi(): Api {
     },
     async slettRapport(id) { d.rapporter = d.rapporter.filter((x) => x.id !== id); endret(); },
     async stemple(handling, o = {}) {
+      utenNett();
       const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
       const n = new Date(), q = Math.round((n.getHours() * 60 + n.getMinutes()) / 15) * 15;
       const naa = `${String(Math.floor(q / 60) % 24).padStart(2, "0")}:${String(q % 60).padStart(2, "0")}`, idag = isoOf(n);
@@ -772,3 +775,6 @@ function demoSalg(): import("./dg").SalgKategoriMnd[] {
   }
   return ut;
 }
+
+/** Demoen oppfører seg som den ekte appen når telefonen er uten nett */
+function utenNett() { if (typeof navigator !== "undefined" && navigator.onLine === false) throw new TypeError("Failed to fetch"); }

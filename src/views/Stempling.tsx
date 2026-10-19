@@ -35,7 +35,7 @@ function Dagstokk({ okter, navn }: { okter: { fra: string; til: string; prosjekt
 
 /** Logg inn når arbeidet begynner, bytt når du flytter deg, logg ut når prosjektet eller dagen er ferdig. */
 export function Stempling() {
-  const { d, meg, idag, kjor } = useApp();
+  const { d, meg, idag, kjor, kjorKo } = useApp();
   const s = d.stempling.find((x) => x.ansatt_id === meg.id);
   const siste = sisteProsjekter(d.timer, meg.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
   const [prosjekt, setProsjekt] = useState<string>(() => siste[0] ?? "");
@@ -75,10 +75,9 @@ export function Stempling() {
   const fornavn = meg.navn.split(" ")[0];
   const kjorStempel = async (handling: "inn" | "bytt" | "ut", melding: string) => {
     setVenter(true);
-    const ok = await kjor(async () => {
-      await api.stemple(handling, { prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined });
-      if (handling !== "ut" && rp && prosjekt === rp && rekl) await api.stempleReklamasjon(rekl);
-    }, melding);
+    const ok = await kjorKo({ type: "stemple", handling, prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined }, melding);
+    // Reklamasjon velges etterpå (krever nett); uten nett kan den velges når man er tilbake på nett
+    if (ok && handling !== "ut" && rp && prosjekt === rp && rekl && navigator.onLine) await kjor(() => api.stempleReklamasjon(rekl));
     setVenter(false);
     if (ok) { setBeskrivelse(""); setTil(""); }
   };
