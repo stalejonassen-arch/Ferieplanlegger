@@ -95,6 +95,8 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0057_sikring_push_oversikt.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0058_stemple_uten_nett.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0059_reklamasjon_oppsett.sql", "utf8"));
+  await db.exec("create table auth.users (email text, last_sign_in_at timestamptz)");
+  await db.exec(readFileSync("supabase/migrations/0060_invitasjon.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1029,5 +1031,31 @@ describe("reklamasjon", () => {
     const [r] = await as<any>(JIM, "insert into public.reklamasjoner (prosjekt_id, tittel) values ($1, 'Lekker') returning id", [a.id]);
     await as(STALE, "select public.slaa_sammen_prosjekter($1, $2)", [a.id, b.id]);
     expect((await q2("select prosjekt_id from public.reklamasjoner where id = $1", [r.id]))[0].prosjekt_id).toBe(b.id);
+  });
+});
+
+describe("invitasjon til appen", () => {
+  const q2 = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("bare leder kan invitere, med e-post, og ikke flere ganger i minuttet", async () => {
+    const jim = await idOf("Jim Kato");
+    await expect(as(JIM, "select public.send_invitasjon($1)", [jim])).rejects.toThrow(/Bare leder/);
+    await db.exec("delete from net.kall");
+    await as(STALE, "select public.send_invitasjon($1)", [jim]);
+    const [k] = await q2("select body from net.kall");
+    expect(k.body.hendelse).toBe("invitasjon");
+    const [i] = await q2("select id, epost, levert from public.invitasjoner where ansatt_id = $1", [jim]);
+    expect(i).toMatchObject({ id: k.body.id, epost: JIM, levert: null });
+    await expect(as(STALE, "select public.send_invitasjon($1)", [jim])).rejects.toThrow(/nettopp sendt/);
+    const [uten] = await as<any>(STALE, "insert into public.ansatte (navn, avdeling_id) select 'Uten Epost', min(id) from public.avdelinger returning id");
+    await expect(as(STALE, "select public.send_invitasjon($1)", [uten.id])).rejects.toThrow(/e-post/);
+    // Ansatte ser ikke invitasjonene; leder ser status
+    expect(await as(JIM, "select * from public.invitasjoner")).toHaveLength(0);
+    expect(await as(JIM, "select * from public.ansatte_innlogging()")).toHaveLength(0);
+    await db.query("insert into auth.users values ($1, now())", [JIM.toUpperCase()]);
+    const rader = await as<any>(STALE, "select * from public.ansatte_innlogging()");
+    const r = rader.find((x: any) => x.ansatt_id === jim);
+    expect(r.invitert).not.toBeNull();
+    expect(r.innlogget).not.toBeNull();
+    expect(rader.find((x: any) => x.ansatt_id === uten.id).innlogget).toBeNull();
   });
 });

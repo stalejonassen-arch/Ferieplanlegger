@@ -15,6 +15,7 @@ const y = y0 + 1;
 
 /** Oppdiktet e-post ut fra fornavnet, f.eks. «ola@demo.no» */
 const demoEpost = (navn: string) => `${navn.split(" ")[0]!.toLowerCase()}@demo.no`;
+const demoInvitert = new Map<string, string>();
 
 function startdata(): Data {
   const avdelinger = [
@@ -479,6 +480,15 @@ export function demoApi(): Api {
     },
     async slettPersonrapport(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.personrapporter = (d.personrapporter ?? []).filter((x) => x.id !== id); endret(); },
     async markerPersonrapportLest(id) { const r = (d.personrapporter ?? []).find((x) => x.id === id && x.ansatt_id === meg()?.id && x.publisert); if (r && !r.lest) { r.lest = new Date().toISOString(); endret(); } },
+    async sendInvitasjon(id) {
+      if (!leder()) throw new Error("Bare leder kan sende invitasjoner.");
+      const a = d.ansatte.find((x) => x.id === id); if (!a?.epost) throw new Error("Legg inn e-post på den ansatte først.");
+      const sist = demoInvitert.get(id); if (sist && Date.now() - new Date(sist).getTime() < 60_000) throw new Error("Invitasjonen ble nettopp sendt. Vent et minutt før du sender på nytt.");
+      demoInvitert.set(id, new Date().toISOString());
+    },
+    async ansatteInnlogging() {
+      return d.ansatte.map((a, i) => ({ ansatt_id: a.id, invitert: demoInvitert.get(a.id) ?? null, innlogget: i % 4 === 3 ? null : new Date(Date.now() - (i + 1) * 36e5 * 7).toISOString() }));
+    },
     async ansatteMedPush() { return d.ansatte.filter((a) => a.aktiv).slice(0, 3).map((a) => a.id); },
     async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },
     async markerLest(id) {

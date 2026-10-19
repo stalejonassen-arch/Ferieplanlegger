@@ -76,6 +76,10 @@ export interface Api {
   lagreDgKategorier(k: import("./dg").DgKategori[]): Promise<void>;
   /** Leder: hvilke ansatte som har slått på push-varsler */
   ansatteMedPush(): Promise<string[]>;
+  /** Leder: send (eller send på nytt) invitasjon til appen på e-post */
+  sendInvitasjon(ansattId: string): Promise<void>;
+  /** Leder: sist invitert og sist innlogget per ansatt */
+  ansatteInnlogging(): Promise<{ ansatt_id: string; invitert: string | null; innlogget: string | null }[]>;
   /** Leder: logo og firmafarger. Null fjerner. forAlle setter firmafargene på alle ansatte. */
   lagreDrakt(logo: string | null, logoMork: string | null, drakt: import("./drakt").Drakt | null, forAlle: boolean): Promise<void>;
   /** Reklamasjon: registrer eller endre (returnerer id) */
@@ -560,6 +564,8 @@ function supabaseApi(sb: SupabaseClient): Api {
     async markerPersonrapportLest(id) { ok(await sb.rpc("marker_personrapport_lest", { r: id })); },
     async lagreDgKategorier(k) { ok(await sb.rpc("lagre_dg_kategorier", { k })); },
     async ansatteMedPush() { const r = await sb.rpc("ansatte_med_push"); return r.error ? [] : (r.data as string[]); },
+    async sendInvitasjon(a) { ok(await sb.rpc("send_invitasjon", { a })); },
+    async ansatteInnlogging() { const r = await sb.rpc("ansatte_innlogging"); return r.error ? [] : (r.data as { ansatt_id: string; invitert: string | null; innlogget: string | null }[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },
     async lagreReklamasjon(x) {
       const { id, ...rad } = x;
