@@ -361,7 +361,7 @@ export function App() {
             <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr)} onClick={() => velg(f)}
               ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
               <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{IKON[f]}</svg>
-              {navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
+              {f === "plan" && navn.length > 12 ? <><span className="fane-lang">{navn}</span><span className="fane-kort">Plan</span></> : navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
               {f === "chat" && ulestChat > 0 && <span className="badge">{ulestChat}</span>}
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
               {f === "plan" && planVarsel > 0 && <span className="badge">{planVarsel}</span>}

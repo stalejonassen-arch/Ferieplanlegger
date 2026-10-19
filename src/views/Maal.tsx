@@ -44,7 +44,7 @@ export function Maal() {
           </div>
         )}
       </div>
-      <div className="legend">
+      <div className="legend maal-legend">
         <div><span className="label">{MND[mnd - 1]}</span><span className="v" style={denne < maal ? { color: "var(--warn)" } : undefined}>{t2(Math.round(denne))} / {t2(Math.round(maal))}</span></div>
         <div><span className="label">Hittil i år</span><span className="v">{t2(Math.round(hittil))} / {t2(Math.round(maal * mnd))} <span className="small">({Math.round((hittil / (maal * mnd || 1)) * 100)} %)</span></span></div>
         <div><span className="label">Mål for året</span><span className="v">{t2(aarsmaal)}</span>
