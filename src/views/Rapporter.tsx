@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { isoOf } from "../lib/ferie";
+import { MinePersonrapporter, PersonrapporterLeder } from "./Personrapport";
 import { gyldigLenke, lesestatus, periodeNavn, uleste, type NyRapport, type Rapport } from "../lib/rapport";
 
 const kl = (iso: string) => new Date(iso).toLocaleString("nb-NO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -46,6 +47,7 @@ export function Rapporter() {
 
   return (
     <>
+      <MinePersonrapporter />
       {leder && !skjema && (
         <section className="panel">
           <div className="row" style={{ justifyContent: "space-between" }}>
@@ -55,6 +57,8 @@ export function Rapporter() {
           <p className="small muted" style={{ margin: 0 }}>Legg inn rapporten som PDF eller lenke. Når du publiserer, får alle ansatte e-post, og du ser her hvem som har åpnet den.</p>
         </section>
       )}
+
+      {leder && !skjema && <PersonrapporterLeder />}
 
       {skjema && (
         <form className="panel" onSubmit={(e) => { e.preventDefault(); lagre(false); }}>

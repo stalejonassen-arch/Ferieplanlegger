@@ -1398,3 +1398,17 @@ header.top select.temavalg option { color: #10162E; }
 .drakt-farge input[type=color] { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); flex: none; }
 .drakt-farge input[type=text] { width: 96px; font-family: var(--f-mono); text-transform: uppercase; }
 .rp-logo { height: 52px; width: auto; max-width: 160px; object-fit: contain; border-radius: 6px; }
+
+/* ---------- Personlig månedsrapport ---------- */
+.prapport { display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--surface); }
+.prapport-topp { border-bottom: 4px solid var(--bf-yellow); padding-bottom: 10px; }
+.prapport-del h4 { margin: 0 0 8px; font-family: var(--f-display); font-size: 19px; }
+.prapport-tall { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.prapport-tall > div { background: var(--sunk); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.prapport-tall b { font-family: var(--f-mono); font-size: 24px; line-height: 1.1; }
+.prapport-tall .stor b { font-size: 30px; color: var(--accent); }
+.prapport-tall .bra { background: color-mix(in srgb, var(--approved) 16%, var(--sunk)); }
+.prapport-stolpe { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0 4px; background: var(--sunk); }
+.prapport-stolpe span { min-width: 2px; }
+.prapport-punkt { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.prapport-kommentar { border-left: 4px solid var(--accent); background: var(--sunk); border-radius: 0 10px 10px 0; padding: 10px 12px; }

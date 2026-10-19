@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v7: kunde på ordre)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v8: salg per kategori)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -66,6 +66,66 @@ async function synkOmsetning(tok: string, b: { id: number; visma_firma_nr: numbe
     if (error) throw new Error(error.message);
   }
   return rader.length;
+}
+
+/** Kategori for en ordrelinje ut fra teksten (samme regel som src/lib/dg.ts) */
+type DgKategori = { id: string; navn: string; med: string[]; uten: string[] };
+function kategoriFor(tekst: string, regler: DgKategori[]): string | null {
+  const t = tekst.toLowerCase();
+  for (const k of regler) {
+    if (k.med.some((o) => o && t.includes(o.toLowerCase())) && !k.uten.some((o) => o && t.includes(o.toLowerCase()))) return k.id;
+  }
+  return null;
+}
+
+/**
+ * Salg per kategori (vinduer, takplater …) og måned: fakturert beløp og dekningsbidrag fra ordrelinjene.
+ * Linjene sorteres etter teksten, så også «Diverse»-varenummer kommer med. Første gang hentes i fjor og i år,
+ * deretter forrige og denne måneden.
+ */
+async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: number }) {
+  const { data: bd } = await sb.from("bedrifter").select("dg_kategorier").eq("id", b.id).maybeSingle();
+  const regler = ((bd?.dg_kategorier ?? []) as DgKategori[]).filter((k) => Array.isArray(k.med) && Array.isArray(k.uten));
+  if (!regler.length) return "ingen kategorier";
+  const { count } = await sb.from("salg_kategori_mnd").select("aar", { count: "exact", head: true }).eq("bedrift_id", b.id);
+  const naa = new Date();
+  const fra = count ? new Date(Date.UTC(naa.getUTCFullYear(), naa.getUTCMonth() - 1, 1)) : new Date(Date.UTC(naa.getUTCFullYear() - 1, 0, 1));
+  const fraTall = fra.getUTCFullYear() * 10000 + (fra.getUTCMonth() + 1) * 100 + 1;
+  const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
+    ["description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic"],
+    `{ _and: [{ finishDate: { _gte: ${fraTall} } }, { transactionType: { _eq: 1 } }] }`);
+  type Sum = { omsetning: number; db: number; linjer: number; eks: Map<string, { omsetning: number; db: number }> };
+  const per = new Map<string, Sum>();
+  for (const l of linjer) {
+    const d = s(l.finishDate);
+    if (!/^\d{8}$/.test(d) || d === "00000000") continue;
+    const oms = Number(l.invoicedAmountTotalDomestic) || 0, db = Number(l.grossProfitTotalDomestic) || 0;
+    if (!oms && !db) continue;
+    const k = kategoriFor(s(l.description), regler);
+    if (!k) continue;
+    const nokkel = `${d.slice(0, 4)}-${Number(d.slice(4, 6))}-${k}`;
+    const x = per.get(nokkel) ?? { omsetning: 0, db: 0, linjer: 0, eks: new Map() };
+    x.omsetning += oms; x.db += db; x.linjer++;
+    const tekst = s(l.description).slice(0, 60);
+    const e = x.eks.get(tekst) ?? { omsetning: 0, db: 0 }; e.omsetning += oms; e.db += db; x.eks.set(tekst, e);
+    per.set(nokkel, x);
+  }
+  const tid = new Date().toISOString();
+  const rader = [...per].map(([n, x]) => {
+    const [aar, mnd, kategori] = n.split("-");
+    const eksempler = [...x.eks].sort((a, b) => Math.abs(b[1].omsetning) - Math.abs(a[1].omsetning)).slice(0, 15)
+      .map(([tekst, v]) => ({ tekst, omsetning: Math.round(v.omsetning), db: Math.round(v.db) }));
+    return { bedrift_id: b.id, aar: Number(aar), mnd: Number(mnd), kategori, omsetning: Math.round(x.omsetning * 100) / 100, db: Math.round(x.db * 100) / 100, linjer: x.linjer, eksempler, oppdatert: tid };
+  });
+  // Månedene som er hentet på nytt erstattes helt (en kategori kan ha falt bort)
+  const del = await sb.from("salg_kategori_mnd").delete().eq("bedrift_id", b.id)
+    .or(`aar.gt.${fra.getUTCFullYear()},and(aar.eq.${fra.getUTCFullYear()},mnd.gte.${fra.getUTCMonth() + 1})`);
+  if (del.error) throw new Error(del.error.message);
+  for (let i = 0; i < rader.length; i += 500) {
+    const { error } = await sb.from("salg_kategori_mnd").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,aar,mnd,kategori" });
+    if (error) throw new Error(error.message);
+  }
+  return `${linjer.length} linjer, ${rader.length} måneder/kategorier`;
 }
 
 /** Henter alle rader fra en tabell med sidevisning. */
@@ -392,7 +452,13 @@ Deno.serve(async (req) => {
       let omsetning: number | string = 0;
       try { omsetning = await synkOmsetning(tok, b); }
       catch (e) { omsetning = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      // Salg per kategori (DG på vinduer, takplater …). Én gang i timen, eller med ?salg=1.
+      let salg: string = "hoppet over";
+      if (url.searchParams.get("salg") || new Date().getUTCMinutes() < 15) {
+        try { salg = await synkSalgKategorier(tok, b); }
+        catch (e) { salg = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);

@@ -69,6 +69,11 @@ export interface Api {
   settMittTema(tema: Tema): Promise<void>;
   /** Deler av appen som er slått av for bedriften */
   lagreModuler(av: string[]): Promise<void>;
+  /** Leder: personlige månedsrapporter (lagres og publiseres samlet) */
+  lagrePersonrapporter(r: { ansatt_id: string; periode: string; innhold: import("./personrapport").Innhold; kommentar: string; publiser: boolean }[]): Promise<void>;
+  slettPersonrapport(id: string): Promise<void>;
+  markerPersonrapportLest(id: string): Promise<void>;
+  lagreDgKategorier(k: import("./dg").DgKategori[]): Promise<void>;
   /** Leder: logo og firmafarger. Null fjerner. forAlle setter firmafargene på alle ansatte. */
   lagreDrakt(logo: string | null, logoMork: string | null, drakt: import("./drakt").Drakt | null, forAlle: boolean): Promise<void>;
   /** Reklamasjon: registrer eller endre (returnerer id) */
@@ -236,7 +241,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -251,6 +256,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("bedrifter").select("*").limit(1),
         sb.from("rapporter").select("id, tittel, periode, ingress, lenke, sti, publisert, opprettet").order("periode", { ascending: false }).limit(200),
         alle(() => sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").order("rapport_id").order("ansatt_id"), 10000),
+        sb.from("personrapporter").select("*").order("periode", { ascending: false }).limit(2000),
+        sb.from("salg_kategori_mnd").select("aar, mnd, kategori, omsetning, db, linjer, eksempler, oppdatert").order("aar").order("mnd").limit(5000),
         sb.from("stempling").select("*"),
         alle(() => sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).order("id"), 10000),
         alle(() => sb.from("prosjekt_ordre").select("visma_ordrenr, prosjekt_id, kunde_nr, transaksjonstype, ordretype, fakturert, kostnad, ordredato, ferdig").order("visma_ordrenr"), 20000),
@@ -274,6 +281,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         kunder: ok(kunder), prosjekter: (ok(prosjekter) as Prosjekt[]).filter((p) => !p.slatt_sammen_med), avvik: ok(avvik), bilder: ok(bilder), dagbok: ok(dagbok),
         tillegg: (ok(tillegg) as Tillegg[]).map((t) => ({ ...t, timer: t.timer == null ? null : Number(t.timer), pris: t.pris == null ? null : Number(t.pris) })),
         rapporter: rapporter.error ? [] : rapporter.data, lest: lest.error ? [] : lest.data,
+        personrapporter: personrapp.error ? [] : personrapp.data,
+        salgKategorier: salgKat.error ? [] : (salgKat.data as any[]).map((x) => ({ ...x, omsetning: Number(x.omsetning), db: Number(x.db) })),
+        dgKategorier: (b0.dg_kategorier as import("./dg").DgKategori[] | undefined) ?? [],
         fravaer: fravaer.error ? [] : fravaer.data,
         ordrer: ordrer.error ? [] : (ordrer.data as any[]).map((o) => ({ ...o, fakturert: Number(o.fakturert), kostnad: Number(o.kostnad), transaksjonstype: Number(o.transaksjonstype), ordretype: Number(o.ordretype), kunde_nr: o.kunde_nr == null ? null : Number(o.kunde_nr) })),
         egetKundenr: b0.eget_kundenr == null ? null : Number(b0.eget_kundenr),
@@ -536,6 +546,14 @@ function supabaseApi(sb: SupabaseClient): Api {
     async settMittSprak(sprak) { ok(await sb.rpc("sett_mitt_sprak", { sprak })); },
     async settMittTema(tema) { ok(await sb.rpc("sett_mitt_tema", { tema })); },
     async lagreModuler(av) { ok(await sb.rpc("lagre_moduler", { av })); },
+    async lagrePersonrapporter(r) {
+      const naa = new Date().toISOString();
+      const rader = r.map((x) => ({ ansatt_id: x.ansatt_id, periode: x.periode, innhold: x.innhold, kommentar: x.kommentar, ...(x.publiser ? { publisert: naa } : {}) }));
+      if (rader.length) ok(await sb.from("personrapporter").upsert(rader, { onConflict: "ansatt_id,periode" }));
+    },
+    async slettPersonrapport(id) { ok(await sb.from("personrapporter").delete().eq("id", id)); },
+    async markerPersonrapportLest(id) { ok(await sb.rpc("marker_personrapport_lest", { r: id })); },
+    async lagreDgKategorier(k) { ok(await sb.rpc("lagre_dg_kategorier", { k })); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },
     async lagreReklamasjon(x) {
       const { id, ...rad } = x;

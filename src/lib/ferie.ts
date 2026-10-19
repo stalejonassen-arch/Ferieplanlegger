@@ -59,6 +59,11 @@ export interface Data {
   kunder: Kunde[]; prosjekter: Prosjekt[]; timer: Time[];
   avvik: Avvik[]; bilder: Bilde[]; dagbok: Dagbok[]; tillegg: Tillegg[];
   rapporter: Rapport[]; lest: Lesing[];
+  /** Personlige månedsrapporter (leder ser alle, ansatte sin egen) */
+  personrapporter?: import("./personrapport").Personrapport[];
+  /** Salg per kategori og måned fra Visma (DG), og reglene for kategoriene */
+  salgKategorier?: import("./dg").SalgKategoriMnd[];
+  dgKategorier?: import("./dg").DgKategori[];
   stempling: Stempling[];
   fravaer: Fravaer[];
   /** Verktøy, arbeidstøy og forbruk (egne linjer, leder ser alle) */

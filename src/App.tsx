@@ -25,7 +25,8 @@ import { Sykdom } from "./views/Sykdom";
 import { Utstyr } from "./views/Utstyr";
 import { Kompetanse } from "./views/Kompetanse";
 import { trengerFornyelse } from "./lib/kompetanse";
-import { uleste } from "./lib/rapport";
+import { periodeNavn, uleste } from "./lib/rapport";
+import { ulestePerson } from "./lib/personrapport";
 import { kanalNavn, uleste as ulesteMeldinger, type Lest, type Melding } from "./lib/chat";
 import { Chat } from "./views/Chat";
 import { FerieOversikt } from "./views/FerieOversikt";
@@ -229,6 +230,7 @@ export function App() {
     ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
+  const nyePersonlige = ulestePerson(d.personrapporter, meg.id);
   const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || (fane === "kurs" && bruker(d, "kurs")) || fane === "personvern" || fane === "vilkar" ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
   const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
@@ -277,7 +279,7 @@ export function App() {
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
               {f === "plan" && planVarsel > 0 && <span className="badge">{planVarsel}</span>}
               {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
-              {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
+              {f === "rapporter" && nyeRapporter.length + nyePersonlige.length > 0 && <span className="badge">{nyeRapporter.length + nyePersonlige.length}</span>}
             </button>
           ))}
         </nav>
@@ -289,6 +291,10 @@ export function App() {
           <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg. <a href="https://bygglogg.app" target="_blank" rel="noopener">Les mer om ByggLogg</a></span>{import.meta.env.VITE_SUPABASE_URL && PROFIL.id === "demo" && !/^(www\.)?bygglogg\.app$/.test(location.hostname) && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
+        {nyePersonlige[0] && aktiv !== "rapporter" && b("rapporter") && (
+          <div className="banner"><span>Din månedsrapport for <b>{periodeNavn(nyePersonlige[0].periode)}</b> er klar</span>
+            <button className="btn sm primary" onClick={() => velg("rapporter")}>Se den</button></div>
+        )}
         {nyeRapporter[0] && aktiv !== "rapporter" && b("rapporter") && (
           <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
             <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>

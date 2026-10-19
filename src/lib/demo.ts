@@ -71,7 +71,7 @@ function startdata(): Data {
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
     kampanjer: demoKampanjer(),
-    omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
+    omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], personrapporter: [], salgKategorier: demoSalg(), dgKategorier: structuredClone(STANDARD_DG), stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
     utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) },
     ...demoPlan(addDays(m0, 7)) };
 }
@@ -463,6 +463,19 @@ export function demoApi(): Api {
       if (!leder()) throw new Error("Bare leder kan endre grensene.");
       d.utstyrGrenser = { arbeidstoy: arbeidstoy || null, verktoy: verktoy || null, sammeMnd }; endret();
     },
+    async lagrePersonrapporter(r) {
+      if (!leder()) throw new Error("Bare leder kan lage rapporter.");
+      const liste = (d.personrapporter ??= []), naa = new Date().toISOString();
+      for (const x of r) {
+        const g = liste.find((y) => y.ansatt_id === x.ansatt_id && y.periode === x.periode);
+        if (g) Object.assign(g, { innhold: x.innhold, kommentar: x.kommentar }, x.publiser && !g.publisert ? { publisert: naa } : {});
+        else liste.push({ id: nyId(), ansatt_id: x.ansatt_id, periode: x.periode, innhold: x.innhold, kommentar: x.kommentar, publisert: x.publiser ? naa : null, lest: null, opprettet: naa });
+      }
+      endret();
+    },
+    async slettPersonrapport(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.personrapporter = (d.personrapporter ?? []).filter((x) => x.id !== id); endret(); },
+    async markerPersonrapportLest(id) { const r = (d.personrapporter ?? []).find((x) => x.id === id && x.ansatt_id === meg()?.id && x.publisert); if (r && !r.lest) { r.lest = new Date().toISOString(); endret(); } },
+    async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },
     async markerLest(id) {
       const m = meg(); if (!m) return;
       if (!d.lest.some((l) => l.rapport_id === id && l.ansatt_id === m.id)) d.lest.push({ rapport_id: id, ansatt_id: m.id, lest: new Date().toISOString() });
@@ -737,4 +750,24 @@ function thauglandDrakt(d: Data): Data {
   d.omsetning = (d.omsetning ?? []).map((o) => ({ ...o, belop: o.belop * 4 }));
   if (d.kampanjer?.[0]) Object.assign(d.kampanjer[0], { tittel: "Månedens tilbud (eksempel)", tekst: "Eksempel på hvordan kampanjene vises for de ansatte. Tips kundene om tilbudene!" });
   return d;
+}
+
+/** Standardregler for DG-kategoriene (samme som i databasen) */
+export const STANDARD_DG: import("./dg").DgKategori[] = [
+  { id: "vinduer", navn: "Vinduer", med: ["vindu", "nordan", "natre", "h-karmen", "takv mh", "skyvedør"], uten: ["base", "kitt", "pensel", "holder", "vindusvr", "vrider", "deponer", "maling", "frakt", "beslag", "lås", "sålbenk", "rullesett"] },
+  { id: "tak", navn: "Takplater", med: ["takpl", "takplate", "takpakke", "powertekk", "takpanne", "takshingel", "takstein", "plannja", "tata steel", "tata click", "tata takpl", "decra", "ruukki", "falstak", "click fals"], uten: ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv"] },
+];
+
+/** Oppdiktet salg av vinduer og takplater de siste 14 månedene */
+function demoSalg(): import("./dg").SalgKategoriMnd[] {
+  const ut: import("./dg").SalgKategoriMnd[] = [];
+  const n = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const t = new Date(n.getFullYear(), n.getMonth() - i, 1), aar = t.getFullYear(), mnd = t.getMonth() + 1;
+    const sesong = [0.4, 0.5, 0.8, 1.1, 1.4, 1.5, 1.0, 1.2, 1.3, 1.1, 0.7, 0.4][mnd - 1]!;
+    const v = Math.round(180000 * sesong * (0.85 + ((aar * 7 + mnd * 13) % 30) / 100)), tk = Math.round(140000 * sesong * (0.8 + ((aar * 3 + mnd * 11) % 35) / 100));
+    ut.push({ aar, mnd, kategori: "vinduer", omsetning: v, db: Math.round(v * (0.17 + ((mnd * 5) % 7) / 100)), linjer: 6 + (mnd % 5), eksempler: [{ tekst: "Vinduspakke enebolig", omsetning: Math.round(v * 0.6), db: Math.round(v * 0.11) }, { tekst: "Skifte vindu", omsetning: Math.round(v * 0.4), db: Math.round(v * 0.08) }] });
+    ut.push({ aar, mnd, kategori: "tak", omsetning: tk, db: Math.round(tk * (0.12 + ((mnd * 3) % 8) / 100)), linjer: 4 + (mnd % 4), eksempler: [{ tekst: "Stål takplater sort", omsetning: Math.round(tk * 0.7), db: Math.round(tk * 0.09) }, { tekst: "Takpanne betong", omsetning: Math.round(tk * 0.3), db: Math.round(tk * 0.04) }] });
+  }
+  return ut;
 }
