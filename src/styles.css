@@ -396,14 +396,28 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
   nav.tabs.hoved { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 20; gap: 2px; justify-content: space-between;
     background: color-mix(in srgb, var(--surface) 94%, transparent); border-bottom: 0; border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 18px -10px rgba(10, 30, 190, .35); }
-  nav.tabs.hoved button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px;
+  nav.tabs.hoved button { flex: 1 0 58px; min-width: 58px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px;
     overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em;
     font-family: var(--f-body); font-size: 10.5px; font-weight: 600; border-radius: 12px; color: var(--muted); position: relative; }
   nav.tabs.hoved button[aria-selected=true] { background: color-mix(in srgb, var(--sel) 22%, transparent); color: var(--fg); }
   nav.tabs.hoved button[aria-selected=true] .ikon { color: var(--accent); }
   nav.tabs.hoved .ikon { display: block; width: 22px; height: 22px; flex: none; }
   nav.tabs.hoved .badge { position: absolute; top: 2px; left: 50%; margin-left: 6px; }
+  nav.tabs.hoved .fane-lang { display: none; }
+  nav.tabs.hoved .fane-kort { display: inline; }
+  /* Prosjektlista som kort på mobil i stedet for en trang tabell */
+  .prosjekttabell thead { display: none; }
+  .prosjekttabell, .prosjekttabell tbody { display: block; }
+  .prosjekttabell tr { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "nr knapp" "info info" "tim tim"; gap: 4px 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .prosjekttabell td { border: 0 !important; padding: 0 !important; text-align: left !important; }
+  .prosjekttabell td:nth-child(1) { grid-area: nr; font-weight: 700; align-self: center; }
+  .prosjekttabell td:nth-child(2) { grid-area: info; }
+  .prosjekttabell td:nth-child(3) { grid-area: tim; }
+  .prosjekttabell td:nth-child(3) .tbar { max-width: 220px; }
+  .prosjekttabell td:nth-child(4) { grid-area: knapp; }
+  .maal-legend { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 }
+.fane-kort { display: none; }
 
 /* ---------- Prosjektsiden: knapper til hver del ---------- */
 .seksjoner { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }

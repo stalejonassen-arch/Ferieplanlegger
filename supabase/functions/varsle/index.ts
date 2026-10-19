@@ -90,7 +90,12 @@ Deno.serve(async (req) => {
     const { error } = await sb.from("invitasjoner").update({ levert: new Date().toISOString() }).eq("id", inv.id).is("levert", null).select("id").single();
     if (error) return new Response("allerede sendt");
     const t = invitasjonTekst(a.sprak === "pl" ? "pl" : "nb", a.navn ?? "", b?.navn ?? "", inv.epost);
-    await send([inv.epost], t.emne, t.avsnitt, APP_URL, t.lenke);
+    try { await send([inv.epost], t.emne, t.avsnitt, APP_URL, t.lenke); }
+    catch (e) {
+      // Ikke sendt: fjern merket, så leder ser at det ikke gikk og kan prøve igjen
+      await sb.from("invitasjoner").update({ levert: null }).eq("id", inv.id);
+      throw e;
+    }
     return new Response("sendt");
   }
 

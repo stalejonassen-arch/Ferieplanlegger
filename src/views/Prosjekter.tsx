@@ -99,7 +99,7 @@ export function Prosjekter() {
         )}
         {liste.length ? (
           <div className="scroll" style={{ border: 0 }}>
-            <table className="tbl">
+            <table className="tbl prosjekttabell">
               <thead><tr><th>Nr</th><th>Prosjekt</th><th>Timer</th>{leder && <th />}</tr></thead>
               <tbody>
                 {liste.map((p) => {
