@@ -84,6 +84,25 @@ async function oppgave(id: string) {
   return Response.json(r);
 }
 
+/** Personlig månedsrapport publisert: varsle bare den ansatte rapporten gjelder */
+async function personrapport(id: string) {
+  const { data: r } = await sb.from("personrapporter").select("id, bedrift_id, ansatt_id, periode, publisert").eq("id", id).maybeSingle();
+  if (!r || !r.publisert) return new Response("finnes ikke / ikke publisert", { status: 404 });
+  const { error: finnes } = await sb.from("push_logg").insert({ type: "personrapport", id: r.id });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
+  const { data: mottakere } = await sb.from("ansatte").select("id, navn, sprak").eq("id", r.ansatt_id).eq("bedrift_id", r.bedrift_id).eq("aktiv", true);
+  const MNDNAVN = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+  const MNDPL = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"];
+  const m = Number(String(r.periode).slice(5, 7)) - 1;
+  const res = await send(mottakere ?? [], (a) => a.sprak === "pl"
+    ? { tittel: "Twój raport miesięczny", tekst: `Raport za ${MNDPL[m]} jest gotowy.`, url: "/#rapporter", tag: `personrapport-${r.id}` }
+    : { tittel: "Din månedsrapport", tekst: `Rapporten for ${MNDNAVN[m]} er klar.`, url: "/#rapporter", tag: `personrapport-${r.id}` });
+  return Response.json(res);
+}
+
 /** Bestilling fra byggeplassen: ny → butikk/prosjektleder; klar, levert eller avvist → den som bestilte */
 async function bestilling(id: string) {
   const { data: b } = await sb.from("bestillinger").select("id, bedrift_id, prosjekt_id, bestilt_av, status, linjer, svar, onsket_dato").eq("id", id).maybeSingle();
@@ -123,11 +142,12 @@ async function bestilling(id: string) {
 
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
   if (type === "oppgave") return oppgave(id);
   if (type === "bestilling") return bestilling(id);
+  if (type === "personrapport") return personrapport(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });

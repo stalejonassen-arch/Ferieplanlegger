@@ -75,7 +75,7 @@ function startdata(): Data {
       id: 1, navn: PROFIL.firma, undertittel: PROFIL.undertittel, orgnr: PROFIL.orgnr, adresse: PROFIL.adresse, postnr: PROFIL.postnr, poststed: PROFIL.poststed, telefon: PROFIL.telefon, epost: "",
       sted_navn: PROFIL.sted.navn, sted_lat: PROFIL.sted.lat, sted_lon: PROFIL.sted.lon, tema: PROFIL.tema, kjede: "Byggfag", kampanje_tittel: PROFIL.kampanje,
     },
-    omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
+    omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], personrapporter: [], salgKategorier: demoSalg(), dgKategorier: structuredClone(STANDARD_DG), stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
     utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) },
     ...demoPlan(addDays(m0, 7)) };
 }
@@ -213,6 +213,7 @@ export function demoApi(): Api {
     async bekreftKode(e) { epost = e; authLyttere.forEach((f) => f(epost)); },
     async loggUt() { epost = null; authLyttere.forEach((f) => f(null)); },
     async hent() {
+      utenNett();
       await vent();
       const kopi = structuredClone(d);
       if (!leder()) kopi.utstyr = (kopi.utstyr ?? []).filter((x) => x.ansatt_id === meg()?.id);
@@ -273,6 +274,7 @@ export function demoApi(): Api {
     async kalenderToken(ny) { return ny ? crypto.randomUUID() : "00000000-0000-4000-8000-000000000000"; },
     kalenderUrl(token, alle) { return `https://demo.invalid/kalender?t=${token}${alle ? "&alle=1" : ""}`; },
     async lagreTime(n) {
+      utenNett();
       const m = meg();
       if (!m || (!leder() && n.ansatt_id !== m.id)) throw new Error("Du har ikke tilgang til å gjøre dette.");
       if (n.til <= n.fra) throw new Error("Sluttid må være etter starttid, og lunsjen kan ikke være lengre enn arbeidsøkta.");
@@ -282,6 +284,12 @@ export function demoApi(): Api {
       const ny = { ...(gammel ?? { id: nyId(), lunsj_unntak: false, status: "levert" as const }), ...n, timer: varighet(n.fra, n.til, n.lunsj_min) } as Time;
       if (ny.reklamasjon_id && d.reklamasjonProsjekt) ny.prosjekt_id = d.reklamasjonProsjekt;
       if (ny.reklamasjon_id || (d.reklamasjonProsjekt && ny.prosjekt_id === d.reklamasjonProsjekt)) ny.fakturerbar = false;
+      if (ny.tillegg_id) {
+        const tl = d.tillegg.find((x) => x.id === ny.tillegg_id);
+        if (ny.reklamasjon_id) throw new Error("Timer kan ikke gjelde både reklamasjon og tilleggsarbeid.");
+        if (!tl || tl.prosjekt_id !== ny.prosjekt_id) throw new Error("Tilleggsarbeidet hører ikke til dette prosjektet.");
+        if (tl.status === "avvist" && gammel?.tillegg_id !== ny.tillegg_id) throw new Error("Tilleggsarbeidet er avvist. Før timene på hovedjobben.");
+      }
       if (gammel) Object.assign(gammel, ny); else d.timer.push(ny);
       endret();
     },
@@ -361,6 +369,7 @@ export function demoApi(): Api {
     },
     async slettRapport(id) { d.rapporter = d.rapporter.filter((x) => x.id !== id); endret(); },
     async stemple(handling, o = {}) {
+      utenNett();
       const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
       const n = new Date(), q = Math.round((n.getHours() * 60 + n.getMinutes()) / 15) * 15;
       const naa = `${String(Math.floor(q / 60) % 24).padStart(2, "0")}:${String(q % 60).padStart(2, "0")}`, idag = isoOf(n);
@@ -371,7 +380,7 @@ export function demoApi(): Api {
         if (!s) throw new Error("Du er ikke logget inn.");
         if (s.dato !== idag) { if (!o.til) throw new Error("Du ble ikke logget ut. Skriv inn når du sluttet."); slutt = o.til; }
         if (slutt > s.fra) d.timer.push({ id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
-          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null });
+          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null, tillegg_id: s.tillegg_id ?? null });
         d.stempling = d.stempling.filter((x) => x.ansatt_id !== m.id);
       }
       if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
@@ -463,6 +472,20 @@ export function demoApi(): Api {
       if (!leder()) throw new Error("Bare leder kan endre grensene.");
       d.utstyrGrenser = { arbeidstoy: arbeidstoy || null, verktoy: verktoy || null, sammeMnd }; endret();
     },
+    async lagrePersonrapporter(r) {
+      if (!leder()) throw new Error("Bare leder kan lage rapporter.");
+      const liste = (d.personrapporter ??= []), naa = new Date().toISOString();
+      for (const x of r) {
+        const g = liste.find((y) => y.ansatt_id === x.ansatt_id && y.periode === x.periode);
+        if (g) Object.assign(g, { innhold: x.innhold, kommentar: x.kommentar }, x.publiser && !g.publisert ? { publisert: naa } : {});
+        else liste.push({ id: nyId(), ansatt_id: x.ansatt_id, periode: x.periode, innhold: x.innhold, kommentar: x.kommentar, publisert: x.publiser ? naa : null, lest: null, opprettet: naa });
+      }
+      endret();
+    },
+    async slettPersonrapport(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.personrapporter = (d.personrapporter ?? []).filter((x) => x.id !== id); endret(); },
+    async markerPersonrapportLest(id) { const r = (d.personrapporter ?? []).find((x) => x.id === id && x.ansatt_id === meg()?.id && x.publisert); if (r && !r.lest) { r.lest = new Date().toISOString(); endret(); } },
+    async ansatteMedPush() { return d.ansatte.filter((a) => a.aktiv).slice(0, 3).map((a) => a.id); },
+    async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },
     async markerLest(id) {
       const m = meg(); if (!m) return;
       if (!d.lest.some((l) => l.rapport_id === id && l.ansatt_id === m.id)) d.lest.push({ rapport_id: id, ansatt_id: m.id, lest: new Date().toISOString() });
@@ -511,14 +534,26 @@ export function demoApi(): Api {
     },
     async slettReklamasjon(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.reklamasjoner = (d.reklamasjoner ?? []).filter((r) => r.id !== id); endret(); },
     async lagreReklamasjonsprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge reklamasjonsprosjekt."); d.reklamasjonProsjekt = id; endret(); },
+    async stempleTillegg(id) {
+      const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn.");
+      if (id && !d.tillegg.some((x) => x.id === id && x.prosjekt_id === s.prosjekt_id && x.status !== "avvist")) throw new Error("Tilleggsarbeidet hører ikke til prosjektet du er logget inn på.");
+      s.tillegg_id = id; endret();
+    },
     async stempleReklamasjon(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.reklamasjon_id = id; endret(); },
+    async lagreDrakt(logo, logoMork, drakt, forAlle) {
+      if (!leder()) throw new Error("Bare leder kan endre logo og farger.");
+      d.logo = logo; d.logoMork = logoMork; d.drakt = drakt;
+      if (!drakt) for (const a of d.ansatte) { if (a.tema === "egen") a.tema = "byggfag"; }
+      else if (forAlle) for (const a of d.ansatte) a.tema = "egen";
+      endret();
+    },
     async lagreModuler(av) { if (!leder()) throw new Error("Bare leder kan endre hvilke deler av appen som brukes."); d.modulerAv = [...new Set(av)]; endret(); },
     async lagreOppgave(o) {
       if (!planlegger()) throw new Error("Bare leder og prosjektleder kan legge inn arbeid i planen.");
       if (o.til < o.fra) throw new Error("Sluttdatoen er før startdatoen.");
       const liste = (d.oppgaver ??= []);
       const g = o.id ? liste.find((x) => x.id === o.id) : undefined;
-      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)], ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}) };
+      const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: [...new Set(o.ansatte)], ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}), helg: !!o.helg };
       if (g) Object.assign(g, rad, o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {});
       else liste.push({ id: nyId(), ...rad, rekkefolge: o.rekkefolge ?? 0, status: "planlagt", opprettet_av: meg()?.id ?? null, ferdig_tid: null });
       endret();
@@ -654,6 +689,7 @@ export function demoApi(): Api {
     async settAbonnement() { /* ikke i demo */ },
     async slettPush() { /* ikke i demo */ },
     async settVisKampanjer(vis) { const m = meg(); if (m) m.vis_kampanjer = vis; endret(); },
+    async visKampanje(id) { const m = meg(); if (m) { m.skjulte_kampanjer = id ? (m.skjulte_kampanjer ?? []).filter((x) => x !== id) : []; m.vis_kampanjer = true; } endret(); },
     async skjulKampanje(id) { const m = meg(); if (m) m.skjulte_kampanjer = [...(m.skjulte_kampanjer ?? []), id]; endret(); },
     async settFakturertFull(id, full) { const p = d.prosjekter.find((x) => x.id === id); if (p) p.fakturert_full = full; endret(); },
     async lagreEiendom(id, e) { const p = d.prosjekter.find((x) => x.id === id); if (p) Object.assign(p, e); endret(); },
@@ -751,3 +787,26 @@ function thauglandDrakt(d: Data): Data {
   if (d.kampanjer?.[0]) Object.assign(d.kampanjer[0], { tittel: "Månedens tilbud (eksempel)", tekst: "Eksempel på hvordan kampanjene vises for de ansatte. Tips kundene om tilbudene!" });
   return d;
 }
+
+/** Standardregler for DG-kategoriene (samme som i databasen) */
+export const STANDARD_DG: import("./dg").DgKategori[] = [
+  { id: "vinduer", navn: "Vinduer", med: ["vindu", "nordan", "natre", "h-karmen", "takv mh", "skyvedør"], uten: ["base", "kitt", "pensel", "holder", "vindusvr", "vrider", "deponer", "maling", "frakt", "beslag", "lås", "sålbenk", "rullesett"] },
+  { id: "tak", navn: "Takplater", med: ["takpl", "takplate", "takpakke", "powertekk", "takpanne", "takshingel", "takstein", "plannja", "tata steel", "tata click", "tata takpl", "decra", "ruukki", "falstak", "click fals"], uten: ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv", "spiker", "skrue", "huntonit", "trefib", "kraning"] },
+];
+
+/** Oppdiktet salg av vinduer og takplater de siste 14 månedene */
+function demoSalg(): import("./dg").SalgKategoriMnd[] {
+  const ut: import("./dg").SalgKategoriMnd[] = [];
+  const n = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const t = new Date(n.getFullYear(), n.getMonth() - i, 1), aar = t.getFullYear(), mnd = t.getMonth() + 1;
+    const sesong = [0.4, 0.5, 0.8, 1.1, 1.4, 1.5, 1.0, 1.2, 1.3, 1.1, 0.7, 0.4][mnd - 1]!;
+    const v = Math.round(180000 * sesong * (0.85 + ((aar * 7 + mnd * 13) % 30) / 100)), tk = Math.round(140000 * sesong * (0.8 + ((aar * 3 + mnd * 11) % 35) / 100));
+    ut.push({ aar, mnd, kategori: "vinduer", omsetning: v, db: Math.round(v * (0.17 + ((mnd * 5) % 7) / 100)), linjer: 6 + (mnd % 5), eksempler: [{ tekst: "Vinduspakke enebolig", omsetning: Math.round(v * 0.6), db: Math.round(v * 0.11) }, { tekst: "Skifte vindu", omsetning: Math.round(v * 0.4), db: Math.round(v * 0.08) }] });
+    ut.push({ aar, mnd, kategori: "tak", omsetning: tk, db: Math.round(tk * (0.12 + ((mnd * 3) % 8) / 100)), linjer: 4 + (mnd % 4), eksempler: [{ tekst: "Stål takplater sort", omsetning: Math.round(tk * 0.7), db: Math.round(tk * 0.09) }, { tekst: "Takpanne betong", omsetning: Math.round(tk * 0.3), db: Math.round(tk * 0.04) }] });
+  }
+  return ut;
+}
+
+/** Demoen oppfører seg som den ekte appen når telefonen er uten nett */
+function utenNett() { if (typeof navigator !== "undefined" && navigator.onLine === false) throw new TypeError("Failed to fetch"); }

@@ -1330,3 +1330,86 @@ header.top select.temavalg option { color: #10162E; }
 .stempel .pvelger-knapp .pvelger-kunde { color: #475170; }
 /* I stemplingskortet (overflow skjult) legger listen seg i kortet i stedet for over det */
 .stempel .pvelger-panel { position: static; margin-top: 4px; box-shadow: none; }
+
+/* ---------- Firmalogo i toppfeltet ---------- */
+.brand-rad { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.firmalogo { display: block; height: 58px; width: auto; max-width: 150px; object-fit: contain; flex: none; }
+.firmalogo.plate { background: #FFFFFF; border-radius: 10px; padding: 5px; box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .6); }
+@media (max-width: 560px) {
+  .brand-rad { gap: 10px; }
+  .firmalogo { height: 44px; max-width: 104px; }
+}
+
+/* ---------- Firmafarger («egen»): ByggLogg-oppsettet i bedriftens farger fra logoen ----------
+   Fargene settes som variabler på <html> fra bedriftens drakt (src/lib/drakt.ts). */
+:root[data-tema="egen"] {
+  --accent: var(--drakt-hoved, #0A1EBE); --sel: var(--drakt-hoved, #0A1EBE);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tema="egen"] { --accent: var(--drakt-hoved-lys, #A9B3FF); --sel: var(--drakt-aksent, #FFCD00); --sel-ink: var(--drakt-aksent-blekk, #1A1400); }
+  :root[data-tema="egen"] body { background: radial-gradient(1200px 520px at 50% -220px, color-mix(in srgb, var(--drakt-hoved, #1A2356) 45%, transparent), transparent), var(--bg); background-attachment: fixed; }
+}
+:root[data-tema="egen"] body {
+  background:
+    linear-gradient(115deg, transparent 0 38%, color-mix(in srgb, var(--drakt-hoved, #0A1EBE) 4.5%, transparent) 38% 52%, transparent 52%) fixed,
+    linear-gradient(65deg, transparent 0 60%, color-mix(in srgb, var(--drakt-hoved, #0A1EBE) 4%, transparent) 60% 74%, transparent 74%) fixed,
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--bg)) 0%, var(--bg) 420px) fixed;
+}
+:root[data-tema="egen"] .toppfelt {
+  background: radial-gradient(700px 260px at 85% 0%, var(--drakt-glod, rgba(255, 205, 0, .22)), transparent 60%),
+    linear-gradient(135deg, var(--navy-2) 0%, var(--navy) 55%, var(--drakt-dyp, #071443) 100%);
+  box-shadow: 0 16px 34px -18px var(--drakt-skygge, rgba(7, 20, 67, .75)); }
+:root[data-tema="egen"] header.top { background: linear-gradient(135deg, var(--navy-2) 0%, var(--bf-blue) 45%, var(--drakt-dyp, #061190) 100%); box-shadow: 0 12px 30px -14px var(--drakt-skygge, rgba(10, 30, 190, .6)); }
+:root[data-tema="egen"] .toppfelt header.top { background: none; box-shadow: none; }
+:root[data-tema="egen"] .stempel { box-shadow: 0 14px 30px -18px var(--drakt-skygge, rgba(10, 30, 190, .7)); }
+:root[data-tema="egen"] :is(.btn.gul, .stempel .hurtig button[aria-pressed=true], .toppfelt nav.tabs.hoved button[aria-selected=true], .skriv-send) { color: var(--drakt-aksent-blekk, #1A1400); }
+:root[data-tema="egen"] .seksjoner button[aria-pressed=true] { box-shadow: inset 0 -4px 0 var(--bf-yellow), 0 8px 18px -10px var(--drakt-skygge, rgba(7, 20, 67, .8)); }
+:root[data-tema="egen"] .avatar.felles { background: linear-gradient(135deg, var(--bf-yellow), color-mix(in srgb, var(--bf-yellow) 70%, #000)); color: var(--drakt-aksent-blekk, #1A1400); }
+:root[data-tema="egen"] .lagre-app { background: linear-gradient(120deg, var(--navy-2), var(--bf-blue) 60%, var(--navy)); box-shadow: 0 12px 26px -16px var(--drakt-skygge, rgba(10, 30, 190, .8)); }
+:root[data-tema="egen"] .lagre-app::after { background: var(--drakt-glod, rgba(255, 205, 0, .16)); }
+:root[data-tema="egen"] :is(.lagre-app-ikon, .lagre-app .lagre-app-knapp, .kampanje-chip, .varsel-ikon) { background: var(--bf-yellow) !important; color: var(--drakt-aksent-blekk, #1A1400) !important; }
+:root[data-tema="egen"] .kampanje { border-top-color: var(--bf-yellow); }
+@media (max-width: 640px) {
+  :root[data-tema="egen"] nav.tabs.hoved { box-shadow: 0 -6px 18px -10px var(--drakt-skygge, rgba(10, 30, 190, .35)); }
+}
+:root[data-tema="egen"] .rp-topp::after { background: var(--bf-yellow); }
+:root[data-tema="egen"] .rp-del h2 span { background: var(--navy); color: var(--bf-yellow); }
+:root[data-tema="egen"] .rp-innledning { border-left-color: var(--bf-yellow); }
+
+/* ---------- Oppsett: logo og farger ---------- */
+.drakt-oppsett { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 640px) { .drakt-oppsett { grid-template-columns: minmax(0, 1fr); } }
+.drakt-forhand { border-radius: 14px; overflow: hidden; background: var(--sunk); padding-bottom: 12px; }
+.drakt-topp { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 16px 24px; color: #FFFFFF;
+  background: radial-gradient(400px 160px at 85% 0%, var(--drakt-glod, rgba(255, 205, 0, .22)), transparent 60%),
+    linear-gradient(135deg, var(--navy-2) 0%, var(--navy) 55%, var(--drakt-dyp, #071443) 100%); }
+.drakt-topp::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9px; background: var(--stokk); }
+.drakt-topp .firmalogo { height: 46px; max-width: 120px; }
+.drakt-topp small { display: block; font-size: 12px; font-weight: 700; font-style: italic; color: var(--bf-yellow); }
+.drakt-topp b { font-family: var(--f-display); font-size: 30px; font-weight: 800; font-style: italic; line-height: 1; }
+.drakt-topp b span { color: var(--bf-yellow); }
+.drakt-prov { display: flex; gap: 8px; padding: 12px 14px 0; flex-wrap: wrap; }
+.drakt-knapp { display: inline-block; padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 14px; }
+.drakt-knapp.hoved { background: var(--drakt-hoved, var(--bf-blue)); color: #FFFFFF; }
+.drakt-knapp.aksent { background: var(--bf-yellow); color: var(--drakt-aksent-blekk, #1A1400); }
+.drakt-valg { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.drakt-farger { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.drakt-farge { display: flex; gap: 6px; align-items: center; }
+.drakt-farge input[type=color] { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); flex: none; }
+.drakt-farge input[type=text] { width: 96px; font-family: var(--f-mono); text-transform: uppercase; }
+.rp-logo { height: 52px; width: auto; max-width: 160px; object-fit: contain; border-radius: 6px; }
+
+/* ---------- Personlig månedsrapport ---------- */
+.prapport { display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--surface); }
+.prapport-topp { border-bottom: 4px solid var(--bf-yellow); padding-bottom: 10px; }
+.prapport-del h4 { margin: 0 0 8px; font-family: var(--f-display); font-size: 19px; }
+.prapport-tall { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.prapport-tall > div { background: var(--sunk); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.prapport-tall b { font-family: var(--f-mono); font-size: 24px; line-height: 1.1; }
+.prapport-tall .stor b { font-size: 30px; color: var(--accent); }
+.prapport-tall .bra { background: color-mix(in srgb, var(--approved) 16%, var(--sunk)); }
+.prapport-stolpe { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0 4px; background: var(--sunk); }
+.prapport-stolpe span { min-width: 2px; }
+.prapport-punkt { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.prapport-kommentar { border-left: 4px solid var(--accent); background: var(--sunk); border-radius: 0 10px 10px 0; padding: 10px 12px; }
+.banner.uten-nett { border-left-color: var(--pending); background: color-mix(in srgb, var(--pending) 14%, var(--surface)); }

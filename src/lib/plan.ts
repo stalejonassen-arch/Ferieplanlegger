@@ -1,5 +1,5 @@
 // Arbeidsplan (oppgaver delt ut til ansatte med fra–til-dato) og materialliste delt i leveranser.
-import { addDays } from "./ferie";
+import { addDays, helligdag, ukedag } from "./ferie";
 import { mandag } from "./timer";
 
 export type OppgaveStatus = "planlagt" | "pagaar" | "ferdig";
@@ -8,8 +8,10 @@ export interface Oppgave {
   ansatte: string[]; rekkefolge: number; status: OppgaveStatus; opprettet_av: string | null; ferdig_tid: string | null;
   /** Arbeidet gjelder utbedring av en reklamasjon */
   reklamasjon_id?: string | null;
+  /** Jobbes også lørdag, søndag og helligdager (ellers bare hverdager) */
+  helg?: boolean;
 }
-export type NyOppgave = Pick<Oppgave, "prosjekt_id" | "tittel" | "beskrivelse" | "fra" | "til" | "ansatte"> & { id?: string; rekkefolge?: number; reklamasjon_id?: string | null };
+export type NyOppgave = Pick<Oppgave, "prosjekt_id" | "tittel" | "beskrivelse" | "fra" | "til" | "ansatte"> & { id?: string; rekkefolge?: number; reklamasjon_id?: string | null; helg?: boolean };
 
 export type LeveranseStatus = "planlagt" | "bestilt" | "levert";
 export interface Leveranse {
@@ -31,9 +33,22 @@ export const LEVERANSE_STATUS: Record<LeveranseStatus, string> = { planlagt: "Pl
 export const sorterOppgaver = (o: Oppgave[]) =>
   [...o].sort((a, b) => a.rekkefolge - b.rekkefolge || a.fra.localeCompare(b.fra) || a.tittel.localeCompare(b.tittel, "nb"));
 
+/** Hverdag: mandag–fredag som ikke er helligdag */
+export const hverdag = (dato: string) => { const u = ukedag(dato); return u >= 1 && u <= 5 && !helligdag(dato); };
+
+/** Jobbes det på oppgaven denne dagen? Helg og helligdager bare når det er krysset av for helg. */
+export const jobbesDag = (o: Pick<Oppgave, "fra" | "til" | "helg">, dato: string) => o.fra <= dato && o.til >= dato && (!!o.helg || hverdag(dato));
+
+/** Dagene det jobbes på oppgaven */
+export function arbeidsdagerFor(o: Pick<Oppgave, "fra" | "til" | "helg">): string[] {
+  const ut: string[] = [];
+  for (let x = o.fra; x && o.til && x <= o.til && ut.length < 400; x = addDays(x, 1)) if (o.helg || hverdag(x)) ut.push(x);
+  return ut;
+}
+
 /** Oppgavene en ansatt har en bestemt dag */
 export const oppgaverPaa = (o: Oppgave[], ansattId: string, dato: string) =>
-  o.filter((x) => x.ansatte.includes(ansattId) && x.fra <= dato && x.til >= dato);
+  o.filter((x) => x.ansatte.includes(ansattId) && jobbesDag(x, dato));
 
 /** Dagene i uka (mandag–søndag) datoen hører til */
 export const ukeDager = (dato: string) => { const m = mandag(dato); return Array.from({ length: 7 }, (_, i) => addDays(m, i)); };

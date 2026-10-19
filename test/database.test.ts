@@ -92,6 +92,12 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0054_moduler.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0055_reklamasjon.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0056_plattform_push_adresse.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0057_logo_drakt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0058_tillegg_timer.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0059_oppgave_helg.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0060_personrapport.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0061_sikring_push_oversikt.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0062_stemple_uten_nett.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -928,6 +934,120 @@ describe("deler av appen", () => {
     expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual(["chat", "vaer"]);
     await as(STALE, "select public.lagre_moduler(array[]::text[])");
     expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual([]);
+  });
+});
+
+describe("tilleggsarbeid som underprosjekt", () => {
+  it("timer føres på tillegget, bare på riktig prosjekt, og følger med fra stemplingen", async () => {
+    const jim = await idOf("Jim Kato");
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Takjobb') returning id");
+    const [p2] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Annen jobb') returning id");
+    const [t] = await as<any>(JIM, "insert into public.tillegg (prosjekt_id, tittel, timer) values ($1, 'Råteskade tak', 6) returning id", [p.id]);
+    const [x] = await as<any>(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, tillegg_id) values ($1, $2, '2027-05-03', '07:00', '11:00', $3) returning tillegg_id", [jim, p.id, t.id]);
+    expect(x.tillegg_id).toBe(t.id);
+    await expect(as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, tillegg_id) values ($1, $2, '2027-05-04', '07:00', '11:00', $3)", [jim, p2.id, t.id])).rejects.toThrow(/hører ikke til/);
+    await as(STALE, "update public.tillegg set status = 'avvist' where id = $1", [t.id]);
+    await expect(as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, tillegg_id) values ($1, $2, '2027-05-05', '07:00', '11:00', $3)", [jim, p.id, t.id])).rejects.toThrow(/avvist/);
+    // Allerede førte timer kan fortsatt endres
+    await as(JIM, "update public.timer set beskrivelse = 'Sviller' where tillegg_id = $1", [t.id]);
+    await as(STALE, "update public.tillegg set status = 'utkast' where id = $1", [t.id]);
+    // Stempling: velg tillegget mens du er inne, timene merkes ved utlogging
+    await as(JIM, "select public.stemple('inn', $1)", [p.id]);
+    await expect(as(JIM, "select public.stemple_tillegg($1)", [(await as<any>(STALE, "insert into public.tillegg (prosjekt_id, tittel) values ($1, 'Feil') returning id", [p2.id]))[0].id])).rejects.toThrow(/hører ikke til/);
+    await as(JIM, "select public.stemple_tillegg($1)", [t.id]);
+    expect((await db.query<any>("select tillegg_id from public.stempling where ansatt_id = $1", [jim])).rows[0].tillegg_id).toBe(t.id);
+    await db.query("update public.stempling set fra='00:00', dato=(now() at time zone 'Europe/Oslo')::date where ansatt_id=$1", [jim]);
+    await as(JIM, "select public.stemple('ut', null, 'Skiftet sviller', 0)");
+    const r = await as<any>(JIM, "select tillegg_id from public.timer where ansatt_id=$1 and kilde = 'stempel'", [jim]);
+    if (r.length) expect(r[0].tillegg_id).toBe(t.id);
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+  });
+});
+
+describe("personlige månedsrapporter og DG", () => {
+  it("leder lager og publiserer, den ansatte ser bare sin egen og markerer lest", async () => {
+    const jim = await idOf("Jim Kato"), mads = await idOf("Mads Kjerstad");
+    await expect(as(JIM, "insert into public.personrapporter (ansatt_id, periode) values ($1, '2026-09-01')", [jim])).rejects.toThrow();
+    const [r] = await as<any>(STALE, "insert into public.personrapporter (ansatt_id, periode, innhold) values ($1, '2026-09-01', '{\"timer\": 1}') returning id", [jim]);
+    await as(STALE, "insert into public.personrapporter (ansatt_id, periode, publisert) values ($1, '2026-09-01', now())", [mads]);
+    expect(await as(JIM, "select * from public.personrapporter")).toHaveLength(0); // utkast
+    await as(STALE, "update public.personrapporter set publisert = now(), lest = now() where id = $1", [r.id]);
+    const egne = await as<any>(JIM, "select id, lest from public.personrapporter");
+    expect(egne).toHaveLength(1);
+    expect(egne[0].lest).toBeNull(); // leder kan ikke sette lest
+    await as(MADS, "select public.marker_personrapport_lest($1)", [r.id]); // ikke hans
+    await as(JIM, "select public.marker_personrapport_lest($1)", [r.id]);
+    expect((await as<any>(JIM, "select lest from public.personrapporter"))[0].lest).not.toBeNull();
+    await as(STALE, "update public.personrapporter set publisert = null where id = $1", [r.id]);
+    expect(await as(JIM, "select * from public.personrapporter")).toHaveLength(1);
+  });
+  it("DG-kategorier: bare leder endrer, og salgstallene leses bare av leder/prosjektleder", async () => {
+    await expect(as(JIM, "select public.lagre_dg_kategorier('[]')")).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.lagre_dg_kategorier('[{\"id\": \"X Y\", \"navn\": \"\", \"med\": [], \"uten\": []}]')")).rejects.toThrow(/Ugyldige/);
+    const std = (await db.query<any>("select dg_kategorier from public.bedrifter where id = 1")).rows[0].dg_kategorier;
+    expect(std.map((k: any) => k.id)).toEqual(["vinduer", "tak"]);
+    await db.query("insert into public.salg_kategori_mnd (bedrift_id, aar, mnd, kategori, omsetning, db) values (1, 2026, 9, 'tak', 1000, 200)");
+    expect(await as(JIM, "select * from public.salg_kategori_mnd")).toHaveLength(0);
+    expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(1);
+    await as(STALE, "select public.lagre_dg_kategorier($1)", [JSON.stringify(std)]);
+    expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(0);
+  });
+});
+
+describe("stempling uten nett", () => {
+  it("køet stempling bruker tidspunktet da den ble trykket, og for gamle avvises", async () => {
+    const jim = await idOf("Jim Kato");
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+    await db.query("delete from public.stempling where ansatt_id=$1", [jim]);
+    const inn = (await db.query<any>("select (date_trunc('day', now() at time zone 'Europe/Oslo') + interval '1 minute') at time zone 'Europe/Oslo' t")).rows[0].t;
+    const ut = (await db.query<any>("select now() - interval '1 minute' t")).rows[0].t;
+    await as(JIM, "select public.stemple('inn', null, '', 0, null, $1)", [inn]);
+    expect((await db.query<any>("select fra from public.stempling where ansatt_id=$1", [jim])).rows[0].fra).toBe("00:00:00");
+    await as(JIM, "select public.stemple('ut', null, 'Uten nett', 0, null, $1)", [ut]);
+    const t = await as<any>(JIM, "select fra, beskrivelse from public.timer where ansatt_id=$1", [jim]);
+    if (t.length) expect(t[0]).toMatchObject({ fra: "00:00:00", beskrivelse: "Uten nett" });
+    await expect(as(JIM, "select public.stemple('inn', null, '', 0, null, now() - interval '4 days')")).rejects.toThrow(/for gammel/);
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+  });
+});
+
+describe("skjulte kampanjer", () => {
+  it("bare leder ser hvem som har push, og driftsnøkkelen kan ikke leses", async () => {
+    await db.query("insert into public.push_abonnement (endpoint, ansatt_id, p256dh, auth) values ($1, $2, $3, $4)", ["https://x/1", await idOf("Jim Kato"), "a", "b"]);
+    expect((await as<any>(STALE, "select * from public.ansatte_med_push()")).map((x: any) => x.ansatte_med_push)).toContain(await idOf("Jim Kato"));
+    expect(await as(JIM, "select * from public.ansatte_med_push()")).toHaveLength(0);
+    await expect(as(STALE, "select verdi from public.drift_noekkel")).rejects.toThrow();
+    expect((await db.query<any>("select length(verdi) n from public.drift_noekkel")).rows[0].n).toBe(64);
+  });
+  it("ansatt kan vise en skjult kampanje igjen", async () => {
+    const [k] = await as<any>(STALE, "insert into public.kampanjer (tittel, fra, til, sider) values ('DM10', current_date, current_date + 7, array['a.png']) returning id");
+    await as(JIM, "select public.skjul_kampanje($1)", [k.id]);
+    await as(JIM, "select public.sett_vis_kampanjer(false)");
+    expect((await db.query<any>("select skjulte_kampanjer, vis_kampanjer from public.ansatte where epost = $1", [JIM])).rows[0]).toEqual({ skjulte_kampanjer: [k.id], vis_kampanjer: false });
+    await as(JIM, "select public.vis_kampanje($1)", [k.id]);
+    expect((await db.query<any>("select skjulte_kampanjer, vis_kampanjer from public.ansatte where epost = $1", [JIM])).rows[0]).toEqual({ skjulte_kampanjer: [], vis_kampanjer: true });
+  });
+});
+
+describe("logo og firmafarger", () => {
+  const LOGO = "data:image/png;base64,iVBORw0KGgo=";
+  it("bare leder lagrer, fargene kontrolleres, og fjernet drakt gir bedriftens farger", async () => {
+    await expect(as(JIM, "select public.lagre_drakt($1, null, '{\"hoved\":\"#0a1ebe\",\"aksent\":\"#ffcd00\"}')", [LOGO])).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.lagre_drakt($1, null, '{\"hoved\":\"blå\",\"aksent\":\"#ffcd00\"}')", [LOGO])).rejects.toThrow(/RRGGBB/);
+    await expect(as(STALE, "select public.lagre_drakt('javascript:alert(1)', null, null)")).rejects.toThrow();
+    await as(STALE, "select public.lagre_drakt($1, null, '{\"hoved\":\"#0a1ebe\",\"aksent\":\"#ffcd00\",\"x\":1}')", [LOGO]);
+    const b = (await db.query<any>("select logo, drakt from public.bedrifter where id = 1")).rows[0];
+    expect(b).toEqual({ logo: LOGO, drakt: { hoved: "#0A1EBE", aksent: "#FFCD00" } });
+    await as(JIM, "select public.sett_mitt_tema('egen')");
+    expect((await db.query<any>("select tema from public.ansatte where epost = $1", [JIM])).rows[0].tema).toBe("egen");
+    await as(STALE, "select public.lagre_drakt(null, null, null)");
+    expect((await db.query<any>("select tema from public.ansatte where epost = $1", [JIM])).rows[0].tema).toBeNull();
+    expect((await db.query<any>("select logo, drakt from public.bedrifter where id = 1")).rows[0]).toEqual({ logo: null, drakt: null });
+    await as(STALE, "select public.lagre_drakt($1, null, '{\"hoved\":\"#0a1ebe\",\"aksent\":\"#ffcd00\"}', true)", [LOGO]);
+    expect((await db.query<any>("select tema from public.bedrifter where id = 1")).rows[0].tema).toBe("egen");
+    expect((await db.query<any>("select count(*)::int n from public.ansatte where tema is not null and bedrift_id = 1")).rows[0].n).toBe(0);
+    await as(STALE, "select public.lagre_drakt(null, null, null)");
   });
 });
 

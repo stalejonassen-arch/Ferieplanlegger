@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, feiltekst } from "./lib/api";
 import { isoOf, type Ansatt, type Data, type Tema } from "./lib/ferie";
 import { settSprak, type Sprak } from "./lib/sprak";
+import { draktVariabler } from "./lib/drakt";
 import { Innlogging } from "./views/Innlogging";
 import { MinFerie } from "./views/MinFerie";
 import { Kalender } from "./views/Kalender";
@@ -24,7 +25,8 @@ import { Sykdom } from "./views/Sykdom";
 import { Utstyr } from "./views/Utstyr";
 import { Kompetanse } from "./views/Kompetanse";
 import { trengerFornyelse } from "./lib/kompetanse";
-import { uleste } from "./lib/rapport";
+import { periodeNavn, uleste } from "./lib/rapport";
+import { ulestePerson } from "./lib/personrapport";
 import { kanalNavn, uleste as ulesteMeldinger, type Lest, type Melding } from "./lib/chat";
 import { Chat } from "./views/Chat";
 import { FerieOversikt } from "./views/FerieOversikt";
@@ -34,6 +36,15 @@ import { Vaer } from "./views/Vaer";
 import { firma, PROFIL } from "./lib/profil";
 import { VarselBanner } from "./views/Varsler";
 import { fornyPush } from "./lib/push";
+import { anvendKo, erNettfeil, hentKo, hentKopi, koTekst, lagreKo, lagreKopi, slettKopi, type KoOp } from "./lib/offline";
+
+type KoUtenId = { type: "stemple"; handling: "inn" | "bytt" | "ut"; prosjekt: string | null; beskrivelse: string; lunsj: number; til?: string } | { type: "time"; time: import("./lib/timer").NyTime };
+
+/** Utfører én føring fra køen mot serveren */
+async function utfor(op: KoOp) {
+  if (op.type === "stemple") await api.stemple(op.handling, { prosjekt: op.prosjekt, beskrivelse: op.beskrivelse, lunsj: op.lunsj, til: op.til, tid: op.tid });
+  else await api.lagreTime(op.time);
+}
 
 export interface Ctx {
   d: Data;
@@ -43,6 +54,8 @@ export interface Ctx {
   idag: string;
   /** Kjør en lagring, vis bekreftelse eller feilmelding, og hent data på nytt. */
   kjor: (fn: () => Promise<void>, ok?: string) => Promise<boolean>;
+  /** Stempling og timeføring som legges i kø og sendes senere hvis det ikke er nett */
+  kjorKo: (op: KoUtenId, ok?: string) => Promise<boolean>;
   /** Meldinger (chat) – lastes for seg selv og oppdateres i sanntid */
   chat: { meldinger: Melding[]; lest: Lest; oppdater: () => void; markerLest: (kanal: string) => void };
 }
@@ -100,14 +113,74 @@ export function App() {
   };
 
   useEffect(() => {
-    api.epost().then(setEpost);
-    return api.onEpost(setEpost);
+    // Uten nett kan innloggingen ikke fornyes; da brukes sist innloggede e-post så appen kan vises og føre i kø
+    const sist = () => { try { return localStorage.getItem("sist-epost"); } catch { return null; } };
+    const sett = (e: string | null) => {
+      if (e) { try { localStorage.setItem("sist-epost", e); } catch { /* privat modus */ } setEpost(e); }
+      else setEpost(!navigator.onLine && api.modus !== "demo" ? sist() : null);
+    };
+    api.epost().then(sett).catch(() => sett(null));
+    return api.onEpost((e) => { if (e) sett(e); else if (navigator.onLine) { const s = sist(); if (s) slettKopi(s); try { localStorage.removeItem("sist-epost"); } catch { /* */ } setEpost(null); } });
   }, []);
 
+  // ---- Uten nett: sist hentede data og kø for stempling/timer
+  const [ko, setKo] = useState<KoOp[]>([]);
+  const koRef = useRef<KoOp[]>([]);
+  const [utenNett, setUtenNett] = useState<string | null>(null);
+  const serverData = useRef<Data | null>(null);
+  const megId = (x: Data | null) => x?.ansatte.find((a) => a.aktiv && a.epost?.toLowerCase() === epost?.toLowerCase())?.id;
+  const settKo = (k: KoOp[]) => { koRef.current = k; setKo(k); if (epost) lagreKo(epost, k); };
+  const vis = (x: Data) => setD(anvendKo(x, koRef.current, megId(x)));
+
   const last = useCallback(async () => {
-    try { setD(await api.hent()); setFeil(null); }
-    catch (e) { setFeil(feiltekst(e)); }
-  }, []);
+    try {
+      const x = await api.hent();
+      serverData.current = x; vis(x); setFeil(null); setUtenNett(null);
+      if (epost && api.modus !== "demo") lagreKopi(epost, x);
+    } catch (e) {
+      if (erNettfeil(e) && epost) {
+        const k = serverData.current ? null : await hentKopi(epost);
+        if (k) { serverData.current = k.d; vis(k.d); }
+        setUtenNett((u) => u ?? k?.tid ?? new Date().toISOString());
+        if (serverData.current) { setFeil(null); return; }
+      }
+      setFeil(feiltekst(e));
+    }
+  }, [epost]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Sender køen i rekkefølge. Stopper ved nettfeil; avviste føringer tas ut og vises som feil. */
+  const sender = useRef(false);
+  const sendKo = useCallback(async () => {
+    if (sender.current || !koRef.current.length) return;
+    sender.current = true;
+    let sendt = 0;
+    try {
+      while (koRef.current.length) {
+        const op = koRef.current[0]!;
+        try { await utfor(op); sendt++; }
+        catch (e) {
+          if (erNettfeil(e)) break;
+          const kl = new Date(op.tid).toLocaleString("nb-NO", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+          visToast(`Kunne ikke lagre ${op.type === "stemple" ? "stemplingen" : "timeføringen"} fra ${kl}: ${feiltekst(e)}`, true);
+        }
+        settKo(koRef.current.slice(1));
+      }
+    } finally { sender.current = false; }
+    if (sendt) { visToast(`${sendt} ${sendt === 1 ? "føring" : "føringer"} fra da du var uten nett er lagret`); await last(); }
+  }, [last]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!epost) { koRef.current = []; setKo([]); return; }
+    // Vis siste kopi med en gang (rask oppstart), og hent køen som ikke er sendt
+    if (api.modus !== "demo") {
+      hentKo(epost).then((k) => { koRef.current = k; setKo(k); if (k.length) sendKo(); });
+      hentKopi(epost).then((k) => { if (k && !serverData.current) { serverData.current = k.d; vis(k.d); } });
+    }
+    const paa = () => { sendKo().then(last); };
+    window.addEventListener("online", paa);
+    const i = window.setInterval(() => { if (koRef.current.length) sendKo(); }, 30000);
+    return () => { window.removeEventListener("online", paa); clearInterval(i); };
+  }, [epost]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!epost) { setD(null); return; }
@@ -135,16 +208,38 @@ export function App() {
   const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id === "thaugland") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "byggfag"; } catch { return "byggfag"; } });
   // Egen fargevalg vinner; ellers bedriftens standardfarger
   useEffect(() => { const t = meg?.tema ?? d?.bedrift?.tema; if (t) settTema(t); }, [meg?.tema, d?.bedrift?.tema]);
+  const drakt = d?.drakt ?? null;
+  // Firmafarger uten lagret drakt (fjernet av leder) blir ByggLogg-blå
+  const visTema: Tema = tema === "egen" && !drakt && d ? "byggfag" : tema;
   useEffect(() => {
-    document.documentElement.dataset.tema = tema;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", tema === "fargerik" ? "#D6409F" : tema === "mork" ? "#0A0E20" : tema === "byggfag" ? "#0B1F5C" : tema === "bfportal" ? "#F8F9FA" : tema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
+    const rot = document.documentElement;
+    rot.dataset.tema = visTema;
+    const vars = visTema === "egen" && drakt ? draktVariabler(drakt) : {};
+    for (const k of Array.from(rot.style)) if (k.startsWith("--")) rot.style.removeProperty(k);
+    for (const [k, v] of Object.entries(vars)) rot.style.setProperty(k, v);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", visTema === "egen" ? (vars["--navy"] ?? "#0B1F5C") : visTema === "fargerik" ? "#D6409F" : visTema === "mork" ? "#0A0E20" : visTema === "byggfag" ? "#0B1F5C" : visTema === "bfportal" ? "#F8F9FA" : visTema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
     if (PROFIL.id !== "thaugland") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
-  }, [tema]);
+  }, [tema, visTema, drakt?.hoved, drakt?.aksent]);
 
   const kjor = useCallback(async (fn: () => Promise<void>, ok?: string) => {
     try { await fn(); if (ok) visToast(ok); await last(); return true; }
-    catch (e) { visToast(feiltekst(e), true); await last(); return false; }
+    catch (e) { visToast(erNettfeil(e) ? "Ingen nett akkurat nå. Prøv igjen når du har dekning." : feiltekst(e), true); await last(); return false; }
   }, [last]);
+
+  /** Stempling/timer: prøv med en gang; uten nett legges den i kø med tidspunktet nå og sendes senere */
+  const kjorKo = useCallback(async (u: KoUtenId, ok?: string) => {
+    const op = { ...u, id: Math.random().toString(36).slice(2), tid: new Date().toISOString() } as KoOp;
+    if (!koRef.current.length) {
+      try { await utfor(op); if (ok) visToast(ok); await last(); return true; }
+      catch (e) { if (!erNettfeil(e)) { visToast(feiltekst(e), true); await last(); return false; } }
+    }
+    settKo([...koRef.current, op]);
+    if (serverData.current) vis(serverData.current);
+    setUtenNett((x) => x ?? new Date().toISOString());
+    visToast("Uten nett – lagres automatisk når du får dekning igjen");
+    if (navigator.onLine) sendKo();
+    return true;
+  }, [last]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Meldinger
   const [meldinger, setMeldinger] = useState<Melding[]>([]);
@@ -222,6 +317,7 @@ export function App() {
     ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
   const ferieFaner: [Fane, string][] = [["min", "Ferie"], ["syk", "Syk"], ["kal", "Kalender"], ...(leder ? [["sok", "Søknader"] as [Fane, string]] : []), ["regler", "Regler"]];
   const nyeRapporter = uleste(d.rapporter, d.lest, meg.id);
+  const nyePersonlige = ulestePerson(d.personrapporter, meg.id);
   const aktiv = faner.some(([f]) => f === fane) || ferieFaner.some(([f]) => f === fane) || (fane === "kurs" && bruker(d, "kurs")) || fane === "personvern" || fane === "vilkar" ? fane : "timer";
   const iFerie = FERIE.includes(aktiv);
   const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
@@ -237,22 +333,25 @@ export function App() {
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
 
   return (
-    <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor, chat: { meldinger, lest, oppdater: lastChat, markerLest } }}>
+    <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor, kjorKo, chat: { meldinger, lest, oppdater: lastChat, markerLest } }}>
       <div className="wrap">
         <div className="toppfelt">
         <svg className="skyline" viewBox="0 0 520 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">{SKYLINE}</svg>
         <header className="top">
-          <div className="brand"><small>{firma(d.bedrift).undertittel}</small>
-            <h1><svg className="hjelm" viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
+          <div className={d.logo ? "brand-rad" : undefined}>
+            {d.logo && <img className={d.logoMork ? "firmalogo" : "firmalogo plate"} src={d.logoMork ?? d.logo} alt={firma(d.bedrift).undertittel} />}
+            <div className="brand"><small>{firma(d.bedrift).undertittel}</small>
+              <h1><svg className="hjelm" viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 L32 9 L58 30" strokeWidth="7" /><path d="M15 27 V55 H49 V27" strokeWidth="6" /><path d="M23 41 L30 48 L42 35" strokeWidth="6" /></svg><span className="ord">Bygg<span>Logg</span></span></h1></div>
+          </div>
           <div className="who">
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
             <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
               onChange={(e) => { const s = e.target.value as Sprak; kjor(() => api.settMittSprak(s)).then(() => settSprak(s)); }}>
               <option value="nb">Norsk</option><option value="pl">Polski</option>
             </select>
-            <select aria-label="Farger" className="temavalg" value={tema}
+            <select aria-label="Farger" className="temavalg" value={visTema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}<option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}{drakt && <option value="egen">Firmafarger</option>}<option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>
@@ -267,7 +366,7 @@ export function App() {
               {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
               {f === "plan" && planVarsel > 0 && <span className="badge">{planVarsel}</span>}
               {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
-              {f === "rapporter" && nyeRapporter.length > 0 && <span className="badge">{nyeRapporter.length}</span>}
+              {f === "rapporter" && nyeRapporter.length + nyePersonlige.length > 0 && <span className="badge">{nyeRapporter.length + nyePersonlige.length}</span>}
             </button>
           ))}
         </nav>
@@ -279,6 +378,16 @@ export function App() {
           <div className="banner"><span><span className="chip demo">Demo</span> Prøveversjon med eksempeldata. Alt du gjør her er bare på lek og forsvinner når du lukker siden – ingenting påvirker den ekte ByggLogg. <a href="https://bygglogg.app" target="_blank" rel="noopener">Les mer om ByggLogg</a></span>{import.meta.env.VITE_PLATTFORM_SUPABASE_URL && PROFIL.id !== "thaugland" && <a className="btn sm" href="?demo=av">Avslutt demo</a>}</div>
         )}
 
+        {(utenNett || ko.length > 0) && (
+          <div className="banner uten-nett" role="status"><span>{utenNett
+            ? `📵 Uten nett – viser det som ble hentet ${new Date(utenNett).toLocaleString("nb-NO", { weekday: "short", hour: "2-digit", minute: "2-digit" })}.`
+            : "Sender det du førte uten nett …"}{ko.length ? ` ${koTekst(ko)} venter og sendes automatisk.` : ""}</span>
+            {utenNett && <button className="btn sm" onClick={() => { sendKo().then(last); }}>Prøv nå</button>}</div>
+        )}
+        {nyePersonlige[0] && aktiv !== "rapporter" && b("rapporter") && (
+          <div className="banner"><span>Din månedsrapport for <b>{periodeNavn(nyePersonlige[0].periode)}</b> er klar</span>
+            <button className="btn sm primary" onClick={() => velg("rapporter")}>Se den</button></div>
+        )}
         {nyeRapporter[0] && aktiv !== "rapporter" && b("rapporter") && (
           <div className="banner"><span>Ny rapport: <b>{nyeRapporter[0].tittel}</b></span>
             <button className="btn sm primary" onClick={() => lesRapport(nyeRapporter[0], kjor)}>Les nå</button></div>

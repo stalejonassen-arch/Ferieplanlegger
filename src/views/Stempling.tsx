@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
 import { bruker } from "../lib/moduler";
 
@@ -34,7 +35,7 @@ function Dagstokk({ okter, navn }: { okter: { fra: string; til: string; prosjekt
 
 /** Logg inn når arbeidet begynner, bytt når du flytter deg, logg ut når prosjektet eller dagen er ferdig. */
 export function Stempling() {
-  const { d, meg, idag, kjor } = useApp();
+  const { d, meg, idag, kjor, kjorKo } = useApp();
   const s = d.stempling.find((x) => x.ansatt_id === meg.id);
   const siste = sisteProsjekter(d.timer, meg.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
   const [prosjekt, setProsjekt] = useState<string>(() => siste[0] ?? "");
@@ -74,10 +75,9 @@ export function Stempling() {
   const fornavn = meg.navn.split(" ")[0];
   const kjorStempel = async (handling: "inn" | "bytt" | "ut", melding: string) => {
     setVenter(true);
-    const ok = await kjor(async () => {
-      await api.stemple(handling, { prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined });
-      if (handling !== "ut" && rp && prosjekt === rp && rekl) await api.stempleReklamasjon(rekl);
-    }, melding);
+    const ok = await kjorKo({ type: "stemple", handling, prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined }, melding);
+    // Reklamasjon velges etterpå (krever nett); uten nett kan den velges når man er tilbake på nett
+    if (ok && handling !== "ut" && rp && prosjekt === rp && rekl && navigator.onLine) await kjor(() => api.stempleReklamasjon(rekl));
     setVenter(false);
     if (ok) { setBeskrivelse(""); setTil(""); }
   };
@@ -127,6 +127,11 @@ export function Stempling() {
         {rp && s.prosjekt_id === rp && !gammel && (
           <div style={{ marginTop: 6 }}>
             <ReklamasjonValg value={s.reklamasjon_id ?? ""} onChange={(id) => kjor(() => api.stempleReklamasjon(id || null), id ? "Timene føres på reklamasjonen" : "Lagret")} />
+          </div>
+        )}
+        {s.prosjekt_id && s.prosjekt_id !== rp && !gammel && tilleggFor(d, s.prosjekt_id, s.tillegg_id).length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <TilleggValg prosjektId={s.prosjekt_id} value={s.tillegg_id ?? ""} onChange={(id) => kjor(() => api.stempleTillegg(id || null), id ? "Timene føres på tilleggsarbeidet" : "Timene føres på hovedjobben")} />
           </div>
         )}
         {s.prosjekt_id && <div style={{ marginTop: 8 }}><ProsjektForbruk prosjektId={s.prosjekt_id} lys /></div>}

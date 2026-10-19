@@ -8,20 +8,21 @@ import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { dagerUtenTimer, hhmm, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
 import { InneNaa, Stempling } from "./Stempling";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
 import { bruker } from "../lib/moduler";
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
 export function Timer() {
-  const { d, meg, leder, idag, kjor } = useApp();
+  const { d, meg, leder, idag, kjor, kjorKo } = useApp();
   const [hvemId, setHvemId] = useState(meg.id);
   const [uke, setUke] = useState(() => mandag(idag));
   const hvem = d.ansatte.find((a) => a.id === hvemId) ?? meg;
   const meSelv = hvem.id === meg.id;
   const lunsjStd = hvem.lunsjtrekk ? (hvem.lunsj_min ?? 30) : 0;
 
-  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true, reklamasjon_id: "" });
+  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true, reklamasjon_id: "", tillegg_id: "" });
   const [f, setF] = useState(tom);
   // Reklamasjon: timene føres på det faste reklamasjonsprosjektet (eller originaljobben) og faktureres ikke
   const rp = bruker(d, "reklamasjon") ? d.reklamasjonProsjekt ?? null : null;
@@ -29,9 +30,10 @@ export function Timer() {
   const visRekl = !!f.prosjekt_id && (f.prosjekt_id === rp || aapneRekl(f.prosjekt_id).length > 0 || !!f.reklamasjon_id);
   const velgProsjekt = (id: string) => {
     const mine = aapneRekl(id).filter((r) => r.ansvarlig_id === hvem.id && r.status === "godkjent");
-    sett({ prosjekt_id: id, reklamasjon_id: id === rp && mine.length === 1 ? mine[0]!.id : id === f.prosjekt_id ? f.reklamasjon_id : "" });
+    sett({ prosjekt_id: id, reklamasjon_id: id === rp && mine.length === 1 ? mine[0]!.id : id === f.prosjekt_id ? f.reklamasjon_id : "", tillegg_id: id === f.prosjekt_id ? f.tillegg_id : "" });
   };
   const erRekl = !!f.prosjekt_id && (f.prosjekt_id === rp || !!f.reklamasjon_id);
+  const visTillegg = !!f.prosjekt_id && !erRekl && tilleggFor(d, f.prosjekt_id, f.tillegg_id).length > 0;
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
   // Manuell føring er for det man glemte å logge; vises når man ber om det, endrer, eller leder fører for andre
   const [manuell, setManuell] = useState(false);
@@ -63,14 +65,15 @@ export function Timer() {
   const lagre = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gyldig) return;
-    const ok = await kjor(() => api.lagreTime({
+    const ok = await kjorKo({ type: "time", time: {
       id: f.id, ansatt_id: hvem.id, prosjekt_id: f.prosjekt_id || null, dato: f.dato, fra: f.fra, til: f.til,
       lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar && !erRekl,
       ...(visRekl || f.id ? { reklamasjon_id: visRekl ? f.reklamasjon_id || null : null } : {}),
-    }), f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
-    if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
+      ...(f.tillegg_id || f.id ? { tillegg_id: visTillegg ? f.tillegg_id || null : null } : {}),
+    } }, f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
+    if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, tillegg_id: f.tillegg_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
   };
-  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false, reklamasjon_id: t.reklamasjon_id ?? "" });
+  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false, reklamasjon_id: t.reklamasjon_id ?? "", tillegg_id: t.tillegg_id ?? "" });
   const kanEndre = (t: Time) => leder || t.status !== "godkjent";
 
   return (
@@ -125,6 +128,7 @@ export function Timer() {
           )}
           {f.prosjekt_id && <ProsjektForbruk prosjektId={f.prosjekt_id} />}
           {visRekl && <ReklamasjonValg value={f.reklamasjon_id} onChange={(id) => sett({ reklamasjon_id: id })} prosjektId={f.prosjekt_id === rp ? undefined : f.prosjekt_id} />}
+          {visTillegg && <TilleggValg prosjektId={f.prosjekt_id} value={f.tillegg_id} onChange={(id) => sett({ tillegg_id: id })} />}
           {f.prosjekt_id && !erRekl && (
             <label className="row small"><input type="checkbox" checked={f.fakturerbar} onChange={(e) => sett({ fakturerbar: e.target.checked })} /> Fakturerbart (faktureres kunden)</label>
           )}
@@ -181,7 +185,7 @@ export function Timer() {
                     <div key={t.id} className={`item ${t.status === "godkjent" ? "godkjent" : "venter"}`}>
                       <div style={{ minWidth: 0 }}>
                         <div className="t">{hhmm(t.fra)}–{hhmm(t.til)} · {t2(t.timer)} t</div>
-                        <div className="s">{prosjektNavn(t.prosjekt_id)}{t.reklamasjon_id ? ` · reklamasjon: ${(d.reklamasjoner ?? []).find((r) => r.id === t.reklamasjon_id)?.tittel ?? ""}` : t.prosjekt_id && t.fakturerbar === false ? " · ikke fakturerbart" : ""}{t.lunsj_min ? ` · lunsj ${t.lunsj_min} min` : ""}{t.km ? ` · ${t2(t.km)} km` : ""}{t.reisetid ? ` · reise ${t2(t.reisetid)} t` : ""}</div>
+                        <div className="s">{prosjektNavn(t.prosjekt_id)}{t.reklamasjon_id ? ` · reklamasjon: ${(d.reklamasjoner ?? []).find((r) => r.id === t.reklamasjon_id)?.tittel ?? ""}` : t.tillegg_id ? ` · tillegg: ${d.tillegg.find((x) => x.id === t.tillegg_id)?.tittel ?? ""}` : t.prosjekt_id && t.fakturerbar === false ? " · ikke fakturerbart" : ""}{t.lunsj_min ? ` · lunsj ${t.lunsj_min} min` : ""}{t.km ? ` · ${t2(t.km)} km` : ""}{t.reisetid ? ` · reise ${t2(t.reisetid)} t` : ""}</div>
                         {t.beskrivelse && <div className="s">{t.beskrivelse}</div>}
                       </div>
                       <div className="acts">
