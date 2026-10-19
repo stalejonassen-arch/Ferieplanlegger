@@ -18,7 +18,7 @@ function Endring({ fra, til, lavErBra, enhet = " %-poeng" }: { fra: number | nul
   const d = Math.round((til - fra) * 10) / 10;
   if (Math.abs(d) < 0.1) return <span className="small muted">som forrige måned</span>;
   const bra = lavErBra ? d < 0 : d > 0;
-  return <span className="small" style={{ color: bra ? "var(--approved)" : "var(--warn)", fontWeight: 700 }}>{d > 0 ? "▲" : "▼"} {Math.abs(d).toLocaleString("nb-NO")}{enhet} fra forrige måned</span>;
+  return <span className="small" style={{ color: bra ? "var(--approved)" : "var(--warn)", fontWeight: 700 }}>{`${d > 0 ? "▲" : "▼"} ${Math.abs(d).toLocaleString("nb-NO")}${enhet} fra forrige måned`}</span>;
 }
 
 /** Selve rapporten (samme visning for den ansatte og for leder) */
@@ -45,7 +45,7 @@ export function PersonrapportKort({ innhold, kommentar, egen }: { innhold: Innho
                 {t.ikkeFakturerbart > 0 && <span style={{ flex: t.ikkeFakturerbart, background: "var(--pending)" }} />}
                 <span style={{ flex: t.intern, background: "var(--info)" }} />
               </div>
-              <div className="small muted">{t2(t.sum)} timer i alt{t.ikkeFakturerbart ? ` · ${t2(t.ikkeFakturerbart)} t på prosjekt som ikke faktureres` : ""}</div>
+              <div className="small muted">{`${t2(t.sum)} timer i alt`}{t.ikkeFakturerbart ? <span>{` · ${t2(t.ikkeFakturerbart)} t på prosjekt som ikke faktureres`}</span> : null}</div>
               <ul className="prapport-punkt">
                 {t.forrige && <li>Forrige måned: {pst(t.forrige.andelIntern)} interntid. <Endring fra={t.forrige.andelIntern} til={t.andelIntern} lavErBra /></li>}
                 <li>Hittil i år: {pst(t.hittil.andelIntern)} interntid av {t2(t.hittil.sum)} timer.</li>

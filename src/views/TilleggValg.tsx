@@ -13,10 +13,10 @@ export function TilleggValg({ prosjektId, value, onChange, lys }: { prosjektId: 
   if (!liste.length) return null;
   const merk = (s: string) => s === "utkast" ? " (ikke signert)" : s === "avvist" ? " (avvist)" : "";
   return (
-    <label className={`field${lys ? " lys" : ""}`}><span className="label">Gjelder</span>
+    <label className={`field${lys ? " lys" : ""}`}><span className="label">Hva gjelder arbeidet?</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Gjelder hovedjobben eller tilleggsarbeid">
         <option value="">Hovedjobben</option>
-        {liste.map((t) => <option key={t.id} value={t.id}>Tillegg: {t.tittel}{merk(t.status)}</option>)}
+        {liste.map((t) => <option key={t.id} value={t.id}>{`Tillegg: ${t.tittel}${merk(t.status)}`}</option>)}
       </select></label>
   );
 }

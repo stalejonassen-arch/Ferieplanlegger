@@ -105,7 +105,7 @@ export function KampanjerAv() {
   if (!skjulteNa.length) return null;
   return (
     <p className="small muted kampanjer-av">
-      {skjulteNa.length === 1 ? <>Du har skjult kampanjen «{skjulteNa[0]!.tittel}».</> : <>Du har skjult {skjulteNa.length} kampanjer.</>}{" "}
+      {skjulteNa.length === 1 ? `Du har skjult kampanjen «${skjulteNa[0]!.tittel}».` : `Du har skjult ${skjulteNa.length} kampanjer.`}{" "}
       <button className="lenkeknapp" onClick={() => kjor(() => api.visKampanje(), skjulteNa.length === 1 ? "Kampanjen vises igjen" : "Kampanjene vises igjen")}>Vis igjen</button>
     </p>
   );

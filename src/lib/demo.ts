@@ -475,6 +475,7 @@ export function demoApi(): Api {
     },
     async slettPersonrapport(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.personrapporter = (d.personrapporter ?? []).filter((x) => x.id !== id); endret(); },
     async markerPersonrapportLest(id) { const r = (d.personrapporter ?? []).find((x) => x.id === id && x.ansatt_id === meg()?.id && x.publisert); if (r && !r.lest) { r.lest = new Date().toISOString(); endret(); } },
+    async ansatteMedPush() { return d.ansatte.filter((a) => a.aktiv).slice(0, 3).map((a) => a.id); },
     async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },
     async markerLest(id) {
       const m = meg(); if (!m) return;

@@ -1,6 +1,6 @@
 // Henter kunder og prosjekter fra Visma Business NXT inn i ByggLogg (bare lesing i Visma).
 // Kjøres av pg_cron hvert kvarter. ?skjema=1 viser hvilke felt Visma tilbyr (for feilsøking).
-// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v8: salg per kategori)
+// Publiseres uten JWT-sjekk. Trenger hemmeligheten VISMA_CLIENT_SECRET. (v9: feilsøking krever driftsnøkkel)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -307,8 +307,21 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
   return rader.length;
 }
 
+/** Feilsøking og tvungen henting krever driftsnøkkelen (tabellen drift_noekkel), ellers kan hvem som helst lese Visma-data */
+const BESKYTTET = ["typer", "firmaer", "prove", "type", "skjema", "varer", "utstyr", "salg"];
+async function harNoekkel(req: Request) {
+  const gitt = req.headers.get("x-bygglogg-noekkel") ?? "";
+  if (gitt.length < 32) return false;
+  const { data } = await sb.from("drift_noekkel").select("verdi").eq("id", 1).maybeSingle();
+  if (!data?.verdi || data.verdi.length !== gitt.length) return false;
+  let ulik = 0;
+  for (let i = 0; i < gitt.length; i++) ulik |= gitt.charCodeAt(i) ^ data.verdi.charCodeAt(i);
+  return ulik === 0;
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
+  if (BESKYTTET.some((p) => url.searchParams.has(p)) && !(await harNoekkel(req))) return new Response("ikke tilgang", { status: 403 });
   try {
     const { data: bedrifter } = await sb.from("bedrifter").select("id, visma_firma_nr").not("visma_firma_nr", "is", null);
     const tok = await token();

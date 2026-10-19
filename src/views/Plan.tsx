@@ -76,7 +76,7 @@ export function OppgaveSkjema({ start, prosjekt, ferdig }: { start?: Partial<NyO
       </label>
       {f.fra && f.til && f.til >= f.fra && (
         dager.length
-          ? <span className="small muted" style={{ marginTop: -4 }}>{dager.length} {dager.length === 1 ? "arbeidsdag" : "arbeidsdager"}{f.helg ? "" : " (mandag–fredag, uten helligdager)"}</span>
+          ? <span className="small muted" style={{ marginTop: -4 }}>{`${dager.length} ${dager.length === 1 ? "arbeidsdag" : "arbeidsdager"}${f.helg ? "" : " (mandag–fredag, uten helligdager)"}`}</span>
           : <span className="small" style={{ color: "var(--warn)", marginTop: -4 }}>Perioden har ingen hverdager. Kryss av for helg hvis det skal jobbes da.</span>
       )}
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>

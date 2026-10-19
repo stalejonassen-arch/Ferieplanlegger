@@ -92,6 +92,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0054_tillegg_timer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0055_oppgave_helg.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0056_personrapport.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0057_sikring_push_oversikt.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -898,6 +899,13 @@ describe("personlige månedsrapporter og DG", () => {
 });
 
 describe("skjulte kampanjer", () => {
+  it("bare leder ser hvem som har push, og driftsnøkkelen kan ikke leses", async () => {
+    await db.query("insert into public.push_abonnement (endpoint, ansatt_id, p256dh, auth) values ($1, $2, $3, $4)", ["https://x/1", await idOf("Jim Kato"), "a", "b"]);
+    expect((await as<any>(STALE, "select * from public.ansatte_med_push()")).map((x: any) => x.ansatte_med_push)).toContain(await idOf("Jim Kato"));
+    expect(await as(JIM, "select * from public.ansatte_med_push()")).toHaveLength(0);
+    await expect(as(STALE, "select verdi from public.drift_noekkel")).rejects.toThrow();
+    expect((await db.query<any>("select length(verdi) n from public.drift_noekkel")).rows[0].n).toBe(64);
+  });
   it("ansatt kan vise en skjult kampanje igjen", async () => {
     const [k] = await as<any>(STALE, "insert into public.kampanjer (tittel, fra, til, sider) values ('DM10', current_date, current_date + 7, array['a.png']) returning id");
     await as(JIM, "select public.skjul_kampanje($1)", [k.id]);

@@ -74,6 +74,8 @@ export interface Api {
   slettPersonrapport(id: string): Promise<void>;
   markerPersonrapportLest(id: string): Promise<void>;
   lagreDgKategorier(k: import("./dg").DgKategori[]): Promise<void>;
+  /** Leder: hvilke ansatte som har slått på push-varsler */
+  ansatteMedPush(): Promise<string[]>;
   /** Leder: logo og firmafarger. Null fjerner. forAlle setter firmafargene på alle ansatte. */
   lagreDrakt(logo: string | null, logoMork: string | null, drakt: import("./drakt").Drakt | null, forAlle: boolean): Promise<void>;
   /** Reklamasjon: registrer eller endre (returnerer id) */
@@ -554,6 +556,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettPersonrapport(id) { ok(await sb.from("personrapporter").delete().eq("id", id)); },
     async markerPersonrapportLest(id) { ok(await sb.rpc("marker_personrapport_lest", { r: id })); },
     async lagreDgKategorier(k) { ok(await sb.rpc("lagre_dg_kategorier", { k })); },
+    async ansatteMedPush() { const r = await sb.rpc("ansatte_med_push"); return r.error ? [] : (r.data as string[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },
     async lagreReklamasjon(x) {
       const { id, ...rad } = x;

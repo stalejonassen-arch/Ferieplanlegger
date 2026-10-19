@@ -371,7 +371,7 @@ function TilleggDel({ p }: { p: Prosjekt }) {
               <div key={x.id} className={`item ${tilleggKlasse[x.status]}`}>
                 <div style={{ minWidth: 0 }}>
                   <div className="t">{x.tittel}</div>
-                  <div className="s"><b>Ført {t2(fort(x.id))} t</b>{x.timer != null ? ` av anslått ${t2(x.timer)} t` : ""}{x.timer != null && fort(x.id) > x.timer ? " – over anslaget" : ""}</div>
+                  <div className="s"><b>{`Ført ${t2(fort(x.id))} t`}</b>{x.timer != null ? ` av anslått ${t2(x.timer)} t` : ""}{x.timer != null && fort(x.id) > x.timer ? " – over anslaget" : ""}</div>
                   <div className="s">{["", x.pris != null ? `kr ${x.pris.toLocaleString("nb-NO")} eks. mva` : "", x.materiell].filter(Boolean).join(" · ")}</div>
                   {x.beskrivelse && <div className="s">{x.beskrivelse}</div>}
                   {x.signert_tid && <div className="s">Signert av {x.signert_navn} {new Date(x.signert_tid).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })}</div>}
