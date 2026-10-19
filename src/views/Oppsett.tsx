@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PROFIL } from "../lib/profil";
 import { useApp } from "../App";
 import { firma } from "../lib/profil";
@@ -241,16 +241,44 @@ function ModulOppsett() {
   );
 }
 
-/** Det faste prosjektet i Visma der timer på reklamasjon føres */
+/** Hvordan bedriften håndterer reklamasjon: hvor timene føres, hvem som får ansvaret og standard frist */
 function ReklamasjonsprosjektValg() {
   const { d, kjor } = useApp();
+  const fra = () => d.reklOppsett ?? { timer: d.reklamasjonProsjekt ? "prosjekt" as const : "jobben" as const, ansvar: "snekker" as const, fristDager: 14, prosjekt: d.reklamasjonProsjekt ?? null };
+  const [o, setO] = useState(fra);
+  useEffect(() => { setO(fra()); }, [d.reklOppsett?.timer, d.reklOppsett?.ansvar, d.reklOppsett?.fristDager, d.reklOppsett?.prosjekt]); // eslint-disable-line react-hooks/exhaustive-deps
+  const n = fra();
+  const endret = o.timer !== n.timer || o.ansvar !== n.ansvar || o.fristDager !== n.fristDager || (o.timer === "prosjekt" && o.prosjekt !== n.prosjekt);
+  const valg = <T extends string>(navn: string, verdi: T, tekst: string, hint: string, sett: (v: T) => void, aktiv: T) => (
+    <label className="rekl-valg"><input type="radio" name={navn} checked={aktiv === verdi} onChange={() => sett(verdi)} /><span><b>{tekst}</b><span className="small muted">{hint}</span></span></label>
+  );
   return (
-    <div className="oppsett-under" style={{ marginTop: 12 }}>
+    <div className="oppsett-under" style={{ marginTop: 12 }} id="opp-reklamasjon">
       <h3 style={{ margin: "0 0 4px" }}>Reklamasjon</h3>
-      <p className="small muted" style={{ marginTop: 0 }}>Velg det interne prosjektet i Visma der timer på reklamasjon føres. Timene merkes med hvilken jobb og reklamasjon de gjelder, og blir aldri fakturert. Uten et valgt prosjekt føres timene på originaljobben, men faktureres ikke.</p>
-      <ProsjektVelger label="Reklamasjonsprosjekt" placeholder="Ikke valgt" value={d.reklamasjonProsjekt ?? ""} tom="Ikke valgt"
-        prosjekter={d.prosjekter.filter((p) => p.aktiv || p.id === d.reklamasjonProsjekt)}
-        onChange={(id) => kjor(() => api.lagreReklamasjonsprosjekt(id || null), id ? "Reklamasjonsprosjektet er valgt" : "Reklamasjonsprosjektet er fjernet")} />
+      <p className="small muted" style={{ marginTop: 0 }}>Uansett valg merkes timene med hvilken reklamasjon de gjelder, og de blir aldri fakturert.</p>
+      <fieldset className="rekl-gruppe"><legend className="label">Hvor føres timene på reklamasjon?</legend>
+        {valg("rekl-timer", "prosjekt", "Fast reklamasjonsprosjekt i regnskapet", "Samler kostnaden for alle reklamasjoner på ett internt prosjekt.", (v) => setO({ ...o, timer: v }), o.timer)}
+        {o.timer === "prosjekt" && (
+          <div style={{ marginLeft: 28 }}>
+            <ProsjektVelger label="Reklamasjonsprosjekt" placeholder="Velg prosjekt" value={o.prosjekt ?? ""} tom="Ikke valgt"
+              prosjekter={d.prosjekter.filter((p) => p.aktiv || p.id === o.prosjekt)} onChange={(id) => setO({ ...o, prosjekt: id || null })} />
+          </div>
+        )}
+        {valg("rekl-timer", "jobben", "På originaljobben", "Viser hva hver jobb faktisk kostet, med etterarbeid.", (v) => setO({ ...o, timer: v }), o.timer)}
+        {valg("rekl-timer", "intern", "Som interntid", "Uten prosjekt. For dem som ikke følger opp reklamasjon i regnskapet.", (v) => setO({ ...o, timer: v }), o.timer)}
+      </fieldset>
+      <fieldset className="rekl-gruppe"><legend className="label">Hvem får ansvaret når en reklamasjon registreres?</legend>
+        {valg("rekl-ansvar", "snekker", "Snekkeren på originaljobben", "", (v) => setO({ ...o, ansvar: v }), o.ansvar)}
+        {valg("rekl-ansvar", "selger", "Selger/prosjektleder på jobben", "Snekkeren hvis jobben ikke har selger.", (v) => setO({ ...o, ansvar: v }), o.ansvar)}
+        {valg("rekl-ansvar", "ingen", "Leder velger hver gang", "", (v) => setO({ ...o, ansvar: v }), o.ansvar)}
+      </fieldset>
+      <label className="field kort"><span className="label">Standard svarfrist (dager etter at kunden meldte fra)</span>
+        <input type="number" min={0} max={365} value={o.fristDager} onChange={(e) => setO({ ...o, fristDager: Math.max(0, Math.min(365, Number(e.target.value) || 0)) })} /></label>
+      <p className="small muted" style={{ margin: "4px 0 8px" }}>{o.fristDager ? `Den ansvarlige og leder får varsel to dager før fristen og dagen etter hvis den er passert.` : "0 = ingen frist settes automatisk."}</p>
+      <div className="row">
+        <button className="btn primary" disabled={!endret || (o.timer === "prosjekt" && !o.prosjekt)} onClick={() => kjor(() => api.lagreReklamasjonOppsett(o), "Oppsettet for reklamasjon er lagret")}>Lagre</button>
+        {endret && <button className="btn" onClick={() => setO(fra())}>Angre</button>}
+      </div>
     </div>
   );
 }

@@ -91,6 +91,7 @@ export interface Api {
   slettReklamasjon(id: string): Promise<void>;
   /** Leder: bedriftens faste reklamasjonsprosjekt */
   lagreReklamasjonsprosjekt(id: string | null): Promise<void>;
+  lagreReklamasjonOppsett(o: NonNullable<Data["reklOppsett"]>): Promise<void>;
   /** Hvilken reklamasjon du jobber med mens du er logget inn */
   stempleReklamasjon(id: string | null): Promise<void>;
   /** Velg tilleggsarbeid mens du er logget inn (null = hovedjobben) */
@@ -348,7 +349,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
         reklamasjoner: reklamasjoner.error ? [] : (reklamasjoner.data as Reklamasjon[]).map((r) => ({ ...r, materiell_kost: r.materiell_kost == null ? null : Number(r.materiell_kost) })),
-        reklamasjonProsjekt: (b0.reklamasjon_prosjekt_id as string | null | undefined) ?? null,
+        // Timene føres på det faste prosjektet bare når bedriften har valgt det
+        reklamasjonProsjekt: (b0.rekl_timer ?? "prosjekt") === "prosjekt" ? (b0.reklamasjon_prosjekt_id as string | null | undefined) ?? null : null,
+        reklOppsett: { timer: b0.rekl_timer ?? (b0.reklamasjon_prosjekt_id ? "prosjekt" : "jobben"), ansvar: b0.rekl_ansvar ?? "snekker", fristDager: b0.rekl_frist_dager ?? 14, prosjekt: b0.reklamasjon_prosjekt_id ?? null },
         utstyr: utstyr.error ? [] : (utstyr.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), pris: Number(x.pris) })),
         utstyrGrenser: { arbeidstoy: b0.utstyr_grense_arbeidstoy == null ? null : Number(b0.utstyr_grense_arbeidstoy), verktoy: b0.utstyr_grense_verktoy == null ? null : Number(b0.utstyr_grense_verktoy), sammeMnd: Number(b0.utstyr_samme_mnd ?? 6), kvoter: (b0.utstyr_kvoter as Kvoter | undefined) ?? STANDARD_KVOTER },
         egenmelding: { maksDager: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_dager ?? 3), maksGanger: Number((bedrift.data as any[])?.[0]?.egenmelding_maks_ganger ?? 4) },
@@ -608,6 +611,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async slettReklamasjon(id) { ok(await sb.from("reklamasjoner").delete().eq("id", id)); },
     async lagreReklamasjonsprosjekt(id) { ok(await sb.rpc("lagre_reklamasjonsprosjekt", { p: id })); },
+    async lagreReklamasjonOppsett(o) { ok(await sb.rpc("lagre_reklamasjon_oppsett", { timer: o.timer, ansvar: o.ansvar, frist_dager: o.fristDager, prosjekt: o.prosjekt })); },
     async stempleReklamasjon(id) { ok(await sb.rpc("stemple_reklamasjon", { r: id })); },
     async stempleTillegg(id) { ok(await sb.rpc("stemple_tillegg", { t: id })); },
     async lagreOppgave(o) {
