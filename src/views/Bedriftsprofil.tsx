@@ -41,7 +41,7 @@ export function Bedriftsprofil() {
   };
 
   return (
-    <section className="panel">
+    <section className="panel" id="bedriftsprofil">
       <h2>Bedriftsprofil</h2>
       <p className="small muted">Navn og kontaktinfo brukes øverst i appen, i sluttdokumentasjonen til kunden og i lønnsfilene. Stedet styrer værmeldingen på startsiden.</p>
       <form onSubmit={lagre} className="skjema-rutenett" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
@@ -110,7 +110,7 @@ export function Tripletex() {
   const koblet = st.aktiv && st.har_nokkel;
 
   return (
-    <section className="panel">
+    <section className="panel" id="tripletex">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <h2 style={{ margin: 0 }}>Tripletex</h2>
         <span className={`chip ${koblet ? "godkjent" : "demo"}`}>{koblet ? "Koblet til" : "Ikke koblet til"}</span>

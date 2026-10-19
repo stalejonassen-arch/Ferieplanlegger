@@ -31,6 +31,8 @@ export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: strin
 /** Tripletex-koblingen for lederens bedrift (nøkkelen vises aldri) */
 export interface TxLonnsart { id: number; number: string; name: string; showInTimesheet: boolean }
 export interface LonnSendt { mnd: string; sendt: number; oppdatert: number; fjernet: number; ikke_koblet: string[]; ukjente_lonnsarter: string[]; feil: string[] }
+export interface VismaStatus { koblet: boolean; firma: string; status: string; sist: string | null; orgnr: string; kunder: number; prosjekter: number }
+export interface AnsattForslag { kilde: "visma" | "tripletex"; ekstern_id: string; navn: string; epost: string | null; ansattnr: string | null }
 export interface TripletexStatus { aktiv: boolean; sist: string | null; status: string; send_timer: boolean; aktivitet_id: number | null; har_nokkel: boolean; sendt_timer: number }
 export interface PlattformBedrift { id: number; navn: string; orgnr: string; aktiv: boolean; abonnement_til: string | null; visma_firma_nr: number | null; ansatte: number; ledere: string; sist_aktiv: string | null; opprettet: string }
 
@@ -215,6 +217,15 @@ export interface Api {
   vismaStatus(): Promise<{ tid: string; ok: boolean; melding: string } | null>;
   /** Tripletex: status, koble til med ansattnøkkel, koble fra, innstillinger og «hent nå» */
   tripletexStatus(): Promise<TripletexStatus | null>;
+  /** Leder: Visma-koblingen (firmaet finnes automatisk ut fra org.nr.) */
+  vismaKobling(): Promise<VismaStatus | null>;
+  kobleVisma(): Promise<void>;
+  /** Leder: ansatte funnet i regnskapet som ikke er i ByggLogg ennå */
+  ansattForslag(): Promise<AnsattForslag[]>;
+  leggTilForslag(kilde: string, ider: string[], inviter: boolean): Promise<number>;
+  avvisForslag(kilde: string, id: string): Promise<void>;
+  /** Leder: send invitasjon til alle med e-post som ikke har logget inn (ikke de som fikk en siste døgn) */
+  inviterAlleSomMangler(): Promise<number>;
   kobleTripletex(nokkel: string): Promise<void>;
   kobleFraTripletex(): Promise<void>;
   tripletexInnstillinger(sendTimer: boolean, aktivitetId: number | null): Promise<void>;
@@ -690,6 +701,12 @@ function supabaseApi(sb: SupabaseClient): Api {
       if (sider.length) await sb.storage.from("bilder").remove(sider);
     },
     async settVisKampanjer(vis) { ok(await sb.rpc("sett_vis_kampanjer", { vis })); },
+    async vismaKobling() { const r = await sb.rpc("visma_kobling"); return r.error ? null : ((r.data as VismaStatus | null) ?? null); },
+    async kobleVisma() { ok(await sb.rpc("koble_visma")); },
+    async ansattForslag() { const r = await sb.rpc("ansatt_forslag_liste"); return r.error ? [] : (r.data as AnsattForslag[]); },
+    async leggTilForslag(kilde, ider, inviter) { return ok(await sb.rpc("legg_til_forslag", { kilde, ider, inviter })) as number; },
+    async avvisForslag(kilde, ekstern_id) { ok(await sb.rpc("avvis_forslag", { kilde, ekstern_id })); },
+    async inviterAlleSomMangler() { return ok(await sb.rpc("inviter_alle_som_mangler")) as number; },
     async tripletexStatus() { const r = await sb.rpc("tripletex_status"); return (r.data as TripletexStatus | null) ?? null; },
     async kobleTripletex(nokkel) { ok(await sb.rpc("koble_tripletex", { nokkel })); },
     async kobleFraTripletex() { ok(await sb.rpc("koble_fra_tripletex")); },

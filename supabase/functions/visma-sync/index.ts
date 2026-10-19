@@ -308,6 +308,52 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
 }
 
 /** Feilsøking og tvungen henting krever driftsnøkkelen (tabellen drift_noekkel), ellers kan hvem som helst lese Visma-data */
+/**
+ * Nye kunder: når kunden har godkjent ByggLogg i Visma, dukker firmaet opp i availableCompanies.
+ * Firmaet kobles til bedriften med samme org.nr. (bare hvis nøyaktig én bedrift har det nummeret
+ * og ingen annen bedrift allerede bruker firmaet).
+ */
+async function finnNyeFirmaer(tok: string) {
+  const { data: uten } = await sb.from("bedrifter").select("id, orgnr, tripletex_aktiv").is("visma_firma_nr", null).neq("orgnr", "");
+  const kandidater = (uten ?? []).filter((b) => /^\d{9}$/.test(String(b.orgnr ?? "")) && !b.tripletex_aktiv);
+  if (!kandidater.length) return 0;
+  const d = await gql(tok, `{ availableCompanies { items { name vismaNetCompanyId organizationNo } } }`);
+  const firmaer = (d.availableCompanies?.items ?? []) as { name: string; vismaNetCompanyId: number; organizationNo: string }[];
+  const { data: alleB } = await sb.from("bedrifter").select("id, orgnr, visma_firma_nr");
+  let n = 0;
+  for (const b of kandidater) {
+    const treff = firmaer.filter((f) => String(f.organizationNo ?? "").replace(/\D/g, "") === b.orgnr);
+    const sammeOrgnr = (alleB ?? []).filter((x) => x.orgnr === b.orgnr).length;
+    if (treff.length !== 1 || sammeOrgnr !== 1) {
+      await sb.from("bedrifter").update({
+        visma_status: treff.length > 1 || sammeOrgnr > 1 ? "Fant flere firmaer med samme org.nr. Kontakt ByggLogg." : "Finner ikke firmaet i Visma ennå. Har dere godkjent ByggLogg i Visma?",
+      }).eq("id", b.id);
+      continue;
+    }
+    const f = treff[0];
+    if ((alleB ?? []).some((x) => x.visma_firma_nr === f.vismaNetCompanyId)) continue;
+    const { error } = await sb.from("bedrifter").update({ visma_firma_nr: f.vismaNetCompanyId, visma_navn: f.name ?? "", visma_status: "Funnet i Visma. Henter kunder og prosjekter …" })
+      .eq("id", b.id).is("visma_firma_nr", null);
+    if (!error) n++;
+  }
+  return n;
+}
+
+/** Ansatte i Visma (aktører med ansattnummer) som forslag til ansatte i ByggLogg */
+async function synkAnsattForslag(tok: string, b: { id: number; visma_firma_nr: number }, aFelt: Set<string>) {
+  if (!aFelt.has("employeeNo")) return 0;
+  const r = await alle(tok, b.visma_firma_nr, "associate", velg(aFelt, ["associateNo", "employeeNo", "name", "emailAddress"]), "{ employeeNo: { _gt: 0 } }");
+  const rader = r.filter((x) => s(x.name) && !/^(admin|kasse|test|lager|butikk)\b/i.test(s(x.name))).map((x) => {
+    const e = s(x.emailAddress).toLowerCase();
+    return { bedrift_id: b.id, kilde: "visma", ekstern_id: String(x.employeeNo), navn: s(x.name), epost: /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e) ? e : null, ansattnr: String(x.employeeNo), sett: new Date().toISOString() };
+  });
+  if (rader.length) {
+    const { error } = await sb.from("ansatt_forslag").upsert(rader, { onConflict: "bedrift_id,kilde,ekstern_id", ignoreDuplicates: false });
+    if (error) throw error;
+  }
+  return rader.length;
+}
+
 const BESKYTTET = ["typer", "firmaer", "prove", "type", "skjema", "varer", "utstyr", "salg"];
 async function harNoekkel(req: Request) {
   const gitt = req.headers.get("x-bygglogg-noekkel") ?? "";
@@ -322,9 +368,15 @@ async function harNoekkel(req: Request) {
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   if (BESKYTTET.some((p) => url.searchParams.has(p)) && !(await harNoekkel(req))) return new Response("ikke tilgang", { status: 403 });
+  const body = req.method === "POST" ? await req.json().catch(() => ({})) as { bedrift?: number } : {};
   try {
-    const { data: bedrifter } = await sb.from("bedrifter").select("id, visma_firma_nr").not("visma_firma_nr", "is", null);
     const tok = await token();
+    let nyeFirmaer = 0;
+    try { nyeFirmaer = await finnNyeFirmaer(tok); } catch (e) { console.error("Nye firmaer", e); }
+    let bq = sb.from("bedrifter").select("id, visma_firma_nr").not("visma_firma_nr", "is", null);
+    if (Number.isInteger(body.bedrift)) bq = bq.eq("id", body.bedrift!);
+    const { data: bedrifter } = await bq;
+    if (Number.isInteger(body.bedrift) && !bedrifter?.length) return Response.json({ nyeFirmaer, melding: "ikke koblet" });
     if (url.searchParams.get("typer")) {
       const re = new RegExp(url.searchParams.get("typer")!, "i");
       const d = await gql(tok, `{ __schema { types { name } } }`);
@@ -355,6 +407,7 @@ Deno.serve(async (req) => {
     const rapport: Record<string, unknown> = {};
 
     for (const b of bedrifter ?? []) {
+     try {
       // I Business NXT er prosjekter en «organisatorisk enhet» (orgUnit1–12). Finn klassen som heter Prosjekt.
       const navnFelt = Array.from({ length: 12 }, (_, i) => `orgUnit${i + 1}Name`);
       const ci = await gql(tok, `{ useCompany(no: ${b.visma_firma_nr}) { companyInformation { items { ${navnFelt.join(" ")} } } } }`);
@@ -471,13 +524,26 @@ Deno.serve(async (req) => {
         try { salg = await synkSalgKategorier(tok, b); }
         catch (e) { salg = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      let forslag: number | string = 0;
+      try { forslag = await synkAnsattForslag(tok, b, aFelt); }
+      catch (e) { forslag = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, ansatte_i_visma: forslag, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      await sb.from("bedrifter").update({ visma_status: `Hentet ${kunder.length} kunder og ${prosjekter.length} prosjekter.`, visma_sist: new Date().toISOString() }).eq("id", b.id);
+     } catch (e) {
+      const m = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+      rapport[`bedrift ${b.id}`] = { feil: m };
+      await sb.from("bedrifter").update({ visma_status: `Feil ved henting: ${m}`, visma_sist: new Date().toISOString() }).eq("id", b.id);
+     }
     }
+    if (nyeFirmaer) rapport.nye_firmaer = nyeFirmaer;
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
   } catch (e) {
     const melding = e instanceof Error ? e.message : String(e);
     await sb.from("visma_sync_logg").insert({ ok: false, melding: melding.slice(0, 2000) });
+    if (Number.isInteger(body.bedrift)) {
+      await sb.from("bedrifter").update({ visma_status: /VISMA_CLIENT_SECRET|Visma Connect/.test(melding) ? "ByggLogg får ikke kontakt med Visma akkurat nå. Prøv igjen senere." : `Feil: ${melding.slice(0, 200)}` }).eq("id", body.bedrift!);
+    }
     return new Response(melding, { status: 500 });
   }
 });

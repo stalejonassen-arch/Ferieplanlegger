@@ -93,6 +93,16 @@ async function hent(tx: Okt, b: Bedrift) {
   const { data: egne } = await sb.from("ansatte").select("id, epost, ansattnr, tripletex_id").eq("bedrift_id", b.id);
   const endr = koblAnsatte(egne ?? [], txAnsatte);
   for (const e of endr) await sb.from("ansatte").update({ tripletex_id: e.tripletex_id }).eq("id", e.id);
+  // Ansatte i Tripletex som ikke finnes i ByggLogg vises som forslag for leder («Legg til og inviter»)
+  const fRader = txAnsatte.map((t) => ({
+    bedrift_id: b.id, kilde: "tripletex", ekstern_id: String(t.id),
+    navn: [t.firstName, t.lastName].map((x) => String(x ?? "").trim()).filter(Boolean).join(" "),
+    epost: String(t.email ?? "").trim().toLowerCase() || null, ansattnr: String(t.employeeNumber ?? "").trim() || null, sett: naa,
+  })).filter((r) => r.navn);
+  if (fRader.length) {
+    const { error } = await sb.from("ansatt_forslag").upsert(fRader, { onConflict: "bedrift_id,kilde,ekstern_id" });
+    if (error) console.error("Ansattforslag", error.message);
+  }
 
   return { kunder: kRader.length, prosjekter: pRader.length, ansatte_koblet: endr.length, ansatte_i_tripletex: txAnsatte.length };
 }

@@ -36,6 +36,8 @@ beforeAll(async () => {
   await db.exec(`create schema net; create table net.kall (body jsonb);
     create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as
       $$ insert into net.kall values (body); select 1::bigint $$;
+    create function net.http_post(url text, body jsonb, headers jsonb, timeout_milliseconds integer) returns bigint language sql as
+      $$ insert into net.kall values (body); select 1::bigint $$;
     grant usage on schema net to authenticated; grant insert on net.kall to authenticated;`);
   const v = readFileSync("supabase/migrations/0004_varsler.sql", "utf8")
     .replace(/create extension[^;]*;/g, "").replace(/select cron\.schedule\([\s\S]*$/, "");
@@ -101,6 +103,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0063_reklamasjon_oppsett.sql", "utf8"));
   await db.exec("create table auth.users (email text, last_sign_in_at timestamptz)");
   await db.exec(readFileSync("supabase/migrations/0064_invitasjon.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0065_regnskap_auto.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1154,5 +1157,38 @@ describe("invitasjon til appen", () => {
     expect(r.invitert).not.toBeNull();
     expect(r.innlogget).not.toBeNull();
     expect(rader.find((x: any) => x.ansatt_id === uten.id).innlogget).toBeNull();
+  });
+});
+
+describe("automatisk oppsett mot regnskapet", () => {
+  const q3 = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("org.nr. kan ikke byttes av leder når det er satt", async () => {
+    const [b] = await q3("select id, orgnr from public.bedrifter where navn = 'Annen Bygg AS'");
+    await as("leder@annen.no", "select public.lagre_bedriftsprofil($1)", [{ orgnr: "123456789" }]);
+    expect((await q3("select orgnr from public.bedrifter where id = $1", [b.id]))[0].orgnr).toBe(b.orgnr);
+  });
+
+  it("leder kan be om Visma-kobling, og forslag fra regnskapet kan legges til og inviteres", async () => {
+    await db.exec("update public.bedrifter set orgnr = '832507652', visma_firma_nr = null, visma_sist = null where id = 1");
+    await db.exec("delete from net.kall; insert into public.plattform_oppsett (nokkel, verdi) values ('functions_url', 'https://x.supabase.co/functions/v1') on conflict (nokkel) do update set verdi = excluded.verdi");
+    await expect(as(JIM, "select public.koble_visma()")).rejects.toThrow(/Bare leder/);
+    await as(STALE, "select public.koble_visma()");
+    expect((await q3("select body from net.kall"))[0].body).toEqual({ bedrift: 1 });
+    await expect(as(STALE, "select public.koble_visma()")).rejects.toThrow(/nettopp/);
+    expect((await as<any>(STALE, "select public.visma_kobling() v"))[0].v).toMatchObject({ koblet: false, orgnr: "832507652" });
+
+    await db.exec(`insert into public.ansatt_forslag (bedrift_id, kilde, ekstern_id, navn, epost) values
+      (1, 'visma', '1', 'Jim Kato', '${JIM}'), (1, 'visma', '2', 'Ny Snekker', 'ny.snekker@example.no'),
+      (1, 'visma', '3', 'Tomas Berg', null), (1, 'visma', '4', 'Kasse Konto', null)`);
+    expect(await as(JIM, "select * from public.ansatt_forslag_liste()")).toHaveLength(0);
+    const liste = await as<any>(STALE, "select ekstern_id from public.ansatt_forslag_liste()");
+    expect(liste.map((x: any) => x.ekstern_id)).toEqual(["4", "2", "3"]);
+    await as(STALE, "select public.avvis_forslag('visma', '4')");
+    await db.exec("delete from net.kall");
+    const [r] = await as<any>(STALE, "select public.legg_til_forslag('visma', array['2','3'], true) n");
+    expect(r.n).toBe(2);
+    expect(await as(STALE, "select * from public.ansatt_forslag_liste()")).toHaveLength(0);
+    expect((await q3("select count(*)::int n from net.kall where body->>'hendelse' = 'invitasjon'"))[0].n).toBe(1);
+    expect((await q3("select epost from public.ansatte where navn = 'Ny Snekker'"))[0].epost).toBe("ny.snekker@example.no");
   });
 });

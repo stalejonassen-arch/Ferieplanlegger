@@ -16,6 +16,12 @@ const y = y0 + 1;
 /** Oppdiktet e-post ut fra fornavnet, f.eks. «ola@demo.no» */
 const demoEpost = (navn: string) => `${navn.split(" ")[0]!.toLowerCase()}@demo.no`;
 const demoInvitert = new Map<string, string>();
+const vismaDemo = { koblet: false, firma: "", status: "", sist: null as string | null, orgnr: "999888777", kunder: 0, prosjekter: 0 };
+const forslagDemo: import("./api").AnsattForslag[] = [
+  { kilde: "visma", ekstern_id: "7", navn: "Henrik Vestre", epost: "henrik@demo.no", ansattnr: "7" },
+  { kilde: "visma", ekstern_id: "8", navn: "Sara Lid", epost: "sara@demo.no", ansattnr: "8" },
+  { kilde: "visma", ekstern_id: "9", navn: "Tomas Berg", epost: null, ansattnr: "9" },
+];
 
 function startdata(): Data {
   const avdelinger = [
@@ -686,6 +692,22 @@ export function demoApi(): Api {
     async lagreBedriftsprofil(p) { if (!leder()) throw new Error("Bare leder kan endre bedriftens profil."); d.bedrift = { ...d.bedrift!, ...p }; endret(); },
     async erPlattformAdmin() { return false; },
     async tripletexStatus() { return { ...txDemo }; },
+    async vismaKobling() { return { ...vismaDemo }; },
+    async kobleVisma() {
+      if (!leder()) throw new Error("Bare leder kan koble til Visma.");
+      Object.assign(vismaDemo, { koblet: true, firma: d.bedrift?.navn ?? "Demo Bygg AS", status: "Hentet 214 kunder og 37 prosjekter (demo).", sist: new Date().toISOString(), kunder: 214, prosjekter: 37 });
+      endret();
+    },
+    async ansattForslag() { return vismaDemo.koblet ? forslagDemo.filter((f) => !d.ansatte.some((a) => a.navn === f.navn)) : []; },
+    async leggTilForslag(kilde, ider) {
+      if (!leder()) throw new Error("Bare leder kan legge til ansatte.");
+      const nye = forslagDemo.filter((f) => f.kilde === kilde && ider.includes(f.ekstern_id) && !d.ansatte.some((a) => a.navn === f.navn));
+      for (const f of nye) d.ansatte.push({ ...d.ansatte[d.ansatte.length - 1]!, id: crypto.randomUUID(), navn: f.navn, epost: f.epost, ansattnr: f.ansattnr, rolle: "ansatt", prosjektleder: false, aktiv: true });
+      for (const f of nye) forslagDemo.splice(forslagDemo.indexOf(f), 1);
+      endret(); return nye.length;
+    },
+    async avvisForslag(kilde, id) { const i = forslagDemo.findIndex((f) => f.kilde === kilde && f.ekstern_id === id); if (i >= 0) forslagDemo.splice(i, 1); endret(); },
+    async inviterAlleSomMangler() { let n = 0; for (const a of d.ansatte) if (a.aktiv && a.epost && !demoInvitert.has(a.id)) { demoInvitert.set(a.id, new Date().toISOString()); n++; } return n; },
     async kobleTripletex(nokkel) { if (nokkel.trim().length < 10) throw new Error("Lim inn hele ansattnøkkelen fra Tripletex."); Object.assign(txDemo, { aktiv: true, har_nokkel: true, status: "Koblet til (demo). I den ekte appen hentes prosjekter og kunder nå." }); endret(); },
     async kobleFraTripletex() { Object.assign(txDemo, { aktiv: false, har_nokkel: false, status: "Koblet fra." }); endret(); },
     async tripletexInnstillinger(sendTimer, aktivitetId) { Object.assign(txDemo, { send_timer: sendTimer, aktivitet_id: aktivitetId }); },

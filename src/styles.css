@@ -1417,3 +1417,16 @@ header.top select.temavalg option { color: #10162E; }
 .rekl-valg { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .rekl-valg input { width: auto; flex: none; margin-top: 4px; }
 .rekl-valg > span { display: flex; flex-direction: column; }
+
+/* Kom i gang (oppsett for ny bedrift) */
+.kom-i-gang h3 { margin: 16px 0 4px; font-size: 1rem; }
+.kig-steg { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.kig-steg li { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: .85rem; color: var(--muted); }
+.kig-steg li.ok { border-color: var(--ok, #2e7d32); color: var(--ok, #2e7d32); }
+.kig-valg { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.kig-valg > div { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.kig-valg ol { margin: 6px 0; padding-left: 18px; display: grid; gap: 4px; }
+.kig-forslag { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; gap: 4px; }
+.kig-forslag li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.kig-forslag .hake { flex: 1; min-width: 0; }
+.kig-forslag .linkbtn { white-space: nowrap; }

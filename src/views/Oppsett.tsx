@@ -12,6 +12,7 @@ import { Bedriftsprofil, PlattformAdmin, Tripletex } from "./Bedriftsprofil";
 import { MODULER, bruker, type Modul } from "../lib/moduler";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { DraktOppsett } from "./Drakt";
+import { KomIGang } from "./KomIGang";
 import { VarselOversikt } from "./Varsler";
 
 /** Valg for varsel når noen fortsatt er stemplet inn: 7 t 30 min til 11 t, hvert kvarter */
@@ -47,6 +48,7 @@ export function Oppsett() {
   return (
     <>
       <PlattformAdmin />
+      <KomIGang />
       <Bedriftsprofil />
       <Tripletex />
       <nav className="oppsett-meny" aria-label="Deler av oppsettet">
