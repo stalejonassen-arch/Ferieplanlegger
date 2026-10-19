@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
 import { bruker } from "../lib/moduler";
 
@@ -127,6 +128,11 @@ export function Stempling() {
         {rp && s.prosjekt_id === rp && !gammel && (
           <div style={{ marginTop: 6 }}>
             <ReklamasjonValg value={s.reklamasjon_id ?? ""} onChange={(id) => kjor(() => api.stempleReklamasjon(id || null), id ? "Timene føres på reklamasjonen" : "Lagret")} />
+          </div>
+        )}
+        {s.prosjekt_id && s.prosjekt_id !== rp && !gammel && tilleggFor(d, s.prosjekt_id, s.tillegg_id).length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <TilleggValg prosjektId={s.prosjekt_id} value={s.tillegg_id ?? ""} onChange={(id) => kjor(() => api.stempleTillegg(id || null), id ? "Timene føres på tilleggsarbeidet" : "Timene føres på hovedjobben")} />
           </div>
         )}
         {s.prosjekt_id && <div style={{ marginTop: 8 }}><ProsjektForbruk prosjektId={s.prosjekt_id} lys /></div>}

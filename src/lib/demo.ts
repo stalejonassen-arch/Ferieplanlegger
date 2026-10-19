@@ -276,6 +276,12 @@ export function demoApi(): Api {
       const ny = { ...(gammel ?? { id: nyId(), lunsj_unntak: false, status: "levert" as const }), ...n, timer: varighet(n.fra, n.til, n.lunsj_min) } as Time;
       if (ny.reklamasjon_id && d.reklamasjonProsjekt) ny.prosjekt_id = d.reklamasjonProsjekt;
       if (ny.reklamasjon_id || (d.reklamasjonProsjekt && ny.prosjekt_id === d.reklamasjonProsjekt)) ny.fakturerbar = false;
+      if (ny.tillegg_id) {
+        const tl = d.tillegg.find((x) => x.id === ny.tillegg_id);
+        if (ny.reklamasjon_id) throw new Error("Timer kan ikke gjelde både reklamasjon og tilleggsarbeid.");
+        if (!tl || tl.prosjekt_id !== ny.prosjekt_id) throw new Error("Tilleggsarbeidet hører ikke til dette prosjektet.");
+        if (tl.status === "avvist" && gammel?.tillegg_id !== ny.tillegg_id) throw new Error("Tilleggsarbeidet er avvist. Før timene på hovedjobben.");
+      }
       if (gammel) Object.assign(gammel, ny); else d.timer.push(ny);
       endret();
     },
@@ -365,7 +371,7 @@ export function demoApi(): Api {
         if (!s) throw new Error("Du er ikke logget inn.");
         if (s.dato !== idag) { if (!o.til) throw new Error("Du ble ikke logget ut. Skriv inn når du sluttet."); slutt = o.til; }
         if (slutt > s.fra) d.timer.push({ id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
-          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null });
+          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null, tillegg_id: s.tillegg_id ?? null });
         d.stempling = d.stempling.filter((x) => x.ansatt_id !== m.id);
       }
       if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
@@ -505,6 +511,11 @@ export function demoApi(): Api {
     },
     async slettReklamasjon(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.reklamasjoner = (d.reklamasjoner ?? []).filter((r) => r.id !== id); endret(); },
     async lagreReklamasjonsprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge reklamasjonsprosjekt."); d.reklamasjonProsjekt = id; endret(); },
+    async stempleTillegg(id) {
+      const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn.");
+      if (id && !d.tillegg.some((x) => x.id === id && x.prosjekt_id === s.prosjekt_id && x.status !== "avvist")) throw new Error("Tilleggsarbeidet hører ikke til prosjektet du er logget inn på.");
+      s.tillegg_id = id; endret();
+    },
     async stempleReklamasjon(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.reklamasjon_id = id; endret(); },
     async lagreDrakt(logo, logoMork, drakt, forAlle) {
       if (!leder()) throw new Error("Bare leder kan endre logo og farger.");

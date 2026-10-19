@@ -328,6 +328,11 @@ function TilleggDel({ p }: { p: Prosjekt }) {
   const [ny, setNy] = useState({ tittel: "", beskrivelse: "", timer: "", materiell: "", pris: "" });
   const [signer, setSigner] = useState<Tillegg | null>(null);
   const liste = d.tillegg.filter((x) => x.prosjekt_id === p.id);
+  // Timer ført på hvert tillegg (underprosjekt) og på hovedjobben
+  const prosjektTimer = d.timer.filter((t) => t.prosjekt_id === p.id);
+  const fort = (id: string) => prosjektTimer.filter((t) => t.tillegg_id === id).reduce((n, t) => n + t.timer, 0);
+  const paTillegg = prosjektTimer.filter((t) => t.tillegg_id).reduce((n, t) => n + t.timer, 0);
+  const paHoved = prosjektTimer.filter((t) => !t.tillegg_id && !t.reklamasjon_id).reduce((n, t) => n + t.timer, 0);
   const tall = (s: string) => (s.trim() ? Number(s.replace(",", ".")) || null : null);
 
   const lagre = async (e: React.FormEvent) => {
@@ -357,13 +362,17 @@ function TilleggDel({ p }: { p: Prosjekt }) {
 
       <section className="panel">
         <h2 style={{ margin: 0 }}>Tilleggsarbeid</h2>
+        {liste.length > 0 && (
+          <p className="small muted" style={{ margin: "4px 0 8px" }}>Snekkerne velger «Gjelder: Tillegg …» når de fører timer eller er logget inn på prosjektet. Ført så langt: hovedjobben <b>{t2(paHoved)} t</b> · tilleggsarbeid <b>{t2(paTillegg)} t</b>.</p>
+        )}
         {liste.length ? (
           <div className="list">
             {liste.map((x) => (
               <div key={x.id} className={`item ${tilleggKlasse[x.status]}`}>
                 <div style={{ minWidth: 0 }}>
                   <div className="t">{x.tittel}</div>
-                  <div className="s">{[x.timer != null ? `${t2(x.timer)} t` : "", x.pris != null ? `kr ${x.pris.toLocaleString("nb-NO")} eks. mva` : "", x.materiell].filter(Boolean).join(" · ")}</div>
+                  <div className="s"><b>Ført {t2(fort(x.id))} t</b>{x.timer != null ? ` av anslått ${t2(x.timer)} t` : ""}{x.timer != null && fort(x.id) > x.timer ? " – over anslaget" : ""}</div>
+                  <div className="s">{["", x.pris != null ? `kr ${x.pris.toLocaleString("nb-NO")} eks. mva` : "", x.materiell].filter(Boolean).join(" · ")}</div>
                   {x.beskrivelse && <div className="s">{x.beskrivelse}</div>}
                   {x.signert_tid && <div className="s">Signert av {x.signert_navn} {new Date(x.signert_tid).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })}</div>}
                 </div>

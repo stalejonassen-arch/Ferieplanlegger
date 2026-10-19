@@ -78,6 +78,8 @@ export interface Api {
   lagreReklamasjonsprosjekt(id: string | null): Promise<void>;
   /** Hvilken reklamasjon du jobber med mens du er logget inn */
   stempleReklamasjon(id: string | null): Promise<void>;
+  /** Velg tilleggsarbeid mens du er logget inn (null = hovedjobben) */
+  stempleTillegg(id: string | null): Promise<void>;
   /** Arbeidsplan: leder deler ut arbeid, den som har fått det endrer status */
   lagreOppgave(o: NyOppgave): Promise<void>;
   slettOppgave(id: string): Promise<void>;
@@ -543,6 +545,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettReklamasjon(id) { ok(await sb.from("reklamasjoner").delete().eq("id", id)); },
     async lagreReklamasjonsprosjekt(id) { ok(await sb.rpc("lagre_reklamasjonsprosjekt", { p: id })); },
     async stempleReklamasjon(id) { ok(await sb.rpc("stemple_reklamasjon", { r: id })); },
+    async stempleTillegg(id) { ok(await sb.rpc("stemple_tillegg", { t: id })); },
     async lagreOppgave(o) {
       const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}), ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}) };
       ok(o.id ? await sb.from("oppgaver").update(rad).eq("id", o.id) : await sb.from("oppgaver").insert(rad));
