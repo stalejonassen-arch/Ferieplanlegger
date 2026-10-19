@@ -94,6 +94,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0056_personrapport.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0057_sikring_push_oversikt.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0058_stemple_uten_nett.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0059_reklamasjon_oppsett.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -913,6 +914,30 @@ describe("stempling uten nett", () => {
     if (t.length) expect(t[0]).toMatchObject({ fra: "00:00:00", beskrivelse: "Uten nett" });
     await expect(as(JIM, "select public.stemple('inn', null, '', 0, null, now() - interval '4 days')")).rejects.toThrow(/for gammel/);
     await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+  });
+});
+
+describe("reklamasjon satt opp per bedrift", () => {
+  it("ansvarlig og frist settes automatisk, og timene føres der bedriften har valgt", async () => {
+    const jim = await idOf("Jim Kato"), mads = await idOf("Mads Kjerstad");
+    await expect(as(JIM, "select public.lagre_reklamasjon_oppsett('jobben', 'snekker', 14, null)")).rejects.toThrow(/Bare leder/);
+    await expect(as(STALE, "select public.lagre_reklamasjon_oppsett('prosjekt', 'snekker', 14, null)")).rejects.toThrow(/Velg reklamasjonsprosjektet/);
+    await as(STALE, "select public.lagre_reklamasjon_oppsett('jobben', 'snekker', 10, null)");
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn, snekker_id, selger_id) values ('Takjobb ferdig', $1, $2) returning id", [mads, jim]);
+    const [r] = await as<any>(JIM, "insert into public.reklamasjoner (prosjekt_id, tittel, meldt_dato) values ($1, 'Lekkasje', current_date - 2) returning id, ansvarlig_id, frist::text frist, (current_date + 8)::text forventet", [p.id]);
+    expect(r.ansvarlig_id).toBe(mads);
+    expect(r.frist).toBe(r.forventet);
+    // Timer på originaljobben
+    const [t1] = await as<any>(MADS, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, reklamasjon_id) values ($1, null, '2027-06-01', '07:00', '09:00', $2) returning prosjekt_id, fakturerbar", [mads, r.id]);
+    expect(t1).toEqual({ prosjekt_id: p.id, fakturerbar: false });
+    // Interntid
+    await as(STALE, "select public.lagre_reklamasjon_oppsett('intern', 'selger', 0, null)");
+    const [t2] = await as<any>(MADS, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, reklamasjon_id) values ($1, $2, '2027-06-02', '07:00', '09:00', $3) returning prosjekt_id, fakturerbar", [mads, p.id, r.id]);
+    expect(t2).toEqual({ prosjekt_id: null, fakturerbar: false });
+    const [r2] = await as<any>(JIM, "insert into public.reklamasjoner (prosjekt_id, tittel) values ($1, 'Riss') returning ansvarlig_id, frist::text frist", [p.id]);
+    expect(r2).toEqual({ ansvarlig_id: jim, frist: null });
+    await db.query("delete from public.timer where ansatt_id = $1 and dato >= '2027-06-01'", [mads]);
+    await as(STALE, "select public.lagre_reklamasjon_oppsett('jobben', 'snekker', 14, null)");
   });
 });
 

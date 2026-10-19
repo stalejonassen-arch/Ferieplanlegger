@@ -1413,3 +1413,7 @@ header.top select.temavalg option { color: #10162E; }
 .prapport-punkt { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .prapport-kommentar { border-left: 4px solid var(--accent); background: var(--sunk); border-radius: 0 10px 10px 0; padding: 10px 12px; }
 .banner.uten-nett { border-left-color: var(--pending); background: color-mix(in srgb, var(--pending) 14%, var(--surface)); }
+.rekl-gruppe { border: 0; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.rekl-valg { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.rekl-valg input { width: auto; flex: none; margin-top: 4px; }
+.rekl-valg > span { display: flex; flex-direction: column; }

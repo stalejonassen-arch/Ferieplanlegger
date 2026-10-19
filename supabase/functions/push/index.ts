@@ -84,6 +84,26 @@ async function oppgave(id: string) {
   return Response.json(r);
 }
 
+/** Reklamasjon med frist om to dager, eller passert frist: varsle den ansvarlige og leder/prosjektleder */
+async function reklamasjon(id: string) {
+  const { data: r } = await sb.from("reklamasjoner").select("id, bedrift_id, prosjekt_id, tittel, status, frist, ansvarlig_id").eq("id", id).maybeSingle();
+  if (!r || !r.frist || !["ny", "godkjent"].includes(r.status)) return new Response("ikke aktuelt");
+  const idag = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
+  const passert = r.frist < idag;
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `reklamasjon:${passert ? "passert" : "snart"}:${r.frist}`, id: r.id });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: p } = await sb.from("prosjekter").select("navn").eq("id", r.prosjekt_id).maybeSingle();
+  const { data: alle } = await sb.from("ansatte").select("id, navn, sprak, rolle, prosjektleder").eq("bedrift_id", r.bedrift_id).eq("aktiv", true);
+  const mottakere = (alle ?? []).filter((a) => a.id === r.ansvarlig_id || a.rolle === "leder" || a.prosjektleder);
+  const res = await send(mottakere, (a) => a.sprak === "pl"
+    ? { tittel: passert ? "Reklamacja po terminie" : "Termin reklamacji za 2 dni", tekst: [r.tittel, p?.navn].filter(Boolean).join(" · "), url: "/#plan", tag: `reklamasjon-${r.id}` }
+    : { tittel: passert ? "Reklamasjon over fristen" : "Frist for reklamasjon om 2 dager", tekst: [r.tittel, p?.navn, `frist ${dato(r.frist)}`].filter(Boolean).join(" · "), url: "/#plan", tag: `reklamasjon-${r.id}` });
+  return Response.json(res);
+}
+
 /** Personlig månedsrapport publisert: varsle bare den ansatte rapporten gjelder */
 async function personrapport(id: string) {
   const { data: r } = await sb.from("personrapporter").select("id, bedrift_id, ansatt_id, periode, publisert").eq("id", id).maybeSingle();
@@ -142,12 +162,13 @@ async function bestilling(id: string) {
 
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
   if (type === "oppgave") return oppgave(id);
   if (type === "bestilling") return bestilling(id);
   if (type === "personrapport") return personrapport(id);
+  if (type === "reklamasjon") return reklamasjon(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });

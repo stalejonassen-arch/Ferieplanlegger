@@ -106,7 +106,7 @@ function demoPlan(m: string): Pick<Data, "oppgaver" | "leveranser" | "materialer
 }
 
 /** Sjekkliste, SJA og en bestilling i demoen */
-function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestillinger" | "reklamasjoner" | "reklamasjonProsjekt"> {
+function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestillinger" | "reklamasjoner" | "reklamasjonProsjekt" | "reklOppsett"> {
   const naa = new Date().toISOString();
   const sjekklister: Sjekkliste[] = [{
     id: "sk1", prosjekt_id: "p2", navn: "Våtrom – membran og sluk", mal: "vatrom", status: "pagaar", opprettet_av: "snekker3", opprettet: naa, endret: naa, signert_av: null, signert_tid: null,
@@ -133,10 +133,11 @@ function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestilling
 }
 
 /** En reklamasjon på en ferdig jobb i demoen */
-function demoReklamasjon(m: string): Pick<Data, "reklamasjoner" | "reklamasjonProsjekt"> {
+function demoReklamasjon(m: string): Pick<Data, "reklamasjoner" | "reklamasjonProsjekt" | "reklOppsett"> {
   const naa = new Date().toISOString();
   return {
     reklamasjonProsjekt: "prek",
+    reklOppsett: { timer: "prosjekt", ansvar: "snekker", fristDager: 14, prosjekt: "prek" },
     reklamasjoner: [{
       id: "rk1", prosjekt_id: "p3", meldt_av: "stale", meldt_dato: addDays(m, -9), kontakt: "Merete ringte butikken",
       tittel: "Gulvlist har løsnet ved kjøkkenøya", beskrivelse: "Lista har sluppet på ca. 1 meter, og det er en glipe mellom gulv og list.",
@@ -524,9 +525,20 @@ export function demoApi(): Api {
       liste.unshift({ id, prosjekt_id: x.prosjekt_id, meldt_av: m.id, meldt_dato: x.meldt_dato ?? naa.slice(0, 10), kontakt: x.kontakt ?? "", tittel: x.tittel ?? "", beskrivelse: x.beskrivelse ?? "",
         status: planlegger() ? x.status ?? "ny" : "ny", vurdering: planlegger() ? x.vurdering ?? "" : "", ansvarlig_id: planlegger() ? x.ansvarlig_id ?? null : null, frist: planlegger() ? x.frist ?? null : null,
         materiell_kost: null, behandlet_av: null, utbedret_av: null, utbedret_tid: null, signert_navn: "", signatur: "", signert_tid: null, opprettet: naa, endret: naa });
+      // Bedriftens oppsett: ansvarlig og frist settes med en gang
+      const ny = liste[0]!, o = d.reklOppsett, p = d.prosjekter.find((y) => y.id === ny.prosjekt_id);
+      if (o && !ny.ansvarlig_id && o.ansvar !== "ingen") ny.ansvarlig_id = (o.ansvar === "snekker" ? p?.snekker_id : p?.selger_id ?? p?.snekker_id) ?? null;
+      if (o && !ny.frist && o.fristDager > 0) { const f = addDays(ny.meldt_dato, o.fristDager), i = naa.slice(0, 10); ny.frist = f < i ? i : f; }
       endret(); return id;
     },
     async slettReklamasjon(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.reklamasjoner = (d.reklamasjoner ?? []).filter((r) => r.id !== id); endret(); },
+    async lagreReklamasjonOppsett(o) {
+      if (!leder()) throw new Error("Bare leder kan endre oppsettet for reklamasjon.");
+      if (o.timer === "prosjekt" && !o.prosjekt) throw new Error("Velg reklamasjonsprosjektet.");
+      d.reklOppsett = { ...o, prosjekt: o.timer === "prosjekt" ? o.prosjekt : d.reklOppsett?.prosjekt ?? null };
+      d.reklamasjonProsjekt = o.timer === "prosjekt" ? o.prosjekt : null;
+      endret();
+    },
     async lagreReklamasjonsprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge reklamasjonsprosjekt."); d.reklamasjonProsjekt = id; endret(); },
     async stempleTillegg(id) {
       const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn.");
