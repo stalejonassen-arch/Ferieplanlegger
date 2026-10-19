@@ -36,6 +36,9 @@ export function Oppsett() {
   };
 
   const [aapen, setAapen] = useState<string | null>(null);
+  const [inn, setInn] = useState<Map<string, Innlogging>>(new Map());
+  const lastInn = () => api.ansatteInnlogging().then((r) => setInn(new Map(r.map((x) => [x.ansatt_id, x])))).catch(() => {});
+  useEffect(() => { lastInn(); }, [d.ansatte.length]);
   const [visInaktive, setVisInaktive] = useState(false);
   const alle = sorterAnsatte(d);
   const liste = alle.filter((a) => a.aktiv || visInaktive);
@@ -72,10 +75,11 @@ export function Oppsett() {
                     {a.rolle !== "leder" && a.prosjektleder && <span className="chip venter">Prosjektleder</span>}
                     {!a.aktiv && <span className="chip demo">Sluttet</span>}
                     {merk.length > 0 && a.aktiv && <span className="small" style={{ color: "var(--warn)" }}>{merk.join(", ")}</span>}
+                    {a.aktiv && a.epost && inn.size > 0 && !inn.get(a.id)?.innlogget && <span className="chip demo">{inn.get(a.id)?.invitert ? "Invitert" : "Ikke logget inn"}</span>}
                   </span>
                   <span className="ansatt-pil" aria-hidden="true">{aapen === a.id ? "▴" : "▾"}</span>
                 </button>
-                {aapen === a.id && <AnsattKort a={a} lagre={lagre} overfort={overfort(a)} />}
+                {aapen === a.id && <AnsattKort a={a} lagre={lagre} overfort={overfort(a)} inn={inn.get(a.id)} oppdaterInn={lastInn} />}
               </li>
             );
           })}
@@ -124,7 +128,41 @@ export function Oppsett() {
 }
 
 /** Alt om én ansatt på ett sted: innlogging og rolle, ferie, arbeidstid og lønn, varsler, utstyr og HMS-kort */
-function AnsattKort({ a, lagre, overfort }: { a: Ansatt; lagre: (a: Ansatt, e: Partial<Ansatt>) => Promise<boolean>; overfort: number }) {
+type Innlogging = { ansatt_id: string; invitert: string | null; innlogget: string | null };
+const naarTekst = (iso: string) => {
+  const t = new Date(iso), n = new Date();
+  const kl = t.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  const dag = Math.round((new Date(n.toDateString()).getTime() - new Date(t.toDateString()).getTime()) / 864e5);
+  return dag === 0 ? `i dag kl. ${kl}` : dag === 1 ? `i går kl. ${kl}` : t.toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: t.getFullYear() === n.getFullYear() ? undefined : "numeric" });
+};
+
+/** Send invitasjon til appen på e-post, med status for sist sendt og innlogging */
+function Invitasjon({ a, inn, oppdater }: { a: Ansatt; inn?: Innlogging; oppdater: () => void }) {
+  const { kjor } = useApp();
+  const [jobber, setJobber] = useState(false);
+  if (!a.aktiv) return null;
+  const send = async () => {
+    setJobber(true);
+    if (await kjor(() => api.sendInvitasjon(a.id), `Invitasjon sendt til ${a.epost}`)) oppdater();
+    setJobber(false);
+  };
+  return (
+    <div className="invitasjon" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "8px 0" }}>
+      <button type="button" className="btn sm" disabled={jobber || !a.epost} onClick={send}
+        title={a.epost ? "E-post med lenke, innlogging med kode, lagre som app (iPhone og Android) og varsler" : "Legg inn e-post først"}>
+        {jobber ? "Sender …" : inn?.invitert ? "✉️ Send invitasjon på nytt" : "✉️ Send invitasjon"}
+      </button>
+      <span className="small muted">
+        {!a.epost ? "Legg inn e-post for å kunne invitere." : [
+          inn?.invitert ? `Sist sendt ${naarTekst(inn.invitert)}` : "Ikke invitert fra appen ennå",
+          inn?.innlogget ? `Logget inn ${naarTekst(inn.innlogget)} ✓` : "Har ikke logget inn",
+        ].join(" · ")}
+      </span>
+    </div>
+  );
+}
+
+function AnsattKort({ a, lagre, overfort, inn, oppdaterInn }: { a: Ansatt; lagre: (a: Ansatt, e: Partial<Ansatt>) => Promise<boolean>; overfort: number; inn?: Innlogging; oppdaterInn: () => void }) {
   const { d, aar, kjor, idag } = useApp();
   const kontoer = d.prosjekter.filter((p) => /utstyr|verkt|arbeidskl|arbeidst/i.test(p.navn) || d.ansatte.some((x) => x.utstyr_prosjekt_id === p.id));
   const tekst = (felt: keyof Ansatt, label: string, x: { type?: string; placeholder?: string; inputMode?: "numeric" } = {}) => (
@@ -156,6 +194,7 @@ function AnsattKort({ a, lagre, overfort }: { a: Ansatt; lagre: (a: Ansatt, e: P
         </div>
         {a.rolle !== "leder" && hake("prosjektleder", "Prosjektleder", !!a.prosjektleder, "kan dele ut arbeid og styre materiell og bestillinger, men ser ikke lønn og oppsett")}
         {hake("aktiv", "Aktiv", a.aktiv, "ta bort haken når noen slutter. Historikken beholdes")}
+        <Invitasjon a={a} inn={inn} oppdater={oppdaterInn} />
       </fieldset>
       <fieldset><legend>Ferie</legend>
         <div className="row">
