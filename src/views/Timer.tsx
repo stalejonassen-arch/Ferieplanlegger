@@ -73,7 +73,7 @@ export function Timer() {
       lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar && !erRekl,
       ...(visRekl || f.id ? { reklamasjon_id: visRekl ? f.reklamasjon_id || null : null } : {}),
       ...(f.tillegg_id || f.id ? { tillegg_id: visTillegg ? f.tillegg_id || null : null } : {}),
-      ...(erService || f.id ? { service_id: erService ? f.service_id || null : null } : {}),
+      ...(erService || f.service_id ? { service_id: erService ? f.service_id || null : null } : {}),
     } }, f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
     if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, tillegg_id: f.tillegg_id, service_id: f.service_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
   };
