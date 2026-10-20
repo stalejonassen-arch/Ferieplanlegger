@@ -1019,95 +1019,366 @@ export const EN_TEKST: Record<string, string> = {
 "Kommende ferie": "Upcoming holidays",
 "Dine søknader som venter": "Your pending requests",
 "Alt er behandlet": "Everything is handled",
-"Ingen søknader venter. 🌿": "No pending requests. 🌿"
+"Ingen søknader venter. 🌿": "No pending requests. 🌿",
+"Månedens kampanje": "Campaign of the month",
+"· trykk for å bla": "· tap to browse",
+"Skjul kampanjen": "Hide campaign",
+"Tilbake til samtaler": "Back to conversations",
+"Valg for meldingen": "Message options",
+"Legg ved bilde": "Attach photo",
+"+ Nytt prosjekt": "+ New project",
+"Fra Visma": "From Visma",
+"Mål for": "Target for",
+"% av": "% of",
+"målet": "the target",
+"Salgsinntekter (konto 3000–3999) eks. mva. Fakturaer som ikke er bokført ennå kommer med når de bokføres.": "Sales revenue (accounts 3000–3999) excl. VAT. Invoices not yet posted are included once they are posted.",
+"Endre mål": "Change target",
+"Fakturerbare timer": "Billable hours",
+"Mål for året": "Target for the year",
+"Teller timer ført på prosjekt og merket fakturerbart i ByggLogg.": "Counts hours logged on a project and marked billable in ByggLogg.",
+"Grønt = nådd målet på": "Green = reached the target of",
+"Hvem som telles med velger du under Oppsett → «I timerapport».": "Choose who is counted under Settings → “In hours report”.",
+"Ingen kalkulerte timer": "No estimated hours",
+"Framdrift i måneden": "Progress this month",
+"Så langt er vi kommet i måneden": "How far we are into the month",
+"Omsetning per måned, i år og i fjor": "Revenue per month, this year and last year",
+"Fakturerbare timer per måned": "Billable hours per month",
+"Vis alle, ikke bare de neste tre ukene": "Show all, not just the next three weeks",
+"Vis bestillinger": "Show orders",
+"Svar til den som bestilte (valgfritt), f.eks. «Ligger klart i butikken»": "Reply to the person who ordered (optional), e.g. “Ready in the shop”",
+"Svar til den som bestilte": "Reply to the person who ordered",
+"Registrert av": "Registered by",
+"Hva vi gjør, og når": "What we will do, and when",
+"ferdig": "done",
+"Tidslinje for prosjektet": "Project timeline",
+"Trykk «Legg til bevis».": "Tap “Add proof”.",
+"Ny rapport": "New report",
+"Legg inn rapporten som PDF eller lenke. Når du publiserer, får alle ansatte e-post, og du ser her hvem som har åpnet den.": "Add the report as a PDF or link. When you publish, all employees get an email, and you can see here who has opened it.",
+"Borte i dag": "Away today",
+"Neste 60 dager": "Next 60 days",
+"Søknader som må behandles": "Requests to process",
+"Godkjent ferie": "Approved holiday",
+"Avslått (vises i søknadslisten)": "Rejected (shown in the request list)",
+"Til behandling": "Pending",
+"Saldo per ansatt": "Balance per employee",
+"Ferie som ikke er tatt ved årets slutt kan overføres med skriftlig avtale, inntil 2 uker (10 feriedager). Legg det inn under Oppsett for neste år.": "Holiday not taken by year end can be carried over by written agreement, up to 2 weeks (10 holiday days). Enter it under Settings for next year.",
+"Kommentar til den ansatte (valgfritt)": "Comment to the employee (optional)",
+"Kommentar til den ansatte": "Comment to the employee",
+"Leder har ikke svart ennå": "The manager has not replied yet",
+"Timer i lønnskjøringen": "Hours in the payroll run",
+"Overtid regnes per uke: timer over normaltiden (37,5 eller 40 t) gir 50 %, timer på søndag og helligdager gir 100 %. Lunsj trekkes for dem som skal trekkes, på dager over 5,5 timer uten registrert lunsj.": "Overtime is calculated per week: hours above normal time (37.5 or 40 h) give 50 %, hours on Sundays and public holidays give 100 %. Lunch is deducted for those it applies to, on days over 5.5 hours without registered lunch.",
+"Ikke godkjent ennå:": "Not approved yet:",
+". Godkjenn under «Timer» før du kjører lønn.": ". Approve under “Hours” before you run payroll.",
+"Syk (dager)": "Sick (days)",
+"t/uke": "h/week",
+"Ikke trekk": "No deduction",
+"Ferie i lønnskjøringen": "Holiday in the payroll run",
+"Godkjente feriedager mandag–fredag, uten helligdager. Bruk tallene når du kjører lønn for måneden.": "Approved holiday days Monday–Friday, excluding public holidays. Use the numbers when you run payroll for the month.",
+"Ansatte over 60 år har krav på 2,3 prosentpoeng ekstra feriepenger (ferieloven § 10 nr. 3).": "Employees over 60 are entitled to 2.3 percentage points extra holiday pay (Holiday Act § 10 no. 3).",
+"Deler av appen": "Parts of the app",
+"Import fra Svenn": "Import from Svenn",
+"Trykk på en ansatt for å endre innlogging, ferie, arbeidstid, lønn, varsler, utstyr og HMS-kort. Endringer lagres med en gang.": "Tap an employee to change login, holiday, working hours, pay, notifications, equipment and HMS card. Changes are saved immediately.",
+"Ny ansatt": "New employee",
+"Slå av det dere ikke bruker, så blir appen enklere for de ansatte. Det som slås av, forsvinner fra menyene for alle, men ingenting slettes – slår du det på igjen, ligger alt der som før. Timer, prosjekter, ferie og fravær, lønn og oppsett er alltid med.": "Turn off what you don't use to make the app simpler for employees. What you turn off disappears from the menus for everyone, but nothing is deleted – turn it back on and everything is there as before. Hours, projects, holiday and absence, payroll and settings are always included.",
+"Meldinger i felles kanal, per prosjekt og mellom to ansatte": "Messages in a shared channel, per project and between two employees",
+"Dele ut arbeid med datoer, ukeplan og «Mitt arbeid»": "Assign work with dates, weekly plan and “My work”",
+"Materiell delt i leveranser på prosjektet, og leveranser som skal ut": "Materials split into deliveries on the project, and deliveries going out",
+"Bestilling fra byggeplassen": "Orders from the site",
+"Snekkeren bestiller materiell, butikken plukker og leverer": "The carpenter orders materials, the shop picks and delivers",
+"Sjekklister som fylles ut og signeres på prosjektet": "Checklists filled in and signed on the project",
+"SJA og mannskapsliste": "SJA and crew list",
+"Sikker jobbanalyse, mannskapsliste og HMS-kort": "Safe job analysis, crew list and HMS card",
+"Avvik og RUH": "Deviations and RUH",
+"Melde og følge opp avvik og uønskede hendelser": "Report and follow up deviations and unwanted incidents",
+"Små betalte oppdrag hos kunden på en dag eller to – hastegrad, timer, materiell og fakturering": "Small paid jobs at the customer for a day or two – urgency, hours, materials and invoicing",
+"Kunden melder feil på ferdig jobb – vurdering, utbedring og kostnad": "The customer reports a fault in finished work – assessment, repair and cost",
+"Tilleggsarbeid som kunden signerer": "Extra work signed by the customer",
+"Utstyr og arbeidstøy": "Equipment and workwear",
+"Verktøy, arbeidstøy og forbruk per ansatt": "Tools, workwear and consumables per employee",
+"Kompetanse, kurs og sertifikater": "Skills, courses and certificates",
+"Månedsrapporter til de ansatte": "Monthly reports to employees",
+"Kampanjer fra kjeden på forsiden": "Chain campaigns on the front page",
+"Lønnsomhet per prosjekt (bare leder ser den)": "Profitability per project (only the manager sees it)",
+"Sluttrapport til kunden og Boligmappa": "Final report to the customer and Boligmappa",
+"Uansett valg merkes timene med hvilken reklamasjon de gjelder, og de blir aldri fakturert.": "Whichever you choose, the hours are tagged with the warranty claim they belong to, and they are never invoiced.",
+"Hvor føres timene på reklamasjon?": "Where are warranty claim hours logged?",
+"Samler kostnaden for alle reklamasjoner på ett internt prosjekt.": "Collects the cost of all warranty claims on one internal project.",
+"Viser hva hver jobb faktisk kostet, med etterarbeid.": "Shows what each job actually cost, including follow-up work.",
+"Som interntid": "As internal time",
+"Uten prosjekt. For dem som ikke følger opp reklamasjon i regnskapet.": "Without a project. For those who don't track warranty claims in the accounts.",
+"Hvem får ansvaret når en reklamasjon registreres?": "Who becomes responsible when a warranty claim is registered?",
+"Snekkeren hvis jobben ikke har selger.": "The carpenter if the job has no salesperson.",
+"Leder velger hver gang": "The manager chooses each time",
+"Standard svarfrist (dager etter at kunden meldte fra)": "Default response deadline (days after the customer reported it)",
+"Den ansvarlige og leder får varsel to dager før fristen og dagen etter hvis den er passert.": "The person responsible and the manager are notified two days before the deadline and the day after if it has passed.",
+"Hvor mange i hver avdeling som kan være borte samme dag før appen varsler.": "How many in each department can be away on the same day before the app warns.",
+"Kampanjer fra Byggfag (DM)": "Campaigns from Byggfag (DM)",
+"Last opp DM-en som PDF (eller bilder av sidene). Den vises øverst på startsiden for alle ansatte i perioden du velger. Hver ansatt kan skjule kampanjen med ett trykk.": "Upload the DM as a PDF (or photos of the pages). It shows at the top of the start page for all employees in the period you choose. Each employee can hide the campaign with one tap.",
+"Vises nå": "Showing now",
+"Legg inn ny kampanje": "Add new campaign",
+"Utstyr: kvoter for arbeidstøy": "Equipment: workwear quotas",
+"Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy, verneutstyr eller forbruk. Kvotene gjelder per ansatt i en rullerende periode. Øvrig verneutstyr (hansker, briller, hørselvern) gis etter behov og har ingen kvote. Håndverktøy byttes nytt mot gammelt.": "Each employee has an equipment account in Visma. What is posted there is fetched into ByggLogg with date and price and sorted as tools, workwear, protective equipment or consumables. Quotas apply per employee over a rolling period. Other protective equipment (gloves, glasses, hearing protection) is given as needed and has no quota. Hand tools are swapped new for old.",
+"Lagre kvoter": "Save quotas",
+"0 = ingen kvote for det plagget.": "0 = no quota for that garment.",
+"Utstyrskontoen velges på hver ansatt under «Ansatte». Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.": "The equipment account is chosen on each employee under “Employees”. Missing an account in the list? Create the project in Visma with “utstyr” or “arbeidsklær” in the name, and it shows up here within 15 minutes.",
+"Timer og dokumentasjon fra Svenn. Trengs bare så lenge dere har Svenn.": "Hours and documentation from Svenn. Only needed as long as you have Svenn.",
+"Timer fra Svenn": "Hours from Svenn",
+"Hent inn timer fra Svenn som statistikk på prosjektene. I Svenn:": "Import hours from Svenn as statistics on the projects. In Svenn:",
+", velg periode og eksporter til": ", choose a period and export to",
+". Last opp fila her, sjekk at hvert Svenn-prosjekt peker på riktig prosjekt, og importer. Timene legges inn som godkjent og merket «Fra Svenn». Valgene huskes til neste gang, og en ny import av samme periode erstatter den forrige.": ". Upload the file here, check that each Svenn project points to the right project, and import. The hours are added as approved and marked “From Svenn”. Your choices are remembered for next time, and a new import of the same period replaces the previous one.",
+"Velg Excel-fil fra Svenn": "Choose Excel file from Svenn",
+"Dokumentasjon fra Svenn": "Documentation from Svenn",
+"Bilder og PDF-er fra prosjektene i Svenn. Last opp arkivet": "Photos and PDFs from the projects in Svenn. Upload the archive",
+", sjekk prosjektene, og importer. Bildene havner under Bilder på prosjektet med mappe og dato fra Svenn, PDF-ene under FDV/dokumenter. Filer som allerede er importert hoppes over, så arkivet kan lastes opp på nytt.": ", check the projects, and import. The photos go under Photos on the project with folder and date from Svenn, the PDFs under FDV/documents. Files already imported are skipped, so the archive can be uploaded again.",
+"Velg arkiv fra Svenn (zip)": "Choose archive from Svenn (zip)",
+"Deler av oppsettet": "Parts of the settings",
+"Ingen kontaktperson. Legg inn med «Endre» ved adressen.": "No contact person. Add one with “Edit” next to the address.",
+"Ingen adresse på prosjektet": "No address on the project",
+"Legg inn adresse, kontakt, selger og snekker": "Add address, contact, salesperson and carpenter",
+"Samme jobb som et annet prosjekt? Slå sammen": "Same job as another project? Merge",
+"varer fra Visma, sist hentet øverst)": "items from Visma, latest fetched first)",
+"Kalkulerte timer": "Estimated hours",
+"Planlagt ferdig": "Planned completion",
+"Lagre plan": "Save plan",
+"Deler av prosjektet": "Parts of the project",
+"varer er kommet": "items have arrived",
+"Våtrom – membran og sluk": "Wet room – membrane and drain",
+"Vindtetting og lufttetting": "Wind sealing and air sealing",
+"Montering av vinduer og dører": "Installing windows and doors",
+"Branntetting og gjennomføringer": "Fire sealing and penetrations",
+"Sluttkontroll før overlevering": "Final inspection before handover",
+"Lag en SJA før arbeid med fare for liv og helse, for eksempel arbeid på tak, i høyden eller ved riving.": "Make an SJA before work that is dangerous to life and health, for example work on roofs, at height or demolition.",
+"Laget av timene som er ført på prosjektet. Byggherreforskriften krever oversikt over hvem som er på byggeplassen.": "Built from the hours logged on the project. The Construction Client Regulations require an overview of who is on site.",
+"HMS-kort mangler eller har gått ut:": "HMS card missing or expired:",
+"Bilder fra prosjektet": "Photos from the project",
+"Last opp PDF, bilder, Word eller Excel. FDV, sjekklister og tegninger kommer med i sluttdokumentasjonen til kunden. Tilbud, kontrakt og annet blir værende internt.": "Upload PDF, photos, Word or Excel. FDV, checklists and drawings are included in the handover documentation for the customer. Quotes, contracts and other files stay internal.",
+"Ingen dokumenter på prosjektet ennå. Velg type og trykk «Last opp filer».": "No documents on the project yet. Choose a type and tap “Upload files”.",
+"Har kunden meldt fra om feil eller mangel på jobben? Registrer det her, så blir det vurdert, planlagt og fulgt opp.": "Has the customer reported a fault or defect in the job? Register it here so it gets assessed, planned and followed up.",
+"per uke": "per week",
+"Ordrer i Visma på kundeprosjektet, oppdatert hvert kvarter. Bare du som leder ser denne siden.": "Orders in Visma on the customer project, updated every 15 minutes. Only you as manager see this page.",
+"Ferdig fakturert – alle fakturerbare timer teller som fakturert (full pott)": "Fully invoiced – all billable hours count as invoiced (full amount)",
+"Fastpris – faktureres uten «Arbeid», så timene holdes utenfor sammenligningen av fakturerte timer": "Fixed price – invoiced without “Labour”, so the hours are kept out of the invoiced-hours comparison",
+"Timer brukt": "Hours used",
+"Én ferdig PDF til kunden når jobben er ferdig: forside, utført arbeid, tilleggsarbeid, bilder, FDV og garanti, med FDV-dokumenter og sjekklister lagt ved bakerst. Kunden kan laste den rett opp i Boligmappa.": "One finished PDF for the customer when the job is done: cover page, work carried out, extra work, photos, FDV and warranty, with FDV documents and checklists attached at the end. The customer can upload it straight to Boligmappa.",
+"Innledning til kunden (valgfritt)": "Introduction to the customer (optional)",
+"Adressen for utførelse er viktig:": "The work address matters:",
+"dokumentasjonen havner i boligmappa til eiendommen på denne adressen. Bruk adressen der jobben er gjort, ikke kundens postadresse (f.eks. hytta, ikke hjemmet).": "the documentation ends up in Boligmappa for the property at this address. Use the address where the job was done, not the customer's postal address (e.g. the cabin, not the home).",
+"Prosjektet mangler adresse for utførelse.": "The project has no work address.",
+"Boligmappa knytter dokumentasjonen til eiendommen (matrikkel og evt. bruksenhet) og merker den med fag. Fyll inn her, så kommer det med i PDF-en og i eksporten.": "Boligmappa links the documentation to the property (cadastre and unit, if any) and tags it with the trade. Fill it in here and it is included in the PDF and the export.",
+"Adresse for utførelse (der jobben er gjort)": "Work address (where the job was done)",
+"Matrikkel (kommune, gnr og bnr)": "Cadastre (municipality, gnr and bnr)",
+"Beskrivelse av utført arbeid (dagbok)": "Description of work carried out (diary)",
+"Last ned pakke for Boligmappa (zip)": "Download package for Boligmappa (zip)",
+"Enklest for privatkunden:": "Easiest for private customers:",
+"send sluttrapporten (PDF) til kunden. Kunden logger inn i Boligmappa med BankID og laster den opp som ett dokument. Fremgangsmåten står bakerst i rapporten. Har bedriften Boligmappa-konto som fagfolk, kan dere laste den opp selv. Zip-pakken har i tillegg bildene og dokumentene hver for seg. Direkte sending fra ByggLogg krever partneravtale med Boligmappa.": "send the final report (PDF) to the customer. The customer logs in to Boligmappa with BankID and uploads it as one document. The steps are at the back of the report. If the company has a professional Boligmappa account, you can upload it yourselves. The zip package also has the photos and documents separately. Sending directly from ByggLogg requires a partner agreement with Boligmappa.",
+"Varene hentes fra ordrene på prosjektet i Visma. Hver vare får lenke til NOBB, der FDV, produktdatablad og monteringsanvisning ligger under «Dokumentasjon». Last opp egne FDV-dokumenter (PDF) for det som ikke ligger i NOBB.": "The items are fetched from the orders on the project in Visma. Each item gets a link to NOBB, where FDV, product data sheet and installation guide are under “Documentation”. Upload your own FDV documents (PDF) for anything not in NOBB.",
+"Vis skjulte varer (": "Show hidden items (",
+"Ingen lastet opp. Alle dokumenter på prosjektet finner du under «Dokumenter».": "None uploaded. You'll find all documents on the project under “Documents”.",
+"Tips: send kunden PDF-en av sluttdokumentasjonen sammen med de opplastede dokumentene. Lenkene til NOBB i PDF-en er klikkbare.": "Tip: send the customer the handover documentation PDF together with the uploaded documents. The NOBB links in the PDF are clickable.",
+"Utarbeidet av": "Prepared by",
+"Forvaltning, drift og vedlikehold for produktene som er brukt. Dokumentasjonen for hver vare ligger hos NOBB (fanen «Dokumentasjon» på lenken).": "Management, operation and maintenance for the products used. The documentation for each item is at NOBB (the “Documentation” tab at the link).",
+"Garanti og reklamasjon": "Warranty and claims",
+"Arbeidet er utført i henhold til avtale, gjeldende forskrifter og produsentenes monteringsanvisninger. Oppdager du feil eller mangler, gi oss beskjed så snart som mulig. Reklamasjon behandles etter avtalen og gjeldende lov – for forbrukere håndverkertjenesteloven, med en absolutt frist på fem år for arbeid som skal vare vesentlig lenger. Følg FDV-dokumentasjonen for riktig vedlikehold.": "The work has been carried out in accordance with the agreement, applicable regulations and the manufacturers' installation guides. If you find faults or defects, let us know as soon as possible. Claims are handled according to the agreement and applicable law – for consumers the Craftsman Services Act, with an absolute deadline of five years for work meant to last considerably longer. Follow the FDV documentation for correct maintenance.",
+"Overlevert av –": "Handed over by –",
+"Mottatt av kunde": "Received by customer",
+"Sted og dato": "Place and date",
+"F.eks. Takk for oppdraget! Her er en oppsummering av arbeidet vi har utført.": "E.g. Thank you for the job! Here is a summary of the work we have done."
 };
 export const EN_MALER: [string, string][] = [
+["^Status for (.+)$", "Status for $1"],
+["^Flytt (.+) opp$", "Move $1 up"],
+["^Flytt (.+) ned$", "Move $1 down"],
+["^Flytt (.+) til leveranse$", "Move $1 to delivery"],
+["^(.+) er kommet$", "$1 has arrived"],
+["^(\\d+) % av kalkulerte timer · ([\\d,]+) t igjen$", "$1 % of estimated hours · $2 h left"],
+["^(\\d+) % av kalkulerte timer · ([\\d,]+) t over kalkyle$", "$1 % of estimated hours · $2 h over estimate"],
+["^(\\d+) % av kalkulerte timer brukt$", "$1 % of estimated hours used"],
+["^(\\d+) av (\\d+)$", "$1 of $2"],
+["^Planlegg arbeid for (.+) [Mm]an (\\d+)\\.$", "Plan work for $1 Mon $2"],
+["^Planlegg arbeid for (.+) [Tt]ir (\\d+)\\.$", "Plan work for $1 Tue $2"],
+["^Planlegg arbeid for (.+) [Oo]ns (\\d+)\\.$", "Plan work for $1 Wed $2"],
+["^Planlegg arbeid for (.+) [Tt]or (\\d+)\\.$", "Plan work for $1 Thu $2"],
+["^Planlegg arbeid for (.+) [Ff]re (\\d+)\\.$", "Plan work for $1 Fri $2"],
+["^Planlegg arbeid for (.+) [Ll]ør (\\d+)\\.$", "Plan work for $1 Sat $2"],
+["^Planlegg arbeid for (.+) [Ss]øn (\\d+)\\.$", "Plan work for $1 Sun $2"],
+["^Skal komme (\\d+)\\. jan\\.?( · .+)?$", "Due Jan $1$2"],
+["^Skal komme (\\d+)\\. feb\\.?( · .+)?$", "Due Feb $1$2"],
+["^Skal komme (\\d+)\\. mar\\.?( · .+)?$", "Due Mar $1$2"],
+["^Skal komme (\\d+)\\. apr\\.?( · .+)?$", "Due Apr $1$2"],
+["^Skal komme (\\d+)\\. mai\\.?( · .+)?$", "Due May $1$2"],
+["^Skal komme (\\d+)\\. jun\\.?( · .+)?$", "Due Jun $1$2"],
+["^Skal komme (\\d+)\\. jul\\.?( · .+)?$", "Due Jul $1$2"],
+["^Skal komme (\\d+)\\. aug\\.?( · .+)?$", "Due Aug $1$2"],
+["^Skal komme (\\d+)\\. sep\\.?( · .+)?$", "Due Sep $1$2"],
+["^Skal komme (\\d+)\\. okt\\.?( · .+)?$", "Due Oct $1$2"],
+["^Skal komme (\\d+)\\. nov\\.?( · .+)?$", "Due Nov $1$2"],
+["^Skal komme (\\d+)\\. des\\.?( · .+)?$", "Due Dec $1$2"],
 ["^📵 Uten nett – viser det som ble hentet (.+)\\.$", "📵 Offline – showing data fetched $1."],
+
 ["^([\\d]+) (stempling|stemplinger)( og [\\d]+ timeføringe?r?)? venter og sendes automatisk\\.$", "$1 clock entries waiting – will be sent automatically."],
+
 ["^([\\d]+) føringe?r? fra da du var uten nett er lagret$", "$1 entries from when you were offline saved"],
+
 ["^Tillegg: (.+) \\(ikke signert\\)$", "Extra work: $1 (not signed)"],
+
 ["^Tillegg: (.+) \\(avvist\\)$", "Extra work: $1 (rejected)"],
+
 ["^Tillegg: (.+)$", "Extra work: $1"],
+
 ["^· tillegg: (.+)$", "· extra work: $1"],
+
 ["^Ført ([\\d,]+) t$", "Logged $1 h"],
+
 ["^av anslått ([\\d,]+) t$", "of estimated $1 h"],
+
 ["^([\\d,]+) arbeidsdager \\(mandag–fredag, uten helligdager\\)$", "$1 working days (Monday–Friday, excl. public holidays)"],
+
 ["^1 arbeidsdag \\(mandag–fredag, uten helligdager\\)$", "1 working day (Monday–Friday, excl. public holidays)"],
+
 ["^([\\d,]+) arbeidsdager$", "$1 working days"],
+
 ["^([\\d,]+) timer i alt$", "$1 hours in total"],
+
 ["^· ([\\d,]+) t på prosjekt som ikke faktureres$", "· $1 h on non-billable projects"],
+
 ["^([▲▼]) ([\\d,]+) %-poeng fra forrige måned$", "$1 $2 %-points from last month"],
+
 ["^Du har skjult kampanjen «(.+)»\\.$", "You hid the campaign \"$1\"."],
+
 ["^Du har skjult ([\\d]+) kampanjer\\.$", "You hid $1 campaigns."],
+
 ["^([\\d,]+) t igjen$", "$1 h left"],
+
 ["^([\\d,]+) t over kalkyle$", "$1 h over estimate"],
+
 ["^(.+?)\\ timer\\ registrert$", "$1 hours registered"],
+
 ["^(.+?)\\ \\(meg\\)$", "$1 (me)"],
+
 ["^for\\ (.+?)$", "for $1"],
+
 ["^Før\\ timer\\ for\\ (.+?)$", "Log hours for $1"],
+
 ["^·\\ lunsj\\ (.+?)\\ min$", "· lunch $1 min"],
+
 ["^·\\ reise\\ (.+?)\\ t$", "· travel $1 h"],
+
 ["^Uke\\ (.+?)\\ godkjent\\ for\\ (.+?)$", "Week $1 approved for $2"],
+
 ["^Dagen:\\ (.+?)$", "Day: $1"],
+
 ["^Logget\\ inn\\ på\\ (.+?)$", "Clocked in on $1"],
+
 ["^Byttet\\ til\\ (.+?)$", "Switched to $1"],
-["^Dagbok(.+?)$", "Daily log$1"],
-["^(.+?)\\ bilde(.+?)$", "$1 photo$2"],
+
+["^Dagbok( \\(\\d+\\))$", "Diary$1"],
+["^(\\d+) bilder?$", "$1 photos"],
 ["^Tilleggsarbeid:\\ (.+?)\\ ·\\ (.+?)$", "Extra work: $1 · $2"],
+
 ["^Hindringer:\\ (.+?)$", "Obstacles: $1"],
+
 ["^(.+?):\\ (.+?)\\ t,\\ interntid\\ (.+?)\\ t$", "$1: $2 h, internal $3 h"],
+
 ["^(.+?)\\ lagret$", "$1 saved"],
+
 ["^(.+?)\\ bilder\\ er$", "$1 photos were"],
+
 ["^Vis\\ bilde\\ (.+?)$", "Show photo $1"],
-["^(.+?)\\ bilde(.+?)\\ valgt$", "$1 photo$2 selected"],
+
+["^(\\d+) bilder? valgt$", "$1 photos selected"],
 ["^Ansvarlig:\\ (.+?)$", "Responsible: $1"],
+
 ["^·\\ frist\\ (.+?)(.+?)$", "· due $1$2"],
+
 ["^Utstyr\\ –\\ (.+?)$", "Equipment – $1"],
+
 ["^siste\\ (.+?)\\ mnd$", "last $1 months"],
+
 ["^·\\ ny\\ fra\\ (.+?)$", "· new from $1"],
+
 ["^Arbeidstøy\\ (.+?)$", "Workwear $1"],
+
 ["^(.+?)\\ uttak\\ ·\\ sist\\ (.+?)$", "$1 withdrawals · last $2"],
+
 ["^Bilde:\\ (.+?)$", "Photo: $1"],
+
 ["^Månedsrapport\\ (.+?)$", "Monthly report $1"],
+
 ["^Publisert\\ (.+?)$", "Published $1"],
+
 ["^Ferie\\ registrert\\ for\\ (.+?)$", "Holiday registered for $1"],
+
 ["^\\+\\ (.+?)\\ \\(over\\ 60\\)$", "+ $1 (over 60)"],
+
 ["^\\+\\ (.+?)\\ overført\\ fra\\ (.+?)$", "+ $1 carried over from $2"],
+
 ["^Registrer\\ ferie\\ for\\ (.+?)$", "Register holiday for $1"],
+
 ["^Søknader\\ for\\ (.+?)$", "Requests for $1"],
-["^(.+?)\\ registrert(.+?)$", "$1 registered$2"],
+
 ["^Meld\\ fravær\\ for\\ (.+?)$", "Report absence for $1"],
+
 ["^Når\\ du\\ selv\\ er\\ syk\\.\\ Høyst\\ (.+?)\\ kalenderdager\\ om\\ gangen\\ og\\ (.+?)\\ ganger\\ på\\ 12\\ måneder\\.\\ Lengre\\ fravær\\ krever\\ sykmelding\\ fra\\ lege\\.$", "When you are sick yourself. Max $1 calendar days at a time and $2 times in 12 months. Longer absence requires a doctor's sick note."],
+
 ["^NAV\\ betaler\\ sykepenger\\ fra\\ (.+?)\\.\\ Husk\\ inntektsmelding\\ til\\ NAV\\.$", "NAV pays sick pay from $1. Remember to send the income report to NAV."],
+
 ["^(.+?)\\ \\((.+?)\\ til\\ (.+?)\\)$", "$1 ($2 to $3)"],
+
 ["^(.+?)\\ ganger\\ ·\\ (.+?)\\ d$", "$1 times · $2 d"],
-["^Tillegg(.+?)$", "Extra work$1"],
-["^Bilder(.+?)$", "Photos$1"],
-["^Avvik(.+?)$", "Deviations$1"],
+
+["^Tillegg( \\(\\d+\\))$", "Extra work$1"],
+["^Bilder( \\(\\d+\\))$", "Photos$1"],
+["^Avvik( \\(\\d+\\))$", "Deviations$1"],
 ["^Vis\\ alle\\ (.+?)$", "Show all $1"],
+
 ["^(.+?)\\ %\\ av\\ kalkulerte\\ timer\\ brukt$", "$1% of estimated hours used"],
+
 ["^kr\\ (.+?)\\ eks\\.\\ mva$", "NOK $1 excl. VAT"],
+
 ["^Signatur\\ (.+?)$", "Signature $1"],
+
 ["^Anslått\\ (.+?)\\ timer$", "Estimated $1 hours"],
+
 ["^pris\\ kr\\ (.+?)\\ eks\\.\\ mva$", "price NOK $1 excl. VAT"],
+
 ["^materiell:\\ (.+?)$", "materials: $1"],
+
 ["^(.+?)\\ bilder$", "$1 photos"],
+
 ["^(.+?)\\ %\\ av\\ kalkulerte\\ timer$", "$1% of estimated hours"],
+
 ["^(.+?)\\ trekkes\\.\\ Lørdager,\\ søndager\\ og\\ helligdager\\ teller\\ ikke\\.$", "$1 deducted. Saturdays, Sundays and public holidays don't count."],
+
 ["^Helligdager\\ som\\ ikke\\ trekkes:\\ (.+?)\\.$", "Public holidays not deducted: $1."],
+
 ["^Overlapper\\ med\\ en\\ annen\\ søknad\\ \\((.+?)\\)\\.$", "Overlaps with another request ($1)."],
+
 ["^(.+?)\\ har\\ (.+?)\\ igjen\\ i\\ (.+?),\\ søknaden\\ er\\ på\\ (.+?)\\.\\ Ferie\\ utover\\ retten\\ må\\ avtales\\ som\\ ulønnet\\ permisjon\\ eller\\ forskudd\\.$", "$1 has $2 left in $3, the request is for $4. Holiday beyond the entitlement must be agreed as unpaid leave or an advance."],
+
 ["^Innenfor\\ saldo\\.\\ (.+?)\\ igjen\\ etter\\ denne\\.$", "Within balance. $1 left after this."],
+
 ["^Hovedferie\\ 1\\.\\ juni–30\\.\\ september:\\ (.+?)\\ av\\ (.+?)\\ feriedager\\ \\(3\\ uker\\)\\ (.+?)\\ kan\\ kreve\\.$", "Main holiday 1 June–30 September: $1 of $2 holiday days (3 weeks) that $3 can claim."],
+
 ["^(.+?):\\ maks\\ (.+?)\\ borte\\ samtidig\\.\\ Overlapper\\ med\\ (.+?)\\.$", "$1: max $2 away at once. Overlaps with $3."],
+
 ["^(.+?)\\ er\\ alene\\ i\\ (.+?)\\.\\ Avtal\\ hvem\\ som\\ tar\\ henvendelser\\ i\\ perioden\\.$", "$1 is alone in $2. Agree who handles enquiries during the period."],
+
 ["^Bemanningen\\ i\\ (.+?)\\ holder\\.$", "Staffing in $1 is OK."],
+
 ["^Ferie til (.+)$", "Holiday until $1"],
+
 ["^Til fakturering \\((\\d+)\\)$", "To invoice ($1)"],
+
 ["^Til fakturering$", "To invoice"],
+
 ["^Invitasjon sendt til (.+)$", "Invitation sent to $1"],
+
 ["^Sist sendt (.+)$", "Last sent $1"],
+
 ["^Logget inn (.+) \u2713$", "Logged in $1 ✓"],
+
 ["^Vis alle salgene i (\\d{4}) \\((\\d+)\\)$", "Show all sales in $1 ($2)"],
+
 ["^Hele (\\d{4})$", "All of $1"]
+
 ];
