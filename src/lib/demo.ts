@@ -63,6 +63,7 @@ function startdata(): Data {
     { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
     { id: "p3", visma_nr: 10712, navn: "Nytt kjøkken og gulv", kunde_id: "k1", adresse: "Storgata 14, 6260 Skodje", estimert_timer: 90, start: null, slutt: `${y0 - 1}-11-20`, aktiv: false },
     { id: "prek", visma_nr: 900, navn: "Reklamasjon", kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: true },
+    { id: "psvc", visma_nr: 901, navn: "Service", kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: true },
   ];
   // Forrige uke: Ola har litt overtid, Snekker 3 har glemt lunsj én dag
   const m0 = addDays(mandag(isoOf(new Date())), -7);
@@ -77,6 +78,7 @@ function startdata(): Data {
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
+    serviceProsjekt: "psvc", serviceoppdrag: demoService(),
     kampanjer: demoKampanjer(),
     bedrift: {
       id: 1, navn: PROFIL.firma, undertittel: PROFIL.undertittel, orgnr: PROFIL.orgnr, adresse: PROFIL.adresse, postnr: PROFIL.postnr, poststed: PROFIL.poststed, telefon: PROFIL.telefon, epost: "",
@@ -114,6 +116,17 @@ function demoPlan(m: string): Pick<Data, "oppgaver" | "leveranser" | "materialer
     v("v5", "l3", "Flis 30x60 grå", 9, "m2", false), v("v6", "l3", "Flislim hvit 20 kg", 4, "sekk", false),
   ];
   return { oppgaver, leveranser, materialer, ...demoKvalitet(m) };
+}
+
+/** Noen serviceoppdrag i demoen */
+function demoService(): import("./service").Serviceoppdrag[] {
+  const idag = isoOf(new Date()), naa = new Date().toISOString();
+  const tom = { telefon: "", epost: "", adresse: "", beskrivelse: "", dato: null, dager: 1, kilde: "app" as const, registrert_av: "stale", materiell: [], merknad: "", ferdig_av: null, ferdig_tid: null, visma_ordrenr: "", fakturert_tid: null, signert_navn: "", signatur: "", signert_tid: null, opprettet: naa, endret: naa };
+  return [
+    { ...tom, id: "sv1", kunde_id: "k1", kunde_navn: "", tittel: "Ytterdør går ikke i lås", beskrivelse: "Døra må justeres, kunden får ikke låst.", prioritet: "haster", status: "planlagt", ansvarlig_id: "mads", dato: idag, adresse: "Keiser Wilhelms gate 22, 6003 Ålesund", telefon: "900 00 000" },
+    { ...tom, id: "sv2", kunde_id: null, kunde_navn: "Even Strand", telefon: "922 33 444", tittel: "Skifte to innvendige dører", beskrivelse: "Skifte to innvendige dører\nDørene er kjøpt i butikken.", prioritet: "uke", status: "ny", ansvarlig_id: null, kilde: "skjema", registrert_av: null, adresse: "Fjordvegen 3" },
+    { ...tom, id: "sv3", kunde_id: "k2", kunde_navn: "", tittel: "Montere kjøkkenvifte", prioritet: "ledig", status: "ferdig", ansvarlig_id: "snekker3", dato: addDays(idag, -2), ferdig_av: "snekker3", ferdig_tid: naa, materiell: [{ beskrivelse: "Ventilasjonsrør 125 mm", antall: 2, enhet: "m", pris: 189 }] },
+  ];
 }
 
 /** Sjekkliste, SJA og en bestilling i demoen */
@@ -290,6 +303,11 @@ export function demoApi(): Api {
       const gammel = n.id ? d.timer.find((t) => t.id === n.id) : undefined;
       if (gammel?.status === "godkjent" && !leder()) throw new Error("Timene er godkjent og kan bare endres av leder.");
       const ny = { ...(gammel ?? { id: nyId(), lunsj_unntak: false, status: "levert" as const }), ...n, timer: varighet(n.fra, n.til, n.lunsj_min) } as Time;
+      if (ny.service_id) {
+        if (ny.reklamasjon_id || ny.tillegg_id) throw new Error("Timer på serviceoppdrag kan ikke samtidig gjelde reklamasjon eller tilleggsarbeid.");
+        if (!d.serviceProsjekt) throw new Error("Leder må velge serviceprosjekt under Oppsett før det kan føres timer på serviceoppdrag.");
+        ny.prosjekt_id = d.serviceProsjekt; ny.fakturerbar = true;
+      }
       if (ny.reklamasjon_id && d.reklamasjonProsjekt) ny.prosjekt_id = d.reklamasjonProsjekt;
       if (ny.reklamasjon_id || (d.reklamasjonProsjekt && ny.prosjekt_id === d.reklamasjonProsjekt)) ny.fakturerbar = false;
       if (ny.tillegg_id) {
@@ -336,7 +354,7 @@ export function demoApi(): Api {
     },
     async lastOppBilde(fil, til) {
       const sti = URL.createObjectURL(fil);
-      d.bilder.unshift({ id: nyId(), prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, reklamasjon_id: til.reklamasjon_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
+      d.bilder.unshift({ id: nyId(), service_id: til.service_id ?? null, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, reklamasjon_id: til.reklamasjon_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
       if (til.svenn_id) svennFiler.add(til.svenn_id);
       endret();
     },
@@ -388,7 +406,7 @@ export function demoApi(): Api {
         if (!s) throw new Error("Du er ikke logget inn.");
         if (s.dato !== idag) { if (!o.til) throw new Error("Du ble ikke logget ut. Skriv inn når du sluttet."); slutt = o.til; }
         if (slutt > s.fra) d.timer.push({ id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
-          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null, tillegg_id: s.tillegg_id ?? null });
+          timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null, tillegg_id: s.tillegg_id ?? null, service_id: s.service_id ?? null });
         d.stempling = d.stempling.filter((x) => x.ansatt_id !== m.id);
       }
       if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
@@ -582,6 +600,35 @@ export function demoApi(): Api {
       const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn.");
       if (id && !d.tillegg.some((x) => x.id === id && x.prosjekt_id === s.prosjekt_id && x.status !== "avvist")) throw new Error("Tilleggsarbeidet hører ikke til prosjektet du er logget inn på.");
       s.tillegg_id = id; endret();
+    },
+    async lagreService(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang.");
+      const g = x.id ? (d.serviceoppdrag ?? []).find((s) => s.id === x.id) : undefined;
+      const ny = { ...(g ?? { id: nyId(), kunde_id: null, kunde_navn: "", telefon: "", epost: "", adresse: "", beskrivelse: "", prioritet: "uke", status: "ny", ansvarlig_id: null, dato: null, dager: 1, kilde: "app", registrert_av: m.id, materiell: [], merknad: "", ferdig_av: null, ferdig_tid: null, visma_ordrenr: "", fakturert_tid: null, signert_navn: "", signatur: "", signert_tid: null, opprettet: new Date().toISOString() }), ...x, endret: new Date().toISOString() } as import("./service").Serviceoppdrag;
+      if (!planlegger()) {
+        if (g && !(g.ansvarlig_id === m.id || (g.registrert_av === m.id && g.status === "ny") || (g.status === "ny" && !g.ansvarlig_id && ny.ansvarlig_id === m.id))) throw new Error("Bare leder, prosjektleder eller den ansvarlige kan endre serviceoppdraget.");
+        if (ny.ansvarlig_id && ny.ansvarlig_id !== m.id) ny.ansvarlig_id = g?.ansvarlig_id ?? null;
+        if (ny.status === "fakturert") ny.status = g?.status ?? "ny";
+      }
+      if (!ny.kunde_id && !ny.kunde_navn.trim()) throw new Error("Serviceoppdraget må være på en kunde.");
+      if (["planlagt", "ferdig", "fakturert"].includes(ny.status) && (!ny.ansvarlig_id || !ny.dato)) throw new Error(!ny.ansvarlig_id ? "Velg hvem som skal gjøre oppdraget." : "Velg dato for oppdraget.");
+      if (ny.status === "fakturert" && !ny.kunde_id) throw new Error("Koble oppdraget til kunden i Visma før det merkes fakturert.");
+      if ((ny.status === "ferdig" || ny.status === "fakturert") && !ny.ferdig_tid) { ny.ferdig_tid = new Date().toISOString(); ny.ferdig_av = m.id; }
+      if (ny.status === "fakturert" && !ny.fakturert_tid) ny.fakturert_tid = new Date().toISOString();
+      if (x.signatur) ny.signert_tid = new Date().toISOString();
+      if (g) Object.assign(g, ny); else d.serviceoppdrag = [ny, ...(d.serviceoppdrag ?? [])];
+      endret(); return ny.id;
+    },
+    async slettService(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.serviceoppdrag = (d.serviceoppdrag ?? []).filter((s) => s.id !== id); endret(); },
+    async stempleService(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.service_id = id; endret(); },
+    async lagreServiceprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge serviceprosjekt."); d.serviceProsjekt = id; endret(); },
+    async serviceSkjemaNokkel() { return leder() ? "demo0000000000000000000000000000" : null; },
+    async serviceSkjemaInfo() { return { navn: "Demo Bygg AS" }; },
+    async meldService(_n, x) {
+      if (x.felle) return;
+      if (x.navn.trim().length < 2) throw new Error("Skriv navnet ditt.");
+      if (x.telefon.replace(/\D/g, "").length < 8) throw new Error("Skriv et telefonnummer vi kan nå deg på.");
+      if (x.beskrivelse.trim().length < 5) throw new Error("Beskriv kort hva som skal gjøres.");
     },
     async stempleReklamasjon(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.reklamasjon_id = id; endret(); },
     async lagreDrakt(logo, logoMork, drakt, forAlle) {

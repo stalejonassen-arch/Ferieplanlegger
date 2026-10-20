@@ -104,6 +104,43 @@ async function reklamasjon(id: string) {
   return Response.json(res);
 }
 
+/** Serviceoppdrag: nytt → leder og prosjektleder; delt ut → den ansvarlige; satt til «haster» → begge */
+async function service(id: string) {
+  const { data: o } = await sb.from("serviceoppdrag").select("id, bedrift_id, tittel, kunde_navn, kunde_id, adresse, prioritet, status, ansvarlig_id, dato, registrert_av").eq("id", id).maybeSingle();
+  if (!o || !["ny", "planlagt"].includes(o.status)) return new Response("ikke aktuelt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
+  const { data: alle } = await sb.from("ansatte").select("id, navn, sprak, rolle, prosjektleder").eq("bedrift_id", o.bedrift_id).eq("aktiv", true);
+  const { data: k } = o.kunde_id ? await sb.from("kunder").select("navn").eq("id", o.kunde_id).maybeSingle() : { data: null };
+  const kunde = k?.navn || o.kunde_navn || "";
+  const ikon = o.prioritet === "haster" ? "🔴 " : "";
+  const ut: Record<string, unknown> = {};
+  // Ny: leder og prosjektleder (ikke den som registrerte den selv)
+  if ((await sb.from("push_logg").insert({ type: "service:ny", id: o.id })).error == null) {
+    const m = (alle ?? []).filter((a) => (a.rolle === "leder" || a.prosjektleder) && a.id !== o.registrert_av && a.id !== o.ansvarlig_id);
+    ut.ny = await send(m, (a) => a.sprak === "pl"
+      ? { tittel: `${ikon}Nowe zlecenie serwisowe`, tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` }
+      : { tittel: `${ikon}Nytt serviceoppdrag${o.prioritet === "haster" ? " – haster" : ""}`, tekst: [o.tittel, kunde, o.adresse].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` });
+  }
+  // Delt ut til en snekker (ikke når han tok det selv)
+  if (o.ansvarlig_id && o.ansvarlig_id !== o.registrert_av && (await sb.from("push_logg").insert({ type: `service:ansvarlig:${o.ansvarlig_id}`, id: o.id })).error == null) {
+    const m = (alle ?? []).filter((a) => a.id === o.ansvarlig_id);
+    const naar = o.dato ? new Date(`${o.dato}T12:00:00`).toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long" }) : "";
+    ut.ansvarlig = await send(m, (a) => a.sprak === "pl"
+      ? { tittel: `${ikon}Zlecenie serwisowe dla ciebie`, tekst: [o.tittel, kunde, o.dato ?? ""].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` }
+      : { tittel: `${ikon}Serviceoppdrag til deg`, tekst: [o.tittel, kunde, naar].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` });
+  }
+  // Satt til «haster» etterpå
+  if (o.prioritet === "haster" && (await sb.from("push_logg").insert({ type: "service:haster", id: o.id })).error == null && ut.ny === undefined) {
+    const m = (alle ?? []).filter((a) => a.id === o.ansvarlig_id || ((a.rolle === "leder" || a.prosjektleder) && !o.ansvarlig_id));
+    ut.haster = await send(m, (a) => a.sprak === "pl"
+      ? { tittel: "🔴 Pilne zlecenie serwisowe", tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` }
+      : { tittel: "🔴 Serviceoppdraget haster", tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` });
+  }
+  return Response.json(ut);
+}
+
 /** Personlig månedsrapport publisert: varsle bare den ansatte rapporten gjelder */
 async function personrapport(id: string) {
   const { data: r } = await sb.from("personrapporter").select("id, bedrift_id, ansatt_id, periode, publisert").eq("id", id).maybeSingle();
@@ -162,13 +199,14 @@ async function bestilling(id: string) {
 
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon", "service"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
   if (type === "oppgave") return oppgave(id);
   if (type === "bestilling") return bestilling(id);
   if (type === "personrapport") return personrapport(id);
   if (type === "reklamasjon") return reklamasjon(id);
+  if (type === "service") return service(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });

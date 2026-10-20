@@ -105,6 +105,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0064_invitasjon.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0065_regnskap_auto.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0066_avdeling_salg.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0067_serviceoppdrag.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1208,5 +1209,60 @@ describe("avdelingsrapport", () => {
     expect(r.map((x: any) => x.visma_ordrenr)).toEqual([1]);
     expect(await as(JIM, "select nr from public.visma_avdelinger")).toEqual([{ nr: 3 }]);
     await db.query("update public.ansatte set avdeling_id = $1 where epost = $2", [tidl, JIM]);
+  });
+});
+
+describe("serviceoppdrag", () => {
+  const q4 = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("må være på en kunde, snekker kan registrere og ta det selv, leder deler ut", async () => {
+    const jim = await idOf("Jim Kato");
+    const [k] = await q4("insert into public.kunder (bedrift_id, navn, telefon) values (1, 'Kari Service', '+47 912 34 567') returning id");
+    await expect(as(STALE, "insert into public.serviceoppdrag (tittel) values ('Uten kunde')")).rejects.toThrow(/kunde/);
+    // Snekker kan ikke dele ut til andre
+    const mads = await idOf("Mads Kjerstad");
+    const [a] = await as<any>(JIM, "insert into public.serviceoppdrag (kunde_id, tittel, ansvarlig_id, status, dato) values ($1, 'Skifte lås', $2, 'planlagt', '2027-01-04') returning status, ansvarlig_id", [k.id, mads]);
+    expect(a).toEqual({ status: "ny", ansvarlig_id: null });
+    const [b] = await as<any>(JIM, "insert into public.serviceoppdrag (kunde_id, tittel, ansvarlig_id, status, dato) values ($1, 'Lekk takrenne', $2, 'planlagt', '2027-01-04') returning id, status", [k.id, jim]);
+    expect(b.status).toBe("planlagt");
+    // Leder planlegger: krever ansvarlig og dato, maks 2 dager
+    const [c] = await as<any>(STALE, "insert into public.serviceoppdrag (kunde_id, tittel, prioritet) values ($1, 'Dør henger', 'haster') returning id", [k.id]);
+    await expect(as(STALE, "update public.serviceoppdrag set status = 'planlagt' where id = $1", [c.id])).rejects.toThrow(/hvem/);
+    await expect(as(STALE, "update public.serviceoppdrag set dager = 3 where id = $1", [c.id])).rejects.toThrow();
+    await as(STALE, "update public.serviceoppdrag set status = 'planlagt', ansvarlig_id = $2, dato = '2027-01-05', dager = 2 where id = $1", [c.id, jim]);
+    // Ansvarlig melder ferdig, men kan ikke merke fakturert
+    await as(JIM, "update public.serviceoppdrag set status = 'fakturert' where id = $1", [c.id]);
+    expect((await q4("select status from public.serviceoppdrag where id = $1", [c.id]))[0].status).toBe("planlagt");
+    await as(JIM, "update public.serviceoppdrag set status = 'ferdig', materiell = $2 where id = $1", [c.id, JSON.stringify([{ beskrivelse: "Hengsel", antall: 2, enhet: "stk" }])]);
+    const [f] = await q4("select status, ferdig_av, ferdig_tid from public.serviceoppdrag where id = $1", [c.id]);
+    expect(f.status).toBe("ferdig"); expect(f.ferdig_av).toBe(jim);
+    await as(STALE, "update public.serviceoppdrag set status = 'fakturert', visma_ordrenr = '12345' where id = $1", [c.id]);
+    expect((await q4("select fakturert_tid from public.serviceoppdrag where id = $1", [c.id]))[0].fakturert_tid).not.toBeNull();
+    await expect(as(MADS, "update public.serviceoppdrag set tittel = 'x' where id = $1", [b.id])).rejects.toThrow(/Bare leder/);
+  });
+
+  it("timer føres på serviceprosjektet og er fakturerbare", async () => {
+    const jim = await idOf("Jim Kato");
+    const [sp] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Service 2027') returning id");
+    const [annet] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Annen jobb') returning id");
+    const [o] = await q4("select id from public.serviceoppdrag where tittel = 'Lekk takrenne'");
+    await expect(as(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, service_id) values ($1, $2, '2027-01-04', '08:00', '10:00', $3)", [jim, annet.id, o.id])).rejects.toThrow(/serviceprosjekt/);
+    await expect(as(JIM, "select public.lagre_serviceprosjekt($1)", [sp.id])).rejects.toThrow(/Bare leder/);
+    await as(STALE, "select public.lagre_serviceprosjekt($1)", [sp.id]);
+    const [t] = await as<any>(JIM, "insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, service_id, fakturerbar) values ($1, $2, '2027-01-04', '08:00', '10:00', $3, false) returning prosjekt_id, fakturerbar", [jim, annet.id, o.id]);
+    expect(t).toEqual({ prosjekt_id: sp.id, fakturerbar: true });
+  });
+
+  it("kunden kan melde fra via skjema uten innlogging, med sperre mot misbruk", async () => {
+    const [{ k }] = await q4("select service_skjema_nokkel k from public.bedrifter where id = 1");
+    expect(k.length).toBeGreaterThanOrEqual(20);
+    expect((await as<any>(null, "select public.service_skjema_info($1) i", [k]))[0].i.navn).toBeTruthy();
+    expect((await as<any>(null, "select public.service_skjema_info('feil-nokkel-som-er-lang-nok') i"))[0].i).toBeNull();
+    await expect(as(null, "select public.meld_service('feil-nokkel-som-er-lang-nok', 'Ola', '91234567', '', '', 'Tett sluk på bad')")).rejects.toThrow(/ikke i bruk/);
+    await as(null, "select public.meld_service($1, 'Kari Service', '912 34 567', 'kari@example.no', 'Vegen 1', 'Dør går tregt\nMå høvles', true)", [k]);
+    const [r] = await q4("select kilde, status, prioritet, tittel, kunde_id is not null kjent from public.serviceoppdrag where kilde = 'skjema'");
+    expect(r).toEqual({ kilde: "skjema", status: "ny", prioritet: "haster", tittel: "Dør går tregt", kjent: true });
+    await as(null, "select public.meld_service($1, 'Robot', '99999999', '', '', 'Spam spam spam', false, 'http://x')", [k]);
+    expect(await q4("select 1 from public.serviceoppdrag where kunde_navn = 'Robot'")).toHaveLength(0);
+    await expect(as(null, "select * from public.serviceoppdrag")).rejects.toThrow();
   });
 });

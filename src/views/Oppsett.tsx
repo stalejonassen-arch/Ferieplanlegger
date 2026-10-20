@@ -278,11 +278,40 @@ function ModulOppsett() {
         ))}
       </ul>
       {bruker(d, "reklamasjon") && <ReklamasjonsprosjektValg />}
+      {bruker(d, "service") && <ServiceOppsett />}
     </section>
   );
 }
 
 /** Hvordan bedriften håndterer reklamasjon: hvor timene føres, hvem som får ansvaret og standard frist */
+/** Serviceoppdrag: fast serviceprosjekt i Visma og lenke til kundeskjemaet */
+function ServiceOppsett() {
+  const { d, kjor } = useApp();
+  const [nokkel, setNokkel] = useState<string | null>(null);
+  useEffect(() => { api.serviceSkjemaNokkel().then(setNokkel).catch(() => {}); }, []);
+  const lenke = nokkel ? `${location.origin}${location.pathname}?service=${nokkel}` : "";
+  return (
+    <div className="oppsett-under" style={{ marginTop: 12 }} id="opp-service">
+      <h3 style={{ margin: "0 0 4px" }}>Serviceoppdrag</h3>
+      <p className="small muted" style={{ margin: "0 0 8px" }}>Timer på serviceoppdrag føres på ett fast prosjekt i Visma (f.eks. «Service»), og hvert oppdrag faktureres på en egen ordre til kunden. Timene er fakturerbare.</p>
+      <ProsjektVelger label="Serviceprosjekt i Visma" tom="Ikke valgt" value={d.serviceProsjekt ?? ""} onChange={(id) => kjor(() => api.lagreServiceprosjekt(id || null), "Serviceprosjektet er lagret")}
+        prosjekter={d.prosjekter.filter((p) => p.aktiv && p.id !== d.reklamasjonProsjekt)} />
+      {lenke && (
+        <div className="small" style={{ marginTop: 10, display: "grid", gap: 6 }}>
+          <b>Skjema for kundene</b>
+          <span className="muted">Legg lenken på hjemmesiden eller Facebook. Kunden fyller inn navn, telefon og hva som skal gjøres, og oppdraget dukker opp her som «Ny» med varsel til leder og prosjektleder.</span>
+          <div className="row" style={{ gap: 8 }}>
+            <input readOnly value={lenke} onFocus={(e) => e.target.select()} style={{ flex: "1 1 260px" }} />
+            <button type="button" className="btn sm" onClick={() => navigator.clipboard?.writeText(lenke).then(() => kjor(async () => {}, "Lenken er kopiert"))}>Kopier</button>
+            <a className="btn sm" href={lenke} target="_blank" rel="noreferrer">Åpne</a>
+            <button type="button" className="btn sm" onClick={() => { if (confirm("Lage ny lenke? Den gamle slutter å virke.")) api.serviceSkjemaNokkel(true).then(setNokkel); }}>Ny lenke</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReklamasjonsprosjektValg() {
   const { d, kjor } = useApp();
   const fra = () => d.reklOppsett ?? { timer: d.reklamasjonProsjekt ? "prosjekt" as const : "jobben" as const, ansvar: "snekker" as const, fristDager: 14, prosjekt: d.reklamasjonProsjekt ?? null };

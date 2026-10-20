@@ -10,6 +10,7 @@ import { InneNaa, Stempling } from "./Stempling";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
+import { ServiceValg } from "./Service";
 import { bruker } from "../lib/moduler";
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
@@ -22,7 +23,7 @@ export function Timer() {
   const meSelv = hvem.id === meg.id;
   const lunsjStd = hvem.lunsjtrekk ? (hvem.lunsj_min ?? 30) : 0;
 
-  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true, reklamasjon_id: "", tillegg_id: "" });
+  const tom = (a = hvem) => ({ id: undefined as string | undefined, dato: idag, prosjekt_id: "", fra: "07:00", til: "15:30", lunsj: !!a.lunsjtrekk, km: "", reisetid: "", beskrivelse: "", fakturerbar: true, reklamasjon_id: "", tillegg_id: "", service_id: "" });
   const [f, setF] = useState(tom);
   // Reklamasjon: timene føres på det faste reklamasjonsprosjektet (eller originaljobben) og faktureres ikke
   const rp = bruker(d, "reklamasjon") ? d.reklamasjonProsjekt ?? null : null;
@@ -33,7 +34,9 @@ export function Timer() {
     sett({ prosjekt_id: id, reklamasjon_id: id === rp && mine.length === 1 ? mine[0]!.id : id === f.prosjekt_id ? f.reklamasjon_id : "", tillegg_id: id === f.prosjekt_id ? f.tillegg_id : "" });
   };
   const erRekl = !!f.prosjekt_id && (f.prosjekt_id === rp || !!f.reklamasjon_id);
-  const visTillegg = !!f.prosjekt_id && !erRekl && tilleggFor(d, f.prosjekt_id, f.tillegg_id).length > 0;
+  // Serviceoppdrag: timer på serviceprosjektet må gjelde et bestemt oppdrag
+  const erService = bruker(d, "service") && !!f.prosjekt_id && f.prosjekt_id === d.serviceProsjekt;
+  const visTillegg = !!f.prosjekt_id && !erRekl && !erService && tilleggFor(d, f.prosjekt_id, f.tillegg_id).length > 0;
   const sett = (x: Partial<ReturnType<typeof tom>>) => setF({ ...f, ...x });
   // Manuell føring er for det man glemte å logge; vises når man ber om det, endrer, eller leder fører for andre
   const [manuell, setManuell] = useState(false);
@@ -60,7 +63,7 @@ export function Timer() {
   const ikkeGodkjent = ukeTimer.filter((t) => t.status !== "godkjent").map((t) => t.id);
   const lunsjMin = f.lunsj ? (hvem.lunsj_min ?? 30) : 0;
   const lengde = f.fra && f.til ? varighet(f.fra, f.til, lunsjMin) : 0;
-  const gyldig = !!f.dato && !!f.fra && !!f.til && lengde > 0;
+  const gyldig = !!f.dato && !!f.fra && !!f.til && lengde > 0 && (!erService || !!f.service_id);
 
   const lagre = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,10 +73,11 @@ export function Timer() {
       lunsj_min: lunsjMin, km: Number(f.km.replace(",", ".")) || 0, reisetid: Number(f.reisetid.replace(",", ".")) || 0, beskrivelse: f.beskrivelse.trim(), fakturerbar: !!f.prosjekt_id && f.fakturerbar && !erRekl,
       ...(visRekl || f.id ? { reklamasjon_id: visRekl ? f.reklamasjon_id || null : null } : {}),
       ...(f.tillegg_id || f.id ? { tillegg_id: visTillegg ? f.tillegg_id || null : null } : {}),
+      ...(erService || f.service_id ? { service_id: erService ? f.service_id || null : null } : {}),
     } }, f.id ? "Timene er endret" : `${t2(lengde)} timer registrert`);
-    if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, tillegg_id: f.tillegg_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
+    if (ok) { setF({ ...tom(), dato: f.dato, prosjekt_id: f.prosjekt_id, reklamasjon_id: f.reklamasjon_id, tillegg_id: f.tillegg_id, service_id: f.service_id, fra: f.til, til: f.til < "15:30" ? "15:30" : f.til }); if (f.dato < uke || f.dato > dager[6]) setUke(mandag(f.dato)); }
   };
-  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false, reklamasjon_id: t.reklamasjon_id ?? "", tillegg_id: t.tillegg_id ?? "" });
+  const rediger = (t: Time) => setF({ id: t.id, dato: t.dato, prosjekt_id: t.prosjekt_id ?? "", fra: hhmm(t.fra), til: hhmm(t.til), lunsj: t.lunsj_min > 0, km: t.km ? String(t.km) : "", reisetid: t.reisetid ? String(t.reisetid) : "", beskrivelse: t.beskrivelse, fakturerbar: t.fakturerbar !== false, reklamasjon_id: t.reklamasjon_id ?? "", tillegg_id: t.tillegg_id ?? "", service_id: t.service_id ?? "" });
   const kanEndre = (t: Time) => leder || t.status !== "godkjent";
 
   return (
@@ -128,6 +132,7 @@ export function Timer() {
           )}
           {f.prosjekt_id && <ProsjektForbruk prosjektId={f.prosjekt_id} />}
           {visRekl && <ReklamasjonValg value={f.reklamasjon_id} onChange={(id) => sett({ reklamasjon_id: id })} prosjektId={f.prosjekt_id === rp ? undefined : f.prosjekt_id} />}
+          {erService && <ServiceValg value={f.service_id} onChange={(id) => sett({ service_id: id })} />}
           {visTillegg && <TilleggValg prosjektId={f.prosjekt_id} value={f.tillegg_id} onChange={(id) => sett({ tillegg_id: id })} />}
           {f.prosjekt_id && !erRekl && (
             <label className="row small"><input type="checkbox" checked={f.fakturerbar} onChange={(e) => sett({ fakturerbar: e.target.checked })} /> Fakturerbart (faktureres kunden)</label>

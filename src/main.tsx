@@ -1,20 +1,24 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { ServiceSkjema } from "./views/ServiceSkjema";
 import "./styles.css";
 import { lagretSprak, settSprak } from "./lib/sprak";
 
 // bygglogg.app uten «?demo» er hjemmesiden. Serveren viser den direkte, men en lagret app-versjon i telefonen kan svare først.
 try {
-  if (location.hostname === "bygglogg.app" && location.pathname === "/" && !new URLSearchParams(location.search).has("demo") && !sessionStorage.getItem("bygglogg-demo")) location.replace("/hjem.html");
+  if (location.hostname === "bygglogg.app" && location.pathname === "/" && !new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("service") && !sessionStorage.getItem("bygglogg-demo")) location.replace("/hjem.html");
 } catch { /* privat modus */ }
 
 // Språket som sist ble brukt på denne enheten (gjelder også innloggingen)
 settSprak(lagretSprak());
 
+// Kundeskjema for serviceoppdrag (uten innlogging)
+const serviceNokkel = new URLSearchParams(location.search).get("service");
+
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    {serviceNokkel ? <ServiceSkjema nokkel={serviceNokkel} /> : <App />}
   </React.StrictMode>,
 );
 
