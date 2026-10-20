@@ -23,7 +23,7 @@ export type DokKategori = "fdv" | "sjekkliste" | "tegning" | "kontrakt" | "annet
 export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string; kategori?: DokKategori; ansatt_id?: string }
 /** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
-export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; reklamasjon_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
+export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; reklamasjon_id?: string | null; service_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 /** Svar fra importen av Svenn-timer */
@@ -92,6 +92,17 @@ export interface Api {
   lagreReklamasjonOppsett(o: NonNullable<Data["reklOppsett"]>): Promise<void>;
   /** Hvilken reklamasjon du jobber med mens du er logget inn */
   stempleReklamasjon(id: string | null): Promise<void>;
+  /** Serviceoppdrag: registrer eller endre (returnerer id) */
+  lagreService(s: import("./service").NyService): Promise<string>;
+  slettService(id: string): Promise<void>;
+  stempleService(id: string | null): Promise<void>;
+  /** Leder: bedriftens faste serviceprosjekt i Visma */
+  lagreServiceprosjekt(id: string | null): Promise<void>;
+  /** Leder: nøkkelen til kundeskjemaet (ny = lag en ny, den gamle slutter å virke) */
+  serviceSkjemaNokkel(ny?: boolean): Promise<string | null>;
+  /** Kundeskjemaet (uten innlogging) */
+  serviceSkjemaInfo(nokkel: string): Promise<{ navn: string } | null>;
+  meldService(nokkel: string, x: { navn: string; telefon: string; epost: string; adresse: string; beskrivelse: string; haster: boolean; felle: string }): Promise<void>;
   /** Velg tilleggsarbeid mens du er logget inn (null = hovedjobben) */
   stempleTillegg(id: string | null): Promise<void>;
   /** Arbeidsplan: leder deler ut arbeid, den som har fått det endrer status */
@@ -250,7 +261,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -282,6 +293,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("sja").select("*").order("dato", { ascending: false }).order("id"), 20000),
         alle(() => sb.from("bestillinger").select("*").order("opprettet", { ascending: false }).order("id"), 20000),
         alle(() => sb.from("reklamasjoner").select("*").order("meldt_dato", { ascending: false }).order("id"), 10000),
+        alle(() => sb.from("serviceoppdrag").select("*").order("opprettet", { ascending: false }).order("id"), 10000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -311,6 +323,8 @@ function supabaseApi(sb: SupabaseClient): Api {
         sjekklister: sjekklister.error ? [] : sjekklister.data,
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
+        serviceoppdrag: service.error ? [] : (service.data as import("./service").Serviceoppdrag[]),
+        serviceProsjekt: (b0.service_prosjekt_id as string | null | undefined) ?? null,
         reklamasjoner: reklamasjoner.error ? [] : (reklamasjoner.data as Reklamasjon[]).map((r) => ({ ...r, materiell_kost: r.materiell_kost == null ? null : Number(r.materiell_kost) })),
         // Timene føres på det faste prosjektet bare når bedriften har valgt det
         reklamasjonProsjekt: (b0.rekl_timer ?? "prosjekt") === "prosjekt" ? (b0.reklamasjon_prosjekt_id as string | null | undefined) ?? null : null,
@@ -340,6 +354,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "sja" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bestillinger" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "reklamasjoner" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "serviceoppdrag" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "kampanjer" }, snart)
@@ -395,7 +410,7 @@ function supabaseApi(sb: SupabaseClient): Api {
       const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.jpg`;
       const data = await komprimer(fil);
       ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
-      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ...(til.reklamasjon_id ? { reklamasjon_id: til.reklamasjon_id } : {}), dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
+      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ...(til.reklamasjon_id ? { reklamasjon_id: til.reklamasjon_id } : {}), ...(til.service_id ? { service_id: til.service_id } : {}), dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
         ...(til.sjekkliste_id ? { sjekkliste_id: til.sjekkliste_id, sjekkliste_punkt: til.sjekkliste_punkt ?? null } : {}),
         ...(til.svenn_id ? { svenn_id: til.svenn_id, opprettet: til.opprettet } : {}) });
       if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
@@ -586,6 +601,18 @@ function supabaseApi(sb: SupabaseClient): Api {
     async lagreReklamasjonsprosjekt(id) { ok(await sb.rpc("lagre_reklamasjonsprosjekt", { p: id })); },
     async lagreReklamasjonOppsett(o) { ok(await sb.rpc("lagre_reklamasjon_oppsett", { timer: o.timer, ansvar: o.ansvar, frist_dager: o.fristDager, prosjekt: o.prosjekt })); },
     async stempleReklamasjon(id) { ok(await sb.rpc("stemple_reklamasjon", { r: id })); },
+    async lagreService(x) {
+      const { id, ...rad } = x;
+      for (const k of ["registrert_av", "kilde", "ferdig_av", "ferdig_tid", "fakturert_tid", "signert_tid", "opprettet", "endret"] as const) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("serviceoppdrag").update(rad).eq("id", id).select("id").single() : await sb.from("serviceoppdrag").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettService(id) { ok(await sb.from("serviceoppdrag").delete().eq("id", id)); },
+    async stempleService(id) { ok(await sb.rpc("stemple_service", { s: id })); },
+    async lagreServiceprosjekt(id) { ok(await sb.rpc("lagre_serviceprosjekt", { p: id })); },
+    async serviceSkjemaNokkel(ny = false) { return ok(await sb.rpc("service_skjema_nokkel", { ny })) as string | null; },
+    async serviceSkjemaInfo(nokkel) { const r = await sb.rpc("service_skjema_info", { nokkel }); return r.error ? null : (r.data as { navn: string } | null); },
+    async meldService(nokkel, x) { ok(await sb.rpc("meld_service", { nokkel, navn: x.navn, telefon: x.telefon, epost: x.epost, adresse: x.adresse, beskrivelse: x.beskrivelse, haster: x.haster, felle: x.felle })); },
     async stempleTillegg(id) { ok(await sb.rpc("stemple_tillegg", { t: id })); },
     async lagreOppgave(o) {
       const rad = { prosjekt_id: o.prosjekt_id, tittel: o.tittel.trim(), beskrivelse: o.beskrivelse.trim(), fra: o.fra, til: o.til, ansatte: o.ansatte, ...(o.rekkefolge != null ? { rekkefolge: o.rekkefolge } : {}), ...(o.reklamasjon_id ? { reklamasjon_id: o.reklamasjon_id } : {}), helg: !!o.helg };

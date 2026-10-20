@@ -97,6 +97,9 @@ export interface Data {
   /** Reklamasjoner og bedriftens faste reklamasjonsprosjekt */
   reklamasjoner?: import("./reklamasjon").Reklamasjon[];
   reklamasjonProsjekt?: string | null;
+  /** Serviceoppdrag og bedriftens faste serviceprosjekt i Visma */
+  serviceoppdrag?: import("./service").Serviceoppdrag[];
+  serviceProsjekt?: string | null;
   /** Bedriftens oppsett for reklamasjon: hvor timene føres, hvem som får ansvaret og standard frist */
   reklOppsett?: { timer: "prosjekt" | "jobben" | "intern"; ansvar: "snekker" | "selger" | "ingen"; fristDager: number; prosjekt: string | null };
   /** Arbeid-linjer fra Visma (bare leder) */

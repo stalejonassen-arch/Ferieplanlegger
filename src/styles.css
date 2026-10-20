@@ -1446,3 +1446,9 @@ header.top select.temavalg option { color: #10162E; }
 .avdeling-rapport tfoot th { border-top: 2px solid var(--line); }
 .avdeling-rapport .tbl td, .avdeling-rapport .tbl th { padding-inline: 6px; }
 @media (max-width: 640px) { .avd-kpi { grid-template-columns: 1fr 1fr; } .avd-kpi b { font-size: 1.15rem; } .avdeling-rapport .tbl { font-size: 14px; } }
+
+/* Serviceoppdrag */
+.kunde-treff { display: flex; flex-wrap: wrap; gap: 6px; }
+.kunde-treff .btn { text-align: left; }
+.service .item.haster { border-left: 4px solid var(--warn); }
+.service-skjema .panel { margin-inline: auto; }

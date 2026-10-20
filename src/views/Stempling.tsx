@@ -7,6 +7,7 @@ import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
+import { ServiceValg } from "./Service";
 import { bruker } from "../lib/moduler";
 
 const timerSiden = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
@@ -45,6 +46,11 @@ export function Stempling() {
   const minRekl = () => { const m = (d.reklamasjoner ?? []).filter((r) => r.ansvarlig_id === meg.id && r.status === "godkjent"); return m.length === 1 ? m[0]!.id : ""; };
   const [rekl, setRekl] = useState("");
   useEffect(() => { setRekl(prosjekt && prosjekt === rp ? minRekl() : ""); }, [prosjekt, rp]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Serviceprosjektet: hvilket serviceoppdrag arbeidet gjelder
+  const sp = bruker(d, "service") ? d.serviceProsjekt ?? null : null;
+  const minService = () => { const m = (d.serviceoppdrag ?? []).filter((x) => x.ansvarlig_id === meg.id && x.status === "planlagt" && (!x.dato || x.dato <= idag)); return m.length === 1 ? m[0]!.id : ""; };
+  const [serv, setServ] = useState("");
+  useEffect(() => { setServ(prosjekt && prosjekt === sp ? minService() : ""); }, [prosjekt, sp]); // eslint-disable-line react-hooks/exhaustive-deps
   const [til, setTil] = useState("");
   const [venter, setVenter] = useState(false);
   const [, tikk] = useState(0);
@@ -78,6 +84,7 @@ export function Stempling() {
     const ok = await kjorKo({ type: "stemple", handling, prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined }, melding);
     // Reklamasjon velges etterpå (krever nett); uten nett kan den velges når man er tilbake på nett
     if (ok && handling !== "ut" && rp && prosjekt === rp && rekl && navigator.onLine) await kjor(() => api.stempleReklamasjon(rekl));
+    if (ok && handling !== "ut" && sp && prosjekt === sp && serv && navigator.onLine) await kjor(() => api.stempleService(serv));
     setVenter(false);
     if (ok) { setBeskrivelse(""); setTil(""); }
   };
@@ -95,6 +102,7 @@ export function Stempling() {
       <ProsjektVelger value={prosjekt} onChange={setProsjekt} prosjekter={aktive} tom="Internt arbeid (butikk, lager, verksted)"
         forslag={{ tittel: "Siste prosjekter", ider: siste }} />
       {rp && prosjekt === rp && <ReklamasjonValg value={rekl} onChange={setRekl} />}
+      {sp && prosjekt === sp && <ServiceValg value={serv} onChange={setServ} />}
     </>
   );
 
@@ -129,7 +137,12 @@ export function Stempling() {
             <ReklamasjonValg value={s.reklamasjon_id ?? ""} onChange={(id) => kjor(() => api.stempleReklamasjon(id || null), id ? "Timene føres på reklamasjonen" : "Lagret")} />
           </div>
         )}
-        {s.prosjekt_id && s.prosjekt_id !== rp && !gammel && tilleggFor(d, s.prosjekt_id, s.tillegg_id).length > 0 && (
+        {sp && s.prosjekt_id === sp && !gammel && (
+          <div style={{ marginTop: 6 }}>
+            <ServiceValg value={s.service_id ?? ""} onChange={(id) => kjor(() => api.stempleService(id || null), "Timene føres på serviceoppdraget")} label="Serviceoppdrag du jobber med" />
+          </div>
+        )}
+        {s.prosjekt_id && s.prosjekt_id !== rp && s.prosjekt_id !== sp && !gammel && tilleggFor(d, s.prosjekt_id, s.tillegg_id).length > 0 && (
           <div style={{ marginTop: 6 }}>
             <TilleggValg prosjektId={s.prosjekt_id} value={s.tillegg_id ?? ""} onChange={(id) => kjor(() => api.stempleTillegg(id || null), id ? "Timene føres på tilleggsarbeidet" : "Timene føres på hovedjobben")} />
           </div>
