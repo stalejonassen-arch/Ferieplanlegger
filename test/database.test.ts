@@ -97,6 +97,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0059_reklamasjon_oppsett.sql", "utf8"));
   await db.exec("create table auth.users (email text, last_sign_in_at timestamptz)");
   await db.exec(readFileSync("supabase/migrations/0060_invitasjon.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0061_avdeling_salg.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1057,5 +1058,22 @@ describe("invitasjon til appen", () => {
     expect(r.invitert).not.toBeNull();
     expect(r.innlogget).not.toBeNull();
     expect(rader.find((x: any) => x.ansatt_id === uten.id).innlogget).toBeNull();
+  });
+});
+
+describe("avdelingsrapport", () => {
+  it("leder ser alle avdelinger, ansatte bare sin egen (navnet matcher Visma-avdelingen)", async () => {
+    await db.exec(`insert into public.visma_avdelinger values (1, 1, 'Butikk'), (1, 3, 'Kjøkken & Interiør') on conflict do nothing;
+      insert into public.avdeling_salg (bedrift_id, visma_ordrenr, avdeling_nr, fakturadato, kunde, omsetning, db, kostnad)
+      values (1, 1, 3, '2026-03-01', 'A', 100, 25, 75), (1, 2, 1, '2026-03-01', 'B', 100, 30, 70) on conflict do nothing`);
+    expect(await as(STALE, "select visma_ordrenr from public.avdeling_salg")).toHaveLength(2);
+    expect(await as(JIM, "select visma_ordrenr from public.avdeling_salg")).toHaveLength(0);
+    const ki = (await db.query<any>("select id from public.avdelinger where navn = 'Kjøkken og Interiør'")).rows[0].id;
+    const tidl = (await db.query<any>("select avdeling_id from public.ansatte where epost = $1", [JIM])).rows[0].avdeling_id;
+    await db.query("update public.ansatte set avdeling_id = $1 where epost = $2", [ki, JIM]);
+    const r = await as<any>(JIM, "select visma_ordrenr from public.avdeling_salg");
+    expect(r.map((x: any) => x.visma_ordrenr)).toEqual([1]);
+    expect(await as(JIM, "select nr from public.visma_avdelinger")).toEqual([{ nr: 3 }]);
+    await db.query("update public.ansatte set avdeling_id = $1 where epost = $2", [tidl, JIM]);
   });
 });
