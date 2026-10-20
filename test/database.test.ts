@@ -99,6 +99,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0060_invitasjon.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0061_avdeling_salg.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0062_serviceoppdrag.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0063_sprak_engelsk_litauisk.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1131,5 +1132,15 @@ describe("serviceoppdrag", () => {
     await as(null, "select public.meld_service($1, 'Robot', '99999999', '', '', 'Spam spam spam', false, 'http://x')", [k]);
     expect(await q4("select 1 from public.serviceoppdrag where kunde_navn = 'Robot'")).toHaveLength(0);
     await expect(as(null, "select * from public.serviceoppdrag")).rejects.toThrow();
+  });
+});
+
+describe("språk", () => {
+  it("ansatte kan velge norsk, polsk, engelsk eller litauisk", async () => {
+    for (const s of ["en", "lt", "pl", "nb"]) {
+      await as(JIM, "select public.sett_mitt_sprak($1)", [s]);
+      expect((await db.query<any>("select sprak from public.ansatte where epost = $1", [JIM])).rows[0].sprak).toBe(s);
+    }
+    await expect(as(JIM, "select public.sett_mitt_sprak('de')")).rejects.toThrow(/Ukjent/);
   });
 });

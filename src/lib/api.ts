@@ -65,7 +65,7 @@ export interface Api {
   /** Leder: eiendomsdata til Boligmappa (matrikkel, bruksenhet, fag) */
   lagreEiendom(id: string, e: Partial<Pick<Prosjekt, "adresse" | "kommunenr" | "kommune" | "gnr" | "bnr" | "fnr" | "snr" | "bruksenhet" | "boligmappe_nr" | "fag" | "kontakt_navn" | "kontakt_telefon" | "selger_id" | "snekker_id" | "adresse_manuell">>): Promise<void>;
   /** Mitt språk i appen */
-  settMittSprak(sprak: "nb" | "pl"): Promise<void>;
+  settMittSprak(sprak: import("./sprak").Sprak): Promise<void>;
   settMittTema(tema: Tema): Promise<void>;
   /** Deler av appen som er slått av for bedriften */
   lagreModuler(av: string[]): Promise<void>;

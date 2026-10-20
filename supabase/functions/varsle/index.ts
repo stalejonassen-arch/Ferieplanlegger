@@ -34,11 +34,47 @@ async function forsteGang(soknad_id: string, hendelse: string) {
 }
 
 /** Invitasjon til appen, med egne steg for iPhone og Android */
-function invitasjonTekst(sprak: "nb" | "pl", navn: string, firma: string, epost: string) {
+function invitasjonTekst(sprak: "nb" | "pl" | "en" | "lt", navn: string, firma: string, epost: string) {
   const h = (x: string) => `<h3 style="margin:18px 0 6px">${x}</h3>`;
   const ol = (x: string[]) => `<ol style="margin:0 0 8px 20px;padding:0">${x.map((l) => `<li style="margin:3px 0">${l}</li>`).join("")}</ol>`;
   const fornavn = esc(navn.split(" ")[0] ?? "");
   const f = esc(firma || "Firmaet ditt"), e = esc(epost);
+  if (sprak === "en") return {
+    emne: `You are invited to ByggLogg – ${firma}`,
+    lenke: "Open ByggLogg",
+    avsnitt: [
+      `Hi ${fornavn}!`,
+      `${f} has invited you to <b>ByggLogg</b> – the app for hours, clocking in, projects and messages.`,
+      h("1. Log in with a code"),
+      ol([`Open the link at the bottom of this email <b>on your phone</b>.`, `Enter your email: <b>${e}</b> and tap «Send kode» (send code).`, `You will get an email with a 6-digit code. Enter it in the app. No password needed.`]),
+      h("2. Save as an app – iPhone"),
+      ol([`Open the link in <b>Safari</b> (not inside Gmail/Outlook or Chrome). If it opens elsewhere, copy the address and paste it into Safari.`, `Tap the <b>Share</b> button (square with an arrow up) at the bottom of the screen.`, `Scroll down, choose <b>«Add to Home Screen»</b> and tap <b>«Add»</b>.`, `From now on, open ByggLogg from the <b>icon on your home screen</b>.`]),
+      h("2. Save as an app – Android"),
+      ol([`Open the link in <b>Chrome</b>.`, `Tap the three dots <b>⋮</b> at the top right.`, `Choose <b>«Install app»</b> or <b>«Add to Home screen»</b> and tap <b>«Install»</b>.`, `Samsung Internet: menu <b>☰</b> → «Add page to» → «Home screen».`]),
+      h("3. Turn on notifications"),
+      ol([`Open ByggLogg from the icon and log in.`, `Tap <b>«Slå på varsler»</b> (turn on notifications) and choose <b>«Allow»</b>.`, `iPhone: notifications only work when the app is opened from the home screen icon (iOS 16.4 or newer).`]),
+      `Tip: tap <b>English</b> at the bottom of the login page, and choose English in the language menu at the top of the app.`,
+      `Questions? Ask your manager.`,
+    ],
+  };
+  if (sprak === "lt") return {
+    emne: `Kvietimas į ByggLogg – ${firma}`,
+    lenke: "Atidaryti ByggLogg",
+    avsnitt: [
+      `Sveiki, ${fornavn}!`,
+      `${f} kviečia jus naudotis <b>ByggLogg</b> – programėle darbo valandoms, darbo pradžios ir pabaigos registracijai, projektams ir žinutėms.`,
+      h("1. Prisijunkite su kodu"),
+      ol([`Atidarykite nuorodą šio laiško apačioje <b>telefone</b>.`, `Įveskite savo el. paštą: <b>${e}</b> ir paspauskite «Send kode» (siųsti kodą).`, `Gausite laišką su 6 skaitmenų kodu. Įveskite jį programėlėje. Slaptažodžio nereikia.`]),
+      h("2. Išsaugokite kaip programėlę – iPhone"),
+      ol([`Atidarykite nuorodą <b>Safari</b> naršyklėje (ne Gmail/Outlook ar Chrome). Jei atsidaro kitur, nukopijuokite adresą ir įklijuokite į Safari.`, `Paspauskite <b>Bendrinti</b> mygtuką (kvadratas su rodykle aukštyn) ekrano apačioje.`, `Slinkite žemyn, pasirinkite <b>«Į pradžios ekraną»</b> ir paspauskite <b>«Pridėti»</b>.`, `Toliau atidarykite ByggLogg per <b>piktogramą pradžios ekrane</b>.`]),
+      h("2. Išsaugokite kaip programėlę – Android"),
+      ol([`Atidarykite nuorodą <b>Chrome</b> naršyklėje.`, `Paspauskite tris taškus <b>⋮</b> viršuje dešinėje.`, `Pasirinkite <b>«Įdiegti programą»</b> arba <b>«Pridėti prie pagrindinio ekrano»</b> ir patvirtinkite.`, `Samsung Internet: meniu <b>☰</b> → «Pridėti puslapį prie» → «Pradžios ekranas».`]),
+      h("3. Įjunkite pranešimus"),
+      ol([`Atidarykite ByggLogg per piktogramą ir prisijunkite.`, `Paspauskite <b>«Slå på varsler»</b> (įjungti pranešimus) ir pasirinkite <b>«Leisti»</b>.`, `iPhone: pranešimai veikia tik tada, kai programėlė atidaroma per piktogramą pradžios ekrane (iOS 16.4 ar naujesnė).`]),
+      `Patarimas: prisijungimo puslapio apačioje paspauskite <b>Lietuvių</b>, o programėlės viršuje esančiame kalbų meniu pasirinkite lietuvių kalbą.`,
+      `Turite klausimų? Klauskite vadovo.`,
+    ],
+  };
   if (sprak === "pl") return {
     emne: `Zaproszenie do ByggLogg – ${firma}`,
     lenke: "Otwórz ByggLogg",
@@ -89,7 +125,7 @@ Deno.serve(async (req) => {
     const { data: b } = await sb.from("bedrifter").select("navn").eq("id", inv.bedrift_id).maybeSingle();
     const { error } = await sb.from("invitasjoner").update({ levert: new Date().toISOString() }).eq("id", inv.id).is("levert", null).select("id").single();
     if (error) return new Response("allerede sendt");
-    const t = invitasjonTekst(a.sprak === "pl" ? "pl" : "nb", a.navn ?? "", b?.navn ?? "", inv.epost);
+    const t = invitasjonTekst(["pl", "en", "lt"].includes(a.sprak) ? a.sprak : "nb", a.navn ?? "", b?.navn ?? "", inv.epost);
     try { await send([inv.epost], t.emne, t.avsnitt, APP_URL, t.lenke); }
     catch (e) {
       // Ikke sendt: fjern merket, så leder ser at det ikke gikk og kan prøve igjen

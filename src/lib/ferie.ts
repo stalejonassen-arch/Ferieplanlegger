@@ -30,7 +30,7 @@ export interface Ansatt {
   hms_kort_nr?: string;
   hms_kort_gyldig?: string | null;
   /** Språk i appen: nb (norsk) eller pl (polsk) */
-  sprak?: "nb" | "pl";
+  sprak?: import("./sprak").Sprak;
   tema?: Tema;
   /** Får push-varsel om nye prosjekter */
   varsel_prosjekt?: boolean;
