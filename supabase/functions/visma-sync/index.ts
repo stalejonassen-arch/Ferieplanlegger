@@ -327,8 +327,9 @@ async function synkAvdelingSalg(tok: string, b: { id: number; visma_firma_nr: nu
   const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
   const naa = new Date().toISOString();
   const rader = ordrer
-    // Bare salg (transaksjonstype 1), ikke tilbud (ordretype 5)
-    .filter((o) => Number(o.transactionType) === 1 && Number(o.orderType) !== 5)
+    // Bare salg (transaksjonstype 1).
+    // Tilbud (ordretype 5) telles bare når det faktisk er fakturert på dem
+    .filter((o) => Number(o.transactionType) === 1 && (Number(o.orderType) !== 5 || (Number(o.invoicedAmountTotalDomestic) || 0) !== 0))
     .map((o) => ({
       bedrift_id: b.id, visma_ordrenr: Number(o.orderNo), avdeling_nr: Number(o.orgUnit1), ordredato: dato(o.orderDate),
       fakturadato: n(o.invoicedAmountTotalDomestic) !== 0 ? (dato(o.finishDate) ?? dato(o.orderDate)) : null, kunde: s(o.name).slice(0, 120),
