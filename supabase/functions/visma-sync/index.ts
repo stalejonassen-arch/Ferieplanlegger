@@ -331,7 +331,7 @@ async function synkAvdelingSalg(tok: string, b: { id: number; visma_firma_nr: nu
     .filter((o) => Number(o.transactionType) === 1 && Number(o.orderType) !== 5)
     .map((o) => ({
       bedrift_id: b.id, visma_ordrenr: Number(o.orderNo), avdeling_nr: Number(o.orgUnit1), ordredato: dato(o.orderDate),
-      fakturadato: n(o.invoicedAmountTotalDomestic) !== 0 ? dato(o.finishDate) : null, kunde: s(o.name).slice(0, 120),
+      fakturadato: n(o.invoicedAmountTotalDomestic) !== 0 ? (dato(o.finishDate) ?? dato(o.orderDate)) : null, kunde: s(o.name).slice(0, 120),
       selger_nr: Number(o.sellerOrBuyer) || null, ordresum: n(o.orderSumNetDomestic), omsetning: n(o.invoicedAmountTotalDomestic),
       db: n(o.grossProfitTotalDomestic), kostnad: n(o.incurredCostTotalDomestic), oppdatert: naa,
     }));
