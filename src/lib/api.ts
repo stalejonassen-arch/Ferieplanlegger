@@ -354,6 +354,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "sja" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bestillinger" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "reklamasjoner" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "serviceoppdrag" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "avvik" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bilder" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "kampanjer" }, snart)
