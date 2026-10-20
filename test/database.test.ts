@@ -354,13 +354,13 @@ describe("dagbok og tilleggsarbeid", () => {
     await db.query("update public.stempling set fra='00:00', dato=(now() at time zone 'Europe/Oslo')::date where ansatt_id=$1", [jim]);
     expect(await as(MADS, "select * from public.stempling")).toHaveLength(0);
     expect(await as(STALE, "select * from public.stempling")).toHaveLength(1);
-    await as(JIM, "select public.stemple('ut', null, 'Montert vinduer', 30)");
+    await as(JIM, "select public.stemple('ut', null, 'Montert vinduer', 0)");
     const t = await as<any>(JIM, "select fra, kilde, beskrivelse, lunsj_min, prosjekt_id from public.timer where ansatt_id=$1", [jim]);
     if (t.length) { // tom hvis testen kjøres rett etter midnatt (ut før 07:00)
       expect(t[0].kilde).toBe("stempel");
       expect(t[0].beskrivelse).toBe("Montert vinduer");
       expect(t[0].prosjekt_id).toBe(p);
-      await as(JIM, "update public.timer set beskrivelse='x', til=til where ansatt_id=$1", [jim]); await as(JIM, "update public.timer set fra='00:15' where ansatt_id=$1", [jim]);
+      await as(JIM, "update public.timer set beskrivelse='x', til=til where ansatt_id=$1", [jim]); await as(JIM, "update public.timer set fra=fra + interval '1 minute' where ansatt_id=$1 and til > fra + interval '1 minute'", [jim]);
       expect((await as<any>(JIM, "select kilde from public.timer where ansatt_id=$1", [jim]))[0].kilde).toBe("endret");
     }
     expect(await as(JIM, "select * from public.stempling")).toHaveLength(0);

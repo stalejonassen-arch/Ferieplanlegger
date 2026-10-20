@@ -1019,95 +1019,366 @@ export const LT_TEKST: Record<string, string> = {
 "Kommende ferie": "Artėjančios atostogos",
 "Dine søknader som venter": "Jūsų laukiantys prašymai",
 "Alt er behandlet": "Viskas apdorota",
-"Ingen søknader venter. 🌿": "Laukiančių prašymų nėra. 🌿"
+"Ingen søknader venter. 🌿": "Laukiančių prašymų nėra. 🌿",
+"Månedens kampanje": "Mėnesio akcija",
+"· trykk for å bla": "· bakstelėk, kad vartytum",
+"Skjul kampanjen": "Slėpti akciją",
+"Tilbake til samtaler": "Atgal į pokalbius",
+"Valg for meldingen": "Žinutės parinktys",
+"Legg ved bilde": "Pridėti nuotrauką",
+"+ Nytt prosjekt": "+ Naujas projektas",
+"Fra Visma": "Iš Visma",
+"Mål for": "Tikslas:",
+"% av": "% nuo",
+"målet": "tikslo",
+"Salgsinntekter (konto 3000–3999) eks. mva. Fakturaer som ikke er bokført ennå kommer med når de bokføres.": "Pardavimų pajamos (sąskaitos 3000–3999) be PVM. Dar neįtrauktos į apskaitą sąskaitos faktūros bus įtrauktos, kai bus užregistruotos.",
+"Endre mål": "Keisti tikslą",
+"Fakturerbare timer": "Apmokestinamos valandos",
+"Mål for året": "Metų tikslas",
+"Teller timer ført på prosjekt og merket fakturerbart i ByggLogg.": "Skaičiuojamos valandos, įrašytos projekte ir pažymėtos kaip apmokestinamos ByggLogg.",
+"Grønt = nådd målet på": "Žalia = pasiektas tikslas –",
+"Hvem som telles med velger du under Oppsett → «I timerapport».": "Ką įtraukti, pasirenki Nustatymai → „Valandų ataskaitoje“.",
+"Ingen kalkulerte timer": "Nėra apskaičiuotų valandų",
+"Framdrift i måneden": "Mėnesio eiga",
+"Så langt er vi kommet i måneden": "Tiek mėnesio jau praėjo",
+"Omsetning per måned, i år og i fjor": "Apyvarta per mėnesį, šiais ir praėjusiais metais",
+"Fakturerbare timer per måned": "Apmokestinamos valandos per mėnesį",
+"Vis alle, ikke bare de neste tre ukene": "Rodyti viską, ne tik artimiausias tris savaites",
+"Vis bestillinger": "Rodyti užsakymus",
+"Svar til den som bestilte (valgfritt), f.eks. «Ligger klart i butikken»": "Atsakymas užsakiusiajam (neprivaloma), pvz., „Paruošta parduotuvėje“",
+"Svar til den som bestilte": "Atsakymas užsakiusiajam",
+"Registrert av": "Užregistravo",
+"Hva vi gjør, og når": "Ką darysime ir kada",
+"ferdig": "baigta",
+"Tidslinje for prosjektet": "Projekto laiko juosta",
+"Trykk «Legg til bevis».": "Bakstelėk „Pridėti įrodymą“.",
+"Ny rapport": "Nauja ataskaita",
+"Legg inn rapporten som PDF eller lenke. Når du publiserer, får alle ansatte e-post, og du ser her hvem som har åpnet den.": "Įkelk ataskaitą kaip PDF arba nuorodą. Kai paskelbsi, visi darbuotojai gaus el. laišką, o čia matysi, kas ją atidarė.",
+"Borte i dag": "Šiandien nėra",
+"Neste 60 dager": "Artimiausios 60 dienų",
+"Søknader som må behandles": "Prašymai, kuriuos reikia apdoroti",
+"Godkjent ferie": "Patvirtintos atostogos",
+"Avslått (vises i søknadslisten)": "Atmesta (rodoma prašymų sąraše)",
+"Til behandling": "Laukia sprendimo",
+"Saldo per ansatt": "Likutis pagal darbuotoją",
+"Ferie som ikke er tatt ved årets slutt kan overføres med skriftlig avtale, inntil 2 uker (10 feriedager). Legg det inn under Oppsett for neste år.": "Iki metų pabaigos nepanaudotos atostogos gali būti perkeltos raštišku susitarimu, iki 2 savaičių (10 atostogų dienų). Įvesk tai Nustatymuose kitiems metams.",
+"Kommentar til den ansatte (valgfritt)": "Komentaras darbuotojui (neprivaloma)",
+"Kommentar til den ansatte": "Komentaras darbuotojui",
+"Leder har ikke svart ennå": "Vadovas dar neatsakė",
+"Timer i lønnskjøringen": "Valandos darbo užmokesčio skaičiavime",
+"Overtid regnes per uke: timer over normaltiden (37,5 eller 40 t) gir 50 %, timer på søndag og helligdager gir 100 %. Lunsj trekkes for dem som skal trekkes, på dager over 5,5 timer uten registrert lunsj.": "Viršvalandžiai skaičiuojami per savaitę: valandos virš įprasto laiko (37,5 arba 40 val.) – 50 %, valandos sekmadieniais ir švenčių dienomis – 100 %. Pietūs išskaičiuojami tiems, kam taikoma, dienomis ilgesnėmis nei 5,5 val. be užregistruotų pietų.",
+"Ikke godkjent ennå:": "Dar nepatvirtinta:",
+". Godkjenn under «Timer» før du kjører lønn.": ". Patvirtink skiltyje „Valandos“ prieš skaičiuodamas atlyginimus.",
+"Syk (dager)": "Liga (dienos)",
+"t/uke": "val./sav.",
+"Ikke trekk": "Neišskaičiuoti",
+"Ferie i lønnskjøringen": "Atostogos darbo užmokesčio skaičiavime",
+"Godkjente feriedager mandag–fredag, uten helligdager. Bruk tallene når du kjører lønn for måneden.": "Patvirtintos atostogų dienos pirmadienį–penktadienį, be švenčių. Naudok šiuos skaičius skaičiuodamas mėnesio atlyginimus.",
+"Ansatte over 60 år har krav på 2,3 prosentpoeng ekstra feriepenger (ferieloven § 10 nr. 3).": "Darbuotojams, vyresniems nei 60 metų, priklauso 2,3 procentinio punkto papildomų atostoginių (Atostogų įstatymo 10 § 3 p.).",
+"Deler av appen": "Programėlės dalys",
+"Import fra Svenn": "Importas iš Svenn",
+"Trykk på en ansatt for å endre innlogging, ferie, arbeidstid, lønn, varsler, utstyr og HMS-kort. Endringer lagres med en gang.": "Bakstelėk darbuotoją, kad pakeistum prisijungimą, atostogas, darbo laiką, atlyginimą, pranešimus, įrangą ir HMS kortelę. Pakeitimai išsaugomi iš karto.",
+"Ny ansatt": "Naujas darbuotojas",
+"Slå av det dere ikke bruker, så blir appen enklere for de ansatte. Det som slås av, forsvinner fra menyene for alle, men ingenting slettes – slår du det på igjen, ligger alt der som før. Timer, prosjekter, ferie og fravær, lønn og oppsett er alltid med.": "Išjunk tai, ko nenaudojate, ir programėlė darbuotojams bus paprastesnė. Tai, kas išjungta, dingsta iš meniu visiems, bet niekas neištrinama – vėl įjungus viskas bus kaip anksčiau. Valandos, projektai, atostogos ir nebuvimas, atlyginimai ir nustatymai visada įtraukti.",
+"Meldinger i felles kanal, per prosjekt og mellom to ansatte": "Žinutės bendrame kanale, pagal projektą ir tarp dviejų darbuotojų",
+"Dele ut arbeid med datoer, ukeplan og «Mitt arbeid»": "Darbų skirstymas su datomis, savaitės planas ir „Mano darbas“",
+"Materiell delt i leveranser på prosjektet, og leveranser som skal ut": "Medžiagos, suskirstytos į pristatymus projekte, ir išsiunčiami pristatymai",
+"Bestilling fra byggeplassen": "Užsakymai iš statybvietės",
+"Snekkeren bestiller materiell, butikken plukker og leverer": "Dailidė užsako medžiagas, parduotuvė surenka ir pristato",
+"Sjekklister som fylles ut og signeres på prosjektet": "Kontroliniai sąrašai, pildomi ir pasirašomi projekte",
+"SJA og mannskapsliste": "SJA ir darbuotojų sąrašas",
+"Sikker jobbanalyse, mannskapsliste og HMS-kort": "Saugaus darbo analizė, darbuotojų sąrašas ir HMS kortelė",
+"Avvik og RUH": "Nukrypimai ir RUH",
+"Melde og følge opp avvik og uønskede hendelser": "Pranešti apie nukrypimus ir nepageidaujamus įvykius bei juos stebėti",
+"Små betalte oppdrag hos kunden på en dag eller to – hastegrad, timer, materiell og fakturering": "Nedideli mokami darbai pas klientą vienai ar dviem dienoms – skubumas, valandos, medžiagos ir sąskaitos",
+"Kunden melder feil på ferdig jobb – vurdering, utbedring og kostnad": "Klientas praneša apie baigto darbo defektą – įvertinimas, taisymas ir kaina",
+"Tilleggsarbeid som kunden signerer": "Papildomi darbai, kuriuos pasirašo klientas",
+"Utstyr og arbeidstøy": "Įranga ir darbo drabužiai",
+"Verktøy, arbeidstøy og forbruk per ansatt": "Įrankiai, darbo drabužiai ir sunaudojamos medžiagos pagal darbuotoją",
+"Kompetanse, kurs og sertifikater": "Kompetencijos, kursai ir sertifikatai",
+"Månedsrapporter til de ansatte": "Mėnesio ataskaitos darbuotojams",
+"Kampanjer fra kjeden på forsiden": "Tinklo akcijos pradiniame puslapyje",
+"Lønnsomhet per prosjekt (bare leder ser den)": "Projekto pelningumas (mato tik vadovas)",
+"Sluttrapport til kunden og Boligmappa": "Galutinė ataskaita klientui ir Boligmappa",
+"Uansett valg merkes timene med hvilken reklamasjon de gjelder, og de blir aldri fakturert.": "Nepriklausomai nuo pasirinkimo, valandos pažymimos pretenzija, su kuria jos susijusios, ir niekada neįtraukiamos į sąskaitą.",
+"Hvor føres timene på reklamasjon?": "Kur įrašomos pretenzijų valandos?",
+"Samler kostnaden for alle reklamasjoner på ett internt prosjekt.": "Visų pretenzijų išlaidos surenkamos viename vidiniame projekte.",
+"Viser hva hver jobb faktisk kostet, med etterarbeid.": "Rodo, kiek kiekvienas darbas iš tikrųjų kainavo, įskaitant pataisymus.",
+"Som interntid": "Kaip vidinis laikas",
+"Uten prosjekt. For dem som ikke følger opp reklamasjon i regnskapet.": "Be projekto. Tiems, kurie apskaitoje nestebi pretenzijų.",
+"Hvem får ansvaret når en reklamasjon registreres?": "Kas atsakingas, kai užregistruojama pretenzija?",
+"Snekkeren hvis jobben ikke har selger.": "Dailidė, jei darbas neturi pardavėjo.",
+"Leder velger hver gang": "Vadovas renkasi kiekvieną kartą",
+"Standard svarfrist (dager etter at kunden meldte fra)": "Standartinis atsakymo terminas (dienos nuo kliento pranešimo)",
+"Den ansvarlige og leder får varsel to dager før fristen og dagen etter hvis den er passert.": "Atsakingas asmuo ir vadovas gauna pranešimą dvi dienos iki termino ir kitą dieną, jei jis praėjo.",
+"Hvor mange i hver avdeling som kan være borte samme dag før appen varsler.": "Kiek kiekvieno skyriaus darbuotojų gali nebūti tą pačią dieną, kol programėlė įspės.",
+"Kampanjer fra Byggfag (DM)": "Byggfag akcijos (DM)",
+"Last opp DM-en som PDF (eller bilder av sidene). Den vises øverst på startsiden for alle ansatte i perioden du velger. Hver ansatt kan skjule kampanjen med ett trykk.": "Įkelk DM kaip PDF (arba puslapių nuotraukas). Ji bus rodoma pradinio puslapio viršuje visiems darbuotojams tavo pasirinktu laikotarpiu. Kiekvienas darbuotojas gali paslėpti akciją vienu bakstelėjimu.",
+"Vises nå": "Rodoma dabar",
+"Legg inn ny kampanje": "Pridėti naują akciją",
+"Utstyr: kvoter for arbeidstøy": "Įranga: darbo drabužių kvotos",
+"Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy, verneutstyr eller forbruk. Kvotene gjelder per ansatt i en rullerende periode. Øvrig verneutstyr (hansker, briller, hørselvern) gis etter behov og har ingen kvote. Håndverktøy byttes nytt mot gammelt.": "Kiekvienas darbuotojas turi įrangos sąskaitą Visma. Kas ten įrašoma, perkeliama į ByggLogg su data ir kaina ir rūšiuojama kaip įrankiai, darbo drabužiai, apsaugos priemonės arba sunaudojamos medžiagos. Kvotos taikomos kiekvienam darbuotojui slenkančiu laikotarpiu. Kitos apsaugos priemonės (pirštinės, akiniai, klausos apsauga) išduodamos pagal poreikį ir neturi kvotos. Rankiniai įrankiai keičiami nauji į senus.",
+"Lagre kvoter": "Išsaugoti kvotas",
+"0 = ingen kvote for det plagget.": "0 = šiam drabužiui kvotos nėra.",
+"Utstyrskontoen velges på hver ansatt under «Ansatte». Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.": "Įrangos sąskaita pasirenkama kiekvienam darbuotojui skiltyje „Darbuotojai“. Sąraše trūksta sąskaitos? Sukurk projektą Visma su „utstyr“ arba „arbeidsklær“ pavadinime, ir per ketvirtį valandos jis atsiras čia.",
+"Timer og dokumentasjon fra Svenn. Trengs bare så lenge dere har Svenn.": "Valandos ir dokumentacija iš Svenn. Reikia tik tol, kol naudojate Svenn.",
+"Timer fra Svenn": "Valandos iš Svenn",
+"Hent inn timer fra Svenn som statistikk på prosjektene. I Svenn:": "Importuok valandas iš Svenn kaip projektų statistiką. Svenn programoje:",
+", velg periode og eksporter til": ", pasirink laikotarpį ir eksportuok į",
+". Last opp fila her, sjekk at hvert Svenn-prosjekt peker på riktig prosjekt, og importer. Timene legges inn som godkjent og merket «Fra Svenn». Valgene huskes til neste gang, og en ny import av samme periode erstatter den forrige.": ". Įkelk failą čia, patikrink, ar kiekvienas Svenn projektas nurodo teisingą projektą, ir importuok. Valandos įrašomos kaip patvirtintos ir pažymėtos „Iš Svenn“. Pasirinkimai įsimenami kitam kartui, o naujas to paties laikotarpio importas pakeičia ankstesnį.",
+"Velg Excel-fil fra Svenn": "Pasirink Excel failą iš Svenn",
+"Dokumentasjon fra Svenn": "Dokumentacija iš Svenn",
+"Bilder og PDF-er fra prosjektene i Svenn. Last opp arkivet": "Nuotraukos ir PDF failai iš Svenn projektų. Įkelk archyvą",
+", sjekk prosjektene, og importer. Bildene havner under Bilder på prosjektet med mappe og dato fra Svenn, PDF-ene under FDV/dokumenter. Filer som allerede er importert hoppes over, så arkivet kan lastes opp på nytt.": ", patikrink projektus ir importuok. Nuotraukos atsidurs projekto Nuotraukose su aplanku ir data iš Svenn, PDF – FDV/dokumentuose. Jau importuoti failai praleidžiami, todėl archyvą galima įkelti iš naujo.",
+"Velg arkiv fra Svenn (zip)": "Pasirink archyvą iš Svenn (zip)",
+"Deler av oppsettet": "Nustatymų dalys",
+"Ingen kontaktperson. Legg inn med «Endre» ved adressen.": "Nėra kontaktinio asmens. Pridėk per „Keisti“ prie adreso.",
+"Ingen adresse på prosjektet": "Projektas neturi adreso",
+"Legg inn adresse, kontakt, selger og snekker": "Įvesk adresą, kontaktą, pardavėją ir dailidę",
+"Samme jobb som et annet prosjekt? Slå sammen": "Tas pats darbas kaip kitas projektas? Sujungti",
+"varer fra Visma, sist hentet øverst)": "prekių iš Visma, naujausios viršuje)",
+"Kalkulerte timer": "Apskaičiuotos valandos",
+"Planlagt ferdig": "Planuojama pabaiga",
+"Lagre plan": "Išsaugoti planą",
+"Deler av prosjektet": "Projekto dalys",
+"varer er kommet": "prekių atvyko",
+"Våtrom – membran og sluk": "Šlapia patalpa – membrana ir trapas",
+"Vindtetting og lufttetting": "Vėjo ir oro sandarinimas",
+"Montering av vinduer og dører": "Langų ir durų montavimas",
+"Branntetting og gjennomføringer": "Priešgaisrinis sandarinimas ir pratekėjimai",
+"Sluttkontroll før overlevering": "Galutinė patikra prieš perdavimą",
+"Lag en SJA før arbeid med fare for liv og helse, for eksempel arbeid på tak, i høyden eller ved riving.": "Sudaryk SJA prieš darbą, keliantį pavojų gyvybei ir sveikatai, pavyzdžiui, darbą ant stogo, aukštyje ar griovimą.",
+"Laget av timene som er ført på prosjektet. Byggherreforskriften krever oversikt over hvem som er på byggeplassen.": "Sudaryta iš projekte įrašytų valandų. Statytojo reglamentas (byggherreforskriften) reikalauja žinoti, kas yra statybvietėje.",
+"HMS-kort mangler eller har gått ut:": "HMS kortelės nėra arba ji nebegalioja:",
+"Bilder fra prosjektet": "Projekto nuotraukos",
+"Last opp PDF, bilder, Word eller Excel. FDV, sjekklister og tegninger kommer med i sluttdokumentasjonen til kunden. Tilbud, kontrakt og annet blir værende internt.": "Įkelk PDF, nuotraukas, Word ar Excel. FDV, kontroliniai sąrašai ir brėžiniai įtraukiami į baigiamąją dokumentaciją klientui. Pasiūlymas, sutartis ir kiti lieka vidiniai.",
+"Ingen dokumenter på prosjektet ennå. Velg type og trykk «Last opp filer».": "Projekte dar nėra dokumentų. Pasirink tipą ir bakstelėk „Įkelti failus“.",
+"Har kunden meldt fra om feil eller mangel på jobben? Registrer det her, så blir det vurdert, planlagt og fulgt opp.": "Klientas pranešė apie darbo defektą ar trūkumą? Užregistruok čia – tai bus įvertinta, suplanuota ir prižiūrėta.",
+"per uke": "per savaitę",
+"Ordrer i Visma på kundeprosjektet, oppdatert hvert kvarter. Bare du som leder ser denne siden.": "Užsakymai Visma kliento projekte, atnaujinami kas ketvirtį valandos. Šį puslapį matai tik tu kaip vadovas.",
+"Ferdig fakturert – alle fakturerbare timer teller som fakturert (full pott)": "Visiškai išrašyta sąskaita – visos apmokestinamos valandos laikomos apmokėtomis (visa suma)",
+"Fastpris – faktureres uten «Arbeid», så timene holdes utenfor sammenligningen av fakturerte timer": "Fiksuota kaina – sąskaita be „Darbas“, todėl valandos neįtraukiamos į apmokėtų valandų palyginimą",
+"Timer brukt": "Sunaudotos valandos",
+"Én ferdig PDF til kunden når jobben er ferdig: forside, utført arbeid, tilleggsarbeid, bilder, FDV og garanti, med FDV-dokumenter og sjekklister lagt ved bakerst. Kunden kan laste den rett opp i Boligmappa.": "Vienas paruoštas PDF klientui, kai darbas baigtas: titulinis puslapis, atlikti darbai, papildomi darbai, nuotraukos, FDV ir garantija, gale pridėti FDV dokumentai ir kontroliniai sąrašai. Klientas gali jį iškart įkelti į Boligmappa.",
+"Innledning til kunden (valgfritt)": "Įžanga klientui (neprivaloma)",
+"Adressen for utførelse er viktig:": "Darbų adresas svarbus:",
+"dokumentasjonen havner i boligmappa til eiendommen på denne adressen. Bruk adressen der jobben er gjort, ikke kundens postadresse (f.eks. hytta, ikke hjemmet).": "dokumentacija pateks į šiuo adresu esančio nekilnojamojo turto Boligmappa. Naudok adresą, kur atliktas darbas, o ne kliento pašto adresą (pvz., namelis, o ne namai).",
+"Prosjektet mangler adresse for utførelse.": "Projektas neturi darbų adreso.",
+"Boligmappa knytter dokumentasjonen til eiendommen (matrikkel og evt. bruksenhet) og merker den med fag. Fyll inn her, så kommer det med i PDF-en og i eksporten.": "Boligmappa susieja dokumentaciją su nekilnojamuoju turtu (kadastras ir, jei yra, patalpa) ir pažymi ją pagal amatą. Užpildyk čia – tai bus įtraukta į PDF ir eksportą.",
+"Adresse for utførelse (der jobben er gjort)": "Darbų adresas (kur atliktas darbas)",
+"Matrikkel (kommune, gnr og bnr)": "Kadastras (savivaldybė, gnr ir bnr)",
+"Beskrivelse av utført arbeid (dagbok)": "Atliktų darbų aprašymas (dienoraštis)",
+"Last ned pakke for Boligmappa (zip)": "Atsisiųsti Boligmappa paketą (zip)",
+"Enklest for privatkunden:": "Paprasčiausia privačiam klientui:",
+"send sluttrapporten (PDF) til kunden. Kunden logger inn i Boligmappa med BankID og laster den opp som ett dokument. Fremgangsmåten står bakerst i rapporten. Har bedriften Boligmappa-konto som fagfolk, kan dere laste den opp selv. Zip-pakken har i tillegg bildene og dokumentene hver for seg. Direkte sending fra ByggLogg krever partneravtale med Boligmappa.": "nusiųsk galutinę ataskaitą (PDF) klientui. Klientas prisijungia prie Boligmappa su BankID ir įkelia ją kaip vieną dokumentą. Instrukcija yra ataskaitos gale. Jei įmonė turi specialisto Boligmappa paskyrą, galite įkelti patys. Zip pakete atskirai yra ir nuotraukos bei dokumentai. Tiesioginiam siuntimui iš ByggLogg reikia partnerystės sutarties su Boligmappa.",
+"Varene hentes fra ordrene på prosjektet i Visma. Hver vare får lenke til NOBB, der FDV, produktdatablad og monteringsanvisning ligger under «Dokumentasjon». Last opp egne FDV-dokumenter (PDF) for det som ikke ligger i NOBB.": "Prekės paimamos iš projekto užsakymų Visma. Kiekviena prekė gauna nuorodą į NOBB, kur FDV, produkto duomenų lapas ir montavimo instrukcija yra skiltyje „Dokumentacija“. Įkelk savo FDV dokumentus (PDF) tam, ko nėra NOBB.",
+"Vis skjulte varer (": "Rodyti paslėptas prekes (",
+"Ingen lastet opp. Alle dokumenter på prosjektet finner du under «Dokumenter».": "Nieko neįkelta. Visus projekto dokumentus rasi skiltyje „Dokumentai“.",
+"Tips: send kunden PDF-en av sluttdokumentasjonen sammen med de opplastede dokumentene. Lenkene til NOBB i PDF-en er klikkbare.": "Patarimas: nusiųsk klientui baigiamosios dokumentacijos PDF kartu su įkeltais dokumentais. NOBB nuorodos PDF faile yra spustelėjamos.",
+"Utarbeidet av": "Parengė",
+"Forvaltning, drift og vedlikehold for produktene som er brukt. Dokumentasjonen for hver vare ligger hos NOBB (fanen «Dokumentasjon» på lenken).": "Naudotų produktų valdymas, eksploatavimas ir priežiūra. Kiekvienos prekės dokumentacija yra NOBB (nuorodos skirtukas „Dokumentacija“).",
+"Garanti og reklamasjon": "Garantija ir pretenzijos",
+"Arbeidet er utført i henhold til avtale, gjeldende forskrifter og produsentenes monteringsanvisninger. Oppdager du feil eller mangler, gi oss beskjed så snart som mulig. Reklamasjon behandles etter avtalen og gjeldende lov – for forbrukere håndverkertjenesteloven, med en absolutt frist på fem år for arbeid som skal vare vesentlig lenger. Følg FDV-dokumentasjonen for riktig vedlikehold.": "Darbai atlikti pagal sutartį, galiojančius reglamentus ir gamintojų montavimo instrukcijas. Pastebėję defektų ar trūkumų, praneškite mums kuo greičiau. Pretenzijos nagrinėjamos pagal sutartį ir galiojančius įstatymus – vartotojams pagal Amatininkų paslaugų įstatymą (håndverkertjenesteloven), su absoliučiu penkerių metų terminu darbams, kurie turi tarnauti žymiai ilgiau. Laikykitės FDV dokumentacijos, kad priežiūra būtų tinkama.",
+"Overlevert av –": "Perdavė –",
+"Mottatt av kunde": "Priėmė klientas",
+"Sted og dato": "Vieta ir data",
+"F.eks. Takk for oppdraget! Her er en oppsummering av arbeidet vi har utført.": "Pvz.: Ačiū už užsakymą! Štai mūsų atliktų darbų santrauka."
 };
 export const LT_MALER: [string, string][] = [
+["^Status for (.+)$", "Būsena: $1"],
+["^Flytt (.+) opp$", "Perkelti $1 aukštyn"],
+["^Flytt (.+) ned$", "Perkelti $1 žemyn"],
+["^Flytt (.+) til leveranse$", "Perkelti $1 į pristatymą"],
+["^(.+) er kommet$", "$1 atvyko"],
+["^(\\d+) % av kalkulerte timer · ([\\d,]+) t igjen$", "$1 % apskaičiuotų valandų · liko $2 val."],
+["^(\\d+) % av kalkulerte timer · ([\\d,]+) t over kalkyle$", "$1 % apskaičiuotų valandų · $2 val. virš sąmatos"],
+["^(\\d+) % av kalkulerte timer brukt$", "Sunaudota $1 % apskaičiuotų valandų"],
+["^(\\d+) av (\\d+)$", "$1 iš $2"],
+["^Planlegg arbeid for (.+) [Mm]an (\\d+)\\.$", "Suplanuoti darbą: $1, pr $2 d."],
+["^Planlegg arbeid for (.+) [Tt]ir (\\d+)\\.$", "Suplanuoti darbą: $1, an $2 d."],
+["^Planlegg arbeid for (.+) [Oo]ns (\\d+)\\.$", "Suplanuoti darbą: $1, tr $2 d."],
+["^Planlegg arbeid for (.+) [Tt]or (\\d+)\\.$", "Suplanuoti darbą: $1, kt $2 d."],
+["^Planlegg arbeid for (.+) [Ff]re (\\d+)\\.$", "Suplanuoti darbą: $1, pn $2 d."],
+["^Planlegg arbeid for (.+) [Ll]ør (\\d+)\\.$", "Suplanuoti darbą: $1, š $2 d."],
+["^Planlegg arbeid for (.+) [Ss]øn (\\d+)\\.$", "Suplanuoti darbą: $1, s $2 d."],
+["^Skal komme (\\d+)\\. jan\\.?( · .+)?$", "Turi atvykti saus. $1 d.$2"],
+["^Skal komme (\\d+)\\. feb\\.?( · .+)?$", "Turi atvykti vas. $1 d.$2"],
+["^Skal komme (\\d+)\\. mar\\.?( · .+)?$", "Turi atvykti kov. $1 d.$2"],
+["^Skal komme (\\d+)\\. apr\\.?( · .+)?$", "Turi atvykti bal. $1 d.$2"],
+["^Skal komme (\\d+)\\. mai\\.?( · .+)?$", "Turi atvykti geg. $1 d.$2"],
+["^Skal komme (\\d+)\\. jun\\.?( · .+)?$", "Turi atvykti birž. $1 d.$2"],
+["^Skal komme (\\d+)\\. jul\\.?( · .+)?$", "Turi atvykti liep. $1 d.$2"],
+["^Skal komme (\\d+)\\. aug\\.?( · .+)?$", "Turi atvykti rugp. $1 d.$2"],
+["^Skal komme (\\d+)\\. sep\\.?( · .+)?$", "Turi atvykti rugs. $1 d.$2"],
+["^Skal komme (\\d+)\\. okt\\.?( · .+)?$", "Turi atvykti spal. $1 d.$2"],
+["^Skal komme (\\d+)\\. nov\\.?( · .+)?$", "Turi atvykti lapkr. $1 d.$2"],
+["^Skal komme (\\d+)\\. des\\.?( · .+)?$", "Turi atvykti gruod. $1 d.$2"],
 ["^📵 Uten nett – viser det som ble hentet (.+)\\.$", "📵 Nėra ryšio – rodomi duomenys, gauti $1."],
+
 ["^([\\d]+) (stempling|stemplinger)( og [\\d]+ timeføringe?r?)? venter og sendes automatisk\\.$", "Laukia registracijų: $1 – bus išsiųstos automatiškai."],
+
 ["^([\\d]+) føringe?r? fra da du var uten nett er lagret$", "Išsaugota įrašų iš laiko be ryšio: $1"],
+
 ["^Tillegg: (.+) \\(ikke signert\\)$", "Papildomi darbai: $1 (nepasirašyta)"],
+
 ["^Tillegg: (.+) \\(avvist\\)$", "Papildomi darbai: $1 (atmesta)"],
+
 ["^Tillegg: (.+)$", "Papildomi darbai: $1"],
+
 ["^· tillegg: (.+)$", "· papildomi darbai: $1"],
+
 ["^Ført ([\\d,]+) t$", "Įvesta $1 val."],
+
 ["^av anslått ([\\d,]+) t$", "iš numatytų $1 val."],
+
 ["^([\\d,]+) arbeidsdager \\(mandag–fredag, uten helligdager\\)$", "Darbo dienų: $1 (pirmadienis–penktadienis, be švenčių)"],
+
 ["^1 arbeidsdag \\(mandag–fredag, uten helligdager\\)$", "1 darbo diena (pirmadienis–penktadienis, be švenčių)"],
+
 ["^([\\d,]+) arbeidsdager$", "Darbo dienų: $1"],
+
 ["^([\\d,]+) timer i alt$", "Iš viso $1 val."],
+
 ["^· ([\\d,]+) t på prosjekt som ikke faktureres$", "· $1 val. projekte, kuriam sąskaita neišrašoma"],
+
 ["^([▲▼]) ([\\d,]+) %-poeng fra forrige måned$", "$1 $2 proc. p., palyginti su praėjusiu mėnesiu"],
+
 ["^Du har skjult kampanjen «(.+)»\\.$", "Paslėpei akciją „$1“."],
+
 ["^Du har skjult ([\\d]+) kampanjer\\.$", "Paslėptų akcijų: $1."],
+
 ["^([\\d,]+) t igjen$", "Liko $1 val."],
+
 ["^([\\d,]+) t over kalkyle$", "$1 val. daugiau nei sąmatoje"],
+
 ["^(.+?)\\ timer\\ registrert$", "Užregistruota $1 val."],
+
 ["^(.+?)\\ \\(meg\\)$", "$1 (aš)"],
+
 ["^for\\ (.+?)$", "skirta: $1"],
+
 ["^Før\\ timer\\ for\\ (.+?)$", "Įvesti valandas: $1"],
+
 ["^·\\ lunsj\\ (.+?)\\ min$", "· pietūs $1 min"],
+
 ["^·\\ reise\\ (.+?)\\ t$", "· kelionė $1 val."],
+
 ["^Uke\\ (.+?)\\ godkjent\\ for\\ (.+?)$", "$1 savaitė patvirtinta: $2"],
+
 ["^Dagen:\\ (.+?)$", "Diena: $1"],
+
 ["^Logget\\ inn\\ på\\ (.+?)$", "Darbas pradėtas: $1"],
+
 ["^Byttet\\ til\\ (.+?)$", "Perjungta į $1"],
-["^Dagbok(.+?)$", "Dienoraštis$1"],
-["^(.+?)\\ bilde(.+?)$", "$1 nuotr.$2"],
+
+["^Dagbok( \\(\\d+\\))$", "Dienynas$1"],
+["^(\\d+) bilder?$", "$1 nuotr."],
 ["^Tilleggsarbeid:\\ (.+?)\\ ·\\ (.+?)$", "Papildomi darbai: $1 · $2"],
+
 ["^Hindringer:\\ (.+?)$", "Kliūtys: $1"],
+
 ["^(.+?):\\ (.+?)\\ t,\\ interntid\\ (.+?)\\ t$", "$1: $2 val., vidinis laikas $3 val."],
+
 ["^(.+?)\\ lagret$", "Išsaugota: $1"],
+
 ["^(.+?)\\ bilder\\ er$", "$1 nuotr."],
+
 ["^Vis\\ bilde\\ (.+?)$", "Rodyti nuotrauką $1"],
-["^(.+?)\\ bilde(.+?)\\ valgt$", "Pasirinkta $1 nuotr.$2"],
+
+["^(\\d+) bilder? valgt$", "Pasirinkta nuotraukų: $1"],
 ["^Ansvarlig:\\ (.+?)$", "Atsakingas: $1"],
+
 ["^·\\ frist\\ (.+?)(.+?)$", "· terminas $1$2"],
+
 ["^Utstyr\\ –\\ (.+?)$", "Įranga – $1"],
+
 ["^siste\\ (.+?)\\ mnd$", "paskutiniai $1 mėn."],
+
 ["^·\\ ny\\ fra\\ (.+?)$", "· naujas nuo $1"],
+
 ["^Arbeidstøy\\ (.+?)$", "Darbo drabužiai $1"],
+
 ["^(.+?)\\ uttak\\ ·\\ sist\\ (.+?)$", "$1 paėmimų · paskutinį kartą $2"],
+
 ["^Bilde:\\ (.+?)$", "Nuotrauka: $1"],
+
 ["^Månedsrapport\\ (.+?)$", "Mėnesio ataskaita $1"],
+
 ["^Publisert\\ (.+?)$", "Paskelbta $1"],
+
 ["^Ferie\\ registrert\\ for\\ (.+?)$", "Atostogos užregistruotos: $1"],
+
 ["^\\+\\ (.+?)\\ \\(over\\ 60\\)$", "+ $1 (vyresniems nei 60)"],
+
 ["^\\+\\ (.+?)\\ overført\\ fra\\ (.+?)$", "+ $1 perkelta iš $2"],
+
 ["^Registrer\\ ferie\\ for\\ (.+?)$", "Registruoti atostogas: $1"],
+
 ["^Søknader\\ for\\ (.+?)$", "Prašymai: $1"],
-["^(.+?)\\ registrert(.+?)$", "Užregistruota $1$2"],
+
 ["^Meld\\ fravær\\ for\\ (.+?)$", "Pranešti apie neatvykimą: $1"],
+
 ["^Når\\ du\\ selv\\ er\\ syk\\.\\ Høyst\\ (.+?)\\ kalenderdager\\ om\\ gangen\\ og\\ (.+?)\\ ganger\\ på\\ 12\\ måneder\\.\\ Lengre\\ fravær\\ krever\\ sykmelding\\ fra\\ lege\\.$", "Kai sergi pats. Daugiausia $1 kalendorinių dienų iš eilės ir $2 kartų per 12 mėnesių. Ilgesniam nedarbingumui reikia gydytojo nedarbingumo pažymėjimo."],
+
 ["^NAV\\ betaler\\ sykepenger\\ fra\\ (.+?)\\.\\ Husk\\ inntektsmelding\\ til\\ NAV\\.$", "NAV moka ligos išmoką nuo $1. Nepamiršk pateikti pajamų pranešimo (inntektsmelding) NAV."],
+
 ["^(.+?)\\ \\((.+?)\\ til\\ (.+?)\\)$", "$1 ($2 iki $3)"],
+
 ["^(.+?)\\ ganger\\ ·\\ (.+?)\\ d$", "$1 k. · $2 d."],
-["^Tillegg(.+?)$", "Papildomi darbai$1"],
-["^Bilder(.+?)$", "Nuotraukos$1"],
-["^Avvik(.+?)$", "Nukrypimai$1"],
+
+["^Tillegg( \\(\\d+\\))$", "Papildomi darbai$1"],
+["^Bilder( \\(\\d+\\))$", "Nuotraukos$1"],
+["^Avvik( \\(\\d+\\))$", "Nukrypimai$1"],
 ["^Vis\\ alle\\ (.+?)$", "Rodyti visus $1"],
+
 ["^(.+?)\\ %\\ av\\ kalkulerte\\ timer\\ brukt$", "Panaudota $1 % sąmatos valandų"],
+
 ["^kr\\ (.+?)\\ eks\\.\\ mva$", "$1 kr be PVM"],
+
 ["^Signatur\\ (.+?)$", "Parašas $1"],
+
 ["^Anslått\\ (.+?)\\ timer$", "Numatyta $1 val."],
+
 ["^pris\\ kr\\ (.+?)\\ eks\\.\\ mva$", "kaina $1 kr be PVM"],
+
 ["^materiell:\\ (.+?)$", "medžiagos: $1"],
+
 ["^(.+?)\\ bilder$", "$1 nuotr."],
+
 ["^(.+?)\\ %\\ av\\ kalkulerte\\ timer$", "$1 % sąmatos valandų"],
+
 ["^(.+?)\\ trekkes\\.\\ Lørdager,\\ søndager\\ og\\ helligdager\\ teller\\ ikke\\.$", "Atskaitoma: $1. Šeštadieniai, sekmadieniai ir švenčių dienos neskaičiuojamos."],
+
 ["^Helligdager\\ som\\ ikke\\ trekkes:\\ (.+?)\\.$", "Švenčių dienos, kurios neatskaitomos: $1."],
+
 ["^Overlapper\\ med\\ en\\ annen\\ søknad\\ \\((.+?)\\)\\.$", "Sutampa su kitu prašymu ($1)."],
+
 ["^(.+?)\\ har\\ (.+?)\\ igjen\\ i\\ (.+?),\\ søknaden\\ er\\ på\\ (.+?)\\.\\ Ferie\\ utover\\ retten\\ må\\ avtales\\ som\\ ulønnet\\ permisjon\\ eller\\ forskudd\\.$", "$1 liko $2 ($3), o prašoma $4. Atostogas virš priklausančių reikia suderinti kaip nemokamas atostogas arba avansu."],
+
 ["^Innenfor\\ saldo\\.\\ (.+?)\\ igjen\\ etter\\ denne\\.$", "Neviršija likučio. Po šių atostogų liks $1."],
+
 ["^Hovedferie\\ 1\\.\\ juni–30\\.\\ september:\\ (.+?)\\ av\\ (.+?)\\ feriedager\\ \\(3\\ uker\\)\\ (.+?)\\ kan\\ kreve\\.$", "Pagrindinės atostogos birželio 1 d.–rugsėjo 30 d.: $1 iš $2 atostogų dienų (3 savaitės), kurių $3 gali reikalauti."],
+
 ["^(.+?):\\ maks\\ (.+?)\\ borte\\ samtidig\\.\\ Overlapper\\ med\\ (.+?)\\.$", "$1: vienu metu gali nebūti daugiausia $2. Sutampa su: $3."],
+
 ["^(.+?)\\ er\\ alene\\ i\\ (.+?)\\.\\ Avtal\\ hvem\\ som\\ tar\\ henvendelser\\ i\\ perioden\\.$", "$1 lieka vienas (-a): $2. Susitarkite, kas tuo laikotarpiu atsakys į kreipimusis."],
+
 ["^Bemanningen\\ i\\ (.+?)\\ holder\\.$", "Darbuotojų pakanka: $1."],
+
 ["^Ferie til (.+)$", "Atostogos iki $1"],
+
 ["^Til fakturering \\((\\d+)\\)$", "Sąskaitoms ($1)"],
+
 ["^Til fakturering$", "Sąskaitoms"],
+
 ["^Invitasjon sendt til (.+)$", "Kvietimas išsiųstas: $1"],
+
 ["^Sist sendt (.+)$", "Paskutinį kartą išsiųsta $1"],
+
 ["^Logget inn (.+) \u2713$", "Prisijungė $1 ✓"],
+
 ["^Vis alle salgene i (\\d{4}) \\((\\d+)\\)$", "Rodyti visus $1 m. pardavimus ($2)"],
+
 ["^Hele (\\d{4})$", "Visi $1 m."]
+
 ];
