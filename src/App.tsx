@@ -2,7 +2,7 @@ import { MineServiceoppdrag, ServiceOppdrag } from "./views/Service";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, feiltekst } from "./lib/api";
 import { isoOf, type Ansatt, type Data, type Tema } from "./lib/ferie";
-import { settSprak, type Sprak } from "./lib/sprak";
+import { SPRAK, SPRAKENE, settSprak, type Sprak } from "./lib/sprak";
 import { draktVariabler } from "./lib/drakt";
 import { Innlogging } from "./views/Innlogging";
 import { MinFerie } from "./views/MinFerie";
@@ -348,7 +348,7 @@ export function App() {
             <span className="small muted" data-ikke-oversett>{meg.navn}</span>{leder && <span className="small muted">· leder</span>}
             <select aria-label="Språk" className="sprakvalg" value={meg.sprak ?? "nb"} data-ikke-oversett
               onChange={(e) => { const s = e.target.value as Sprak; kjor(() => api.settMittSprak(s)).then(() => settSprak(s)); }}>
-              <option value="nb">Norsk</option><option value="pl">Polski</option>
+              {SPRAKENE.map((k) => <option key={k} value={k}>{SPRAK[k]}</option>)}
             </select>
             <select aria-label="Farger" className="temavalg" value={visTema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>

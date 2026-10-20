@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, feiltekst } from "../lib/api";
 import { PROFIL } from "../lib/profil";
+import { SPRAK, SPRAKENE, settSprak, sprak } from "../lib/sprak";
 import { Personvern } from "./Personvern";
 import { Vilkar } from "./Vilkar";
 
@@ -68,6 +69,9 @@ export function Innlogging() {
           </form>
         )}
         {feil && <p style={{ color: "var(--warn)" }}>{feil}</p>}
+        <div className="sprak-valg" data-ikke-oversett role="group" aria-label="Språk / Language">
+          {SPRAKENE.map((k) => <button key={k} type="button" className="linkbtn small" aria-pressed={sprak() === k} onClick={() => settSprak(k)}>{SPRAK[k]}</button>)}
+        </div>
         <div className="small row" style={{ gap: "4px 14px", flexWrap: "wrap" }}>
           <button type="button" className="linkbtn" onClick={() => setVis((x) => x === "personvern" ? null : "personvern")}>{vis === "personvern" ? "Skjul personvern" : "Personvern – slik behandler vi opplysningene dine"}</button>
           <button type="button" className="linkbtn" onClick={() => setVis((x) => x === "vilkar" ? null : "vilkar")}>{vis === "vilkar" ? "Skjul avtalevilkår" : "Avtalevilkår"}</button>

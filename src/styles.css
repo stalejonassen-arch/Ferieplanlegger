@@ -1465,3 +1465,6 @@ header.top select.temavalg option { color: #10162E; }
 .kunde-treff .btn { text-align: left; }
 .service .item.haster { border-left: 4px solid var(--warn); }
 .service-skjema .panel { margin-inline: auto; }
+
+.sprak-valg { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px; }
+.sprak-valg [aria-pressed=true] { font-weight: 700; text-decoration: none; }
