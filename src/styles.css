@@ -1450,3 +1450,12 @@ header.top select.temavalg option { color: #10162E; }
 .kig-forslag li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .kig-forslag .hake { flex: 1; min-width: 0; }
 .kig-forslag .linkbtn { white-space: nowrap; }
+
+/* Avdelingsrapport (f.eks. Kjøkken og Interiør) */
+.avd-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.avd-kpi > div { display: flex; flex-direction: column; gap: 2px; background: var(--sunk); border-radius: 12px; padding: 10px 12px; }
+.avd-kpi b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.avd-varsel { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+.avdeling-rapport tfoot th { border-top: 2px solid var(--line); }
+.avdeling-rapport .tbl td, .avdeling-rapport .tbl th { padding-inline: 6px; }
+@media (max-width: 640px) { .avd-kpi { grid-template-columns: 1fr 1fr; } .avd-kpi b { font-size: 1.15rem; } .avdeling-rapport .tbl { font-size: 14px; } }

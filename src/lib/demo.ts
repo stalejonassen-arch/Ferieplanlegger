@@ -501,6 +501,22 @@ export function demoApi(): Api {
     async ansatteInnlogging() {
       return d.ansatte.map((a, i) => ({ ansatt_id: a.id, invitert: demoInvitert.get(a.id) ?? null, innlogget: i % 4 === 3 ? null : new Date(Date.now() - (i + 1) * 36e5 * 7).toISOString() }));
     },
+    async avdelingSalg() {
+      const y = new Date().getFullYear(), kunder = ["Hansen, Kari", "Olsen, Per", "Berg, Line", "Nilsen, Tor", "Lie, Anne", "Dahl, Ola", "Moen, Siri", "Vik, Lars"];
+      const salg: import("./avdeling").AvdelingSalg[] = [];
+      let nr = 9000;
+      for (const aar of [y - 1, y]) for (let m = 1; m <= (aar === y ? new Date().getMonth() + 1 : 12); m++) {
+        const n = (m * 7 + aar) % 3 + (m % 4 === 0 ? 0 : 1);
+        for (let i = 0; i < n; i++) {
+          const oms = 40000 + ((m * 37 + i * 53 + aar) % 18) * 9000, utenKost = aar === y - 1 && i === 0 && m % 5 === 0;
+          const dg = 0.2 + ((m + i) % 7) / 50, dag = String(Math.min(28, 3 + i * 9)).padStart(2, "0");
+          salg.push({ visma_ordrenr: nr++, avdeling_nr: 3, ordredato: `${aar}-${String(m).padStart(2, "0")}-01`, fakturadato: `${aar}-${String(m).padStart(2, "0")}-${dag}`,
+            kunde: kunder[(m + i) % kunder.length]!, selger_nr: 5, ordresum: 0, omsetning: oms, db: utenKost ? oms : Math.round(oms * dg), kostnad: utenKost ? 0 : Math.round(oms * (1 - dg)) });
+        }
+      }
+      salg.push({ visma_ordrenr: nr++, avdeling_nr: 3, ordredato: `${y}-${String(new Date().getMonth() + 1).padStart(2, "0")}-02`, fakturadato: null, kunde: "Strand, Even", selger_nr: 5, ordresum: 186500, omsetning: 0, db: 0, kostnad: 0 });
+      return { avdelinger: [{ nr: 3, navn: "Kjøkken & Interiør" }], salg };
+    },
     async ansatteMedPush() { return d.ansatte.filter((a) => a.aktiv).slice(0, 3).map((a) => a.id); },
     async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },
     async markerLest(id) {

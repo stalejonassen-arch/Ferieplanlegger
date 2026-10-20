@@ -307,6 +307,43 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
   return rader.length;
 }
 
+/**
+ * Salg per avdeling (organisatorisk enhet 1 «Avdeling», f.eks. Kjøkken & Interiør): én rad per salgsordre
+ * som er ført på en avdeling, fra og med i fjor. Brukes til avdelingsrapporten (antall salg, omsetning, DB, DG).
+ */
+async function synkAvdelingSalg(tok: string, b: { id: number; visma_firma_nr: number }) {
+  const avd = await alle(tok, b.visma_firma_nr, "orgUnit1", ["orgUnit1No", "name"]);
+  const avdRader = avd.filter((a) => Number(a.orgUnit1No) > 0).map((a) => ({ bedrift_id: b.id, nr: Number(a.orgUnit1No), navn: s(a.name) || `Avdeling ${a.orgUnit1No}` }));
+  if (avdRader.length) {
+    const { error } = await sb.from("visma_avdelinger").upsert(avdRader, { onConflict: "bedrift_id,nr" });
+    if (error) throw new Error(error.message);
+  }
+  const fraAar = new Date().getUTCFullYear() - 1;
+  const oFelt = await felt(tok, "Order");
+  const ordrer = await alle(tok, b.visma_firma_nr, "order",
+    ["orderNo", "orgUnit1", ...velg(oFelt, ["orderDate", "orderType", "transactionType", "name", "sellerOrBuyer", "orderSumNetDomestic", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic", "incurredCostTotalDomestic", "finishDate"])],
+    `{ _and: [{ orgUnit1: { _gt: 0 } }, { orderDate: { _gte: ${fraAar}0101 } }] }`);
+  const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
+  const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
+  const naa = new Date().toISOString();
+  const rader = ordrer
+    // Bare salg (transaksjonstype 1), ikke tilbud (ordretype 5)
+    .filter((o) => Number(o.transactionType) === 1 && Number(o.orderType) !== 5)
+    .map((o) => ({
+      bedrift_id: b.id, visma_ordrenr: Number(o.orderNo), avdeling_nr: Number(o.orgUnit1), ordredato: dato(o.orderDate),
+      fakturadato: n(o.invoicedAmountTotalDomestic) !== 0 ? dato(o.finishDate) : null, kunde: s(o.name).slice(0, 120),
+      selger_nr: Number(o.sellerOrBuyer) || null, ordresum: n(o.orderSumNetDomestic), omsetning: n(o.invoicedAmountTotalDomestic),
+      db: n(o.grossProfitTotalDomestic), kostnad: n(o.incurredCostTotalDomestic), oppdatert: naa,
+    }));
+  for (let i = 0; i < rader.length; i += 500) {
+    const { error } = await sb.from("avdeling_salg").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,visma_ordrenr" });
+    if (error) throw new Error(error.message);
+  }
+  // Ordre som er flyttet til en annen avdeling, slettet eller gjort om til tilbud
+  await sb.from("avdeling_salg").delete().eq("bedrift_id", b.id).lt("oppdatert", naa);
+  return `${rader.length} ordre på ${avdRader.length} avdelinger`;
+}
+
 /** Feilsøking og tvungen henting krever driftsnøkkelen (tabellen drift_noekkel), ellers kan hvem som helst lese Visma-data */
 /**
  * Nye kunder: når kunden har godkjent ByggLogg i Visma, dukker firmaet opp i availableCompanies.
@@ -354,7 +391,7 @@ async function synkAnsattForslag(tok: string, b: { id: number; visma_firma_nr: n
   return rader.length;
 }
 
-const BESKYTTET = ["typer", "firmaer", "prove", "type", "skjema", "varer", "utstyr", "salg"];
+const BESKYTTET = ["typer", "firmaer", "prove", "type", "skjema", "varer", "utstyr", "salg", "avdeling"];
 async function harNoekkel(req: Request) {
   const gitt = req.headers.get("x-bygglogg-noekkel") ?? "";
   if (gitt.length < 32) return false;
@@ -524,10 +561,15 @@ Deno.serve(async (req) => {
         try { salg = await synkSalgKategorier(tok, b); }
         catch (e) { salg = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
+      let avdeling: string = "hoppet over";
+      if (url.searchParams.get("salg") || url.searchParams.get("avdeling") || new Date().getUTCMinutes() < 15) {
+        try { avdeling = await synkAvdelingSalg(tok, b); }
+        catch (e) { avdeling = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      }
       let forslag: number | string = 0;
       try { forslag = await synkAnsattForslag(tok, b, aFelt); }
       catch (e) { forslag = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, ansatte_i_visma: forslag, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, ansatte_i_visma: forslag, avdeling, prosjektklasse: `${pk.nr} ${pk.navn}` };
       await sb.from("bedrifter").update({ visma_status: `Hentet ${kunder.length} kunder og ${prosjekter.length} prosjekter.`, visma_sist: new Date().toISOString() }).eq("id", b.id);
      } catch (e) {
       const m = (e instanceof Error ? e.message : String(e)).slice(0, 300);

@@ -1,3 +1,4 @@
+import { AvdelingRapporter } from "./AvdelingRapport";
 import { useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
@@ -48,6 +49,7 @@ export function Rapporter() {
   return (
     <>
       <MinePersonrapporter />
+      <AvdelingRapporter />
       {leder && !skjema && (
         <section className="panel">
           <div className="row" style={{ justifyContent: "space-between" }}>

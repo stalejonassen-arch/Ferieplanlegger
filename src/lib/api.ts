@@ -86,6 +86,8 @@ export interface Api {
   lagreDgKategorier(k: import("./dg").DgKategori[]): Promise<void>;
   /** Leder: hvilke ansatte som har slått på push-varsler */
   ansatteMedPush(): Promise<string[]>;
+  /** Salg per avdeling fra Visma (bare avdelinger brukeren har lov til å se) */
+  avdelingSalg(): Promise<{ avdelinger: import("./avdeling").VismaAvdeling[]; salg: import("./avdeling").AvdelingSalg[] }>;
   /** Leder: send (eller send på nytt) invitasjon til appen på e-post */
   sendInvitasjon(ansattId: string): Promise<void>;
   /** Leder: sist invitert og sist innlogget per ansatt */
@@ -618,6 +620,14 @@ function supabaseApi(sb: SupabaseClient): Api {
     async markerPersonrapportLest(id) { ok(await sb.rpc("marker_personrapport_lest", { r: id })); },
     async lagreDgKategorier(k) { ok(await sb.rpc("lagre_dg_kategorier", { k })); },
     async ansatteMedPush() { const r = await sb.rpc("ansatte_med_push"); return r.error ? [] : (r.data as string[]); },
+    async avdelingSalg() {
+      const [a, s] = await Promise.all([
+        sb.from("visma_avdelinger").select("nr, navn").order("nr"),
+        alle(() => sb.from("avdeling_salg").select("visma_ordrenr, avdeling_nr, ordredato, fakturadato, kunde, selger_nr, ordresum, omsetning, db, kostnad").order("visma_ordrenr"), 20000),
+      ]);
+      const tall = (x: any) => ({ ...x, ordresum: Number(x.ordresum), omsetning: Number(x.omsetning), db: Number(x.db), kostnad: Number(x.kostnad) });
+      return { avdelinger: a.error ? [] : (a.data as any[]), salg: s.error ? [] : (s.data as any[]).map(tall) };
+    },
     async sendInvitasjon(a) { ok(await sb.rpc("send_invitasjon", { a })); },
     async ansatteInnlogging() { const r = await sb.rpc("ansatte_innlogging"); return r.error ? [] : (r.data as { ansatt_id: string; invitert: string | null; innlogget: string | null }[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },
