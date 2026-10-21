@@ -1,6 +1,9 @@
 // Engelsk oversettelse av brukerflaten (laget fra de norske tekstene, samme nøkler som pl.ts).
 // Nøkkel = norsk tekst slik den står på skjermen. Mangler en tekst, vises den norske.
 export const EN_TEKST: Record<string, string> = {
+  "Personvern – slik behandler vi opplysningene dine": "Privacy – how we handle your information",
+  "Skjul personvern": "Hide privacy notice",
+  "Skjul avtalevilkår": "Hide terms",
 "Stemplingen er for gammel til å sendes automatisk. Før timene manuelt.": "The clock entry is too old to send automatically. Enter the hours manually.",
 "Prøv nå": "Try now",
 "Sender det du førte uten nett …": "Sending what you logged offline …",

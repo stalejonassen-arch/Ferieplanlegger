@@ -1,0 +1,375 @@
+{
+ "ui": {
+  "lukk": "Lukk",
+  "sistOppdatert": "Sist oppdatert 15. oktober 2026",
+  "tilVilkar": "Avtalevilkår for ByggLogg",
+  "orgnr": "org.nr.",
+  "kontaktPaa": "på",
+  "sprakLabel": "Språk",
+  "oversatt": ""
+ },
+ "personvern": [
+  {
+   "h2": "Personvern i ByggLogg"
+  },
+  {
+   "p": "**{firma}**{orgnr} bruker ByggLogg til timeføring, ferie og fravær, prosjekter og intern kommunikasjon. {firma} er behandlingsansvarlig for opplysningene om deg. ByggLogg leveres av Jonassen AS (org.nr. 919 665 319), som behandler opplysningene bare på våre vegne etter en databehandleravtale."
+  },
+  {
+   "h3": "Hva vi registrerer"
+  },
+  {
+   "p": "Navn, e-post, telefon, ansattnummer, timer og stemplinger, ferie og fravær, kjøring, utstyr og arbeidstøy, kurs og kompetansebevis, og meldinger og bilder du legger inn selv. Ved sykdom registreres bare typen fravær (egenmelding, sykmelding, sykt barn), aldri diagnose."
+  },
+  {
+   "h3": "Hvorfor"
+  },
+  {
+   "p": "For å beregne lønn og feriepenger, ha oversikt over arbeidstiden slik arbeidsmiljøloven krever, følge opp prosjekter, fakturere kunder og dokumentere arbeidet. Grunnlaget er arbeidsavtalen din og pliktene vi har etter loven (personvernforordningen artikkel 6 nr. 1 b og c, og artikkel 9 nr. 2 b for fravær ved sykdom)."
+  },
+  {
+   "h3": "Hvem ser hva"
+  },
+  {
+   "p": "Du ser dine egne timer, fravær og lønnsgrunnlag. Leder ser alle ansatte. Kolleger ser navnet ditt, felles chat og prosjektchat, og hvem som er på samme prosjekt. Private meldinger mellom to personer kan bare de to lese."
+  },
+  {
+   "h3": "Stempling og varsler"
+  },
+  {
+   "p": "Stemplingen viser når du starter og slutter. Har du vært stemplet inn lenge, får du et push-varsel som minner deg på å stemple ut. Appen sporer ikke hvor du er. Push-varsler får du bare hvis du slår dem på."
+  },
+  {
+   "h3": "Hvor lenge"
+  },
+  {
+   "p": "Timer, fravær og lønnsgrunnlag lagres i 5 år etter regnskapsåret (bokføringsloven). Prosjektdokumentasjon og bilder lagres i minst 5 år etter at jobben er overlevert. Chat lagres i 2 år. Når du slutter, stenges tilgangen din."
+  },
+  {
+   "h3": "Hvem som behandler opplysningene for oss"
+  },
+  {
+   "p": "Opplysningene lagres i EU (Irland). Disse leverandørene hjelper oss med å drive appen, og behandler opplysningene bare på våre vegne:"
+  },
+  {
+   "ul": [
+    "**Supabase**: Database, innlogging og lagring av bilder og dokumenter",
+    "**Vercel**: Leverer selve appen til telefonen",
+    "**Resend**: Sender e-post (innloggingskoder og varsler)",
+    "**Google, Apple, Mozilla, Microsoft**: Leverer push-varsler til telefonen, hvis du slår dem på"
+   ]
+  },
+  {
+   "p": "Adresser til prosjekter slås opp hos Kartverket for å vise kart og avstand. Opplysninger om deg selges eller brukes aldri til reklame."
+  },
+  {
+   "h3": "Rettighetene dine"
+  },
+  {
+   "p": "Du kan be om innsyn i hva som er lagret om deg, få rettet feil, be om sletting der loven tillater det, og få en kopi av opplysningene dine. Kontakt {kontakt}{epost}. Du kan også klage til [Datatilsynet](https://www.datatilsynet.no)."
+  }
+ ],
+ "vilkar": [
+  {
+   "h2": "Avtalevilkår for ByggLogg"
+  },
+  {
+   "p": "Vilkårene gjelder for abonnement på ByggLogg fra {leverandor}. Avtalen har fire deler: abonnementsvilkårene (Del 1), databehandleravtalen (Del 2), personvernerklæringen bedriften gir sine ansatte (Del 3) og ordrebekreftelsen (Del 4), som signeres av begge parter."
+  },
+  {
+   "p": "Bedriften er **behandlingsansvarlig** for opplysningene om sine ansatte og kunder. Jonassen AS er **databehandler** og behandler opplysningene bare på bedriftens vegne."
+  },
+  {
+   "p": "Versjon 1.0, gjeldende fra 15. oktober 2026. Ved motstrid går ordrebekreftelsen foran vilkårene. For personopplysninger går databehandleravtalen foran begge.",
+   "liten": true
+  },
+  {
+   "h2": "Del 1 – Abonnementsvilkår"
+  },
+  {
+   "p": "Vilkårene gjelder når en bedrift tegner abonnement på ByggLogg. Sammen med ordrebekreftelsen utgjør de hele avtalen."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Parter",
+   "innhold": [
+    {
+     "p": "Leverandør: {leverandor} («Leverandøren»). Kunde: bedriften som står i ordrebekreftelsen («Kunden»)."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "Tjenesten",
+   "innhold": [
+    {
+     "p": "ByggLogg er en nettbasert app for timeføring, stempling, ferie og fravær, prosjekter, dagbok, bilder, avvik, chat, utstyr og kompetansebevis. Tjenesten leveres som den er til enhver tid, og Leverandøren kan forbedre og endre funksjoner. Funksjoner Kunden betaler ekstra for, står i ordrebekreftelsen. Tjenesten leveres på bygglogg.app, og hver kunde får sin egen adresse, for eksempel firmanavn.bygglogg.app. Navnet og logoen ByggLogg og selve programvaren tilhører Leverandøren. Kunden får bruksrett så lenge avtalen løper."
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Pris og betaling",
+   "innhold": [
+    {
+     "ul": [
+      "Pris: 249 kr per aktiv bruker per måned, eks. mva. En bruker er aktiv når vedkommende kan logge inn. Minst 5 brukere per bedrift.",
+      "Faktureres månedlig forskuddsvis, 14 dagers betalingsfrist.",
+      "Prisen kan justeres med 30 dagers varsel, tidligst 12 måneder etter oppstart.",
+      "Tillegg for kobling mot Visma Business NXT eller Tripletex: 490 kr per bedrift per måned, og 2 500 kr i oppstart (engangsbeløp).",
+      "Ved forsinket betaling kan tilgangen stenges etter skriftlig varsel og 14 dagers frist. Dataene slettes ikke ved stenging."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Varighet og oppsigelse",
+   "innhold": [
+    {
+     "ul": [
+      "Avtalen løper til den sies opp. Gjensidig oppsigelsestid: 1 måned regnet fra utgangen av måneden.",
+      "Eventuell prøveperiode og pris i prøveperioden står i ordrebekreftelsen. Etter prøveperioden gjelder ordinær pris, om ikke Kunden sier opp før den er over."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Drift, sikkerhetskopi og support",
+   "innhold": [
+    {
+     "ul": [
+      "Leverandøren tilstreber at tjenesten er tilgjengelig hele døgnet, men garanterer ikke en bestemt oppetid. Planlagt vedlikehold varsles og legges utenom arbeidstid.",
+      "Databasen sikkerhetskopieres daglig av driftsleverandøren og beholdes i 7 dager.",
+      "Support på e-post {support}, hverdager kl. 08–16. Svar innen én arbeidsdag."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Kundens ansvar",
+   "innhold": [
+    {
+     "ul": [
+      "Kunden bestemmer hvem som får tilgang, og fjerner tilgangen når noen slutter.",
+      "Kunden sørger for at de ansatte er informert om appen og hvilke opplysninger som registreres (se Del 3).",
+      "Kunden er ansvarlig for at innholdet som legges inn, er lovlig, og for at timer og lønnsgrunnlag kontrolleres før utbetaling.",
+      "Tiltak som kan være kontrolltiltak etter arbeidsmiljøloven kapittel 9 (for eksempel stempling og varsel om at noen fortsatt er stemplet inn), skal drøftes med de ansatte før de tas i bruk."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Kundens data",
+   "innhold": [
+    {
+     "ul": [
+      "Alle data Kunden legger inn, tilhører Kunden. Leverandøren bruker dem bare for å levere tjenesten (se Del 2).",
+      "Kunden kan når som helst få utlevert sine data i vanlige filformater (CSV/Excel og originalfiler for bilder og dokumenter).",
+      "Ved opphør får Kunden 30 dager til å hente ut dataene. Deretter slettes de, også fra sikkerhetskopier innen 30 dager."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Ansvarsbegrensning",
+   "innhold": [
+    {
+     "ul": [
+      "Leverandøren er ikke ansvarlig for indirekte tap, som tapt fortjeneste eller tap av data som skyldes Kundens egne feil.",
+      "Leverandørens samlede ansvar per kalenderår er begrenset til det Kunden har betalt de siste 12 månedene.",
+      "Begrensningene gjelder ikke ved grov uaktsomhet eller forsett."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Endringer i vilkårene",
+   "innhold": [
+    {
+     "p": "Endringer varsles minst 30 dager før de trer i kraft. Kunden kan si opp med virkning fra endringsdatoen hvis endringen er til ulempe for Kunden."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Lovvalg og tvister",
+   "innhold": [
+    {
+     "p": "Norsk rett gjelder. Partene skal først forsøke å løse uenighet ved forhandling. Verneting er Møre og Romsdal tingrett."
+    }
+   ]
+  },
+  {
+   "h2": "Del 2 – Databehandleravtale (GDPR artikkel 28)"
+  },
+  {
+   "p": "Avtalen er et vedlegg til abonnementsvilkårene og går foran dem når det gjelder personopplysninger."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Roller og formål",
+   "innhold": [
+    {
+     "p": "Kunden er behandlingsansvarlig. Leverandøren er databehandler og behandler personopplysninger bare for å levere ByggLogg til Kunden: timeføring og lønnsgrunnlag, ferie og fravær, prosjektstyring og dokumentasjon, intern kommunikasjon og varsler."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "Hvilke opplysninger og om hvem",
+   "innhold": [
+    {
+     "ul": [
+      "**Kundens ansatte:** navn, e-post, telefon, ansattnummer, avdeling, rolle, språk, timer og stemplinger, ferie, kjøring, utstyr, kompetansebevis og sertifikater, chatmeldinger, bilder og innlogginger. Fraværstype ved sykdom (egenmelding, sykmelding, sykt barn) er helseopplysninger etter artikkel 9. Diagnose lagres ikke.",
+      "**Kundens kunder og kontaktpersoner:** navn, adresse, telefon, e-post, eiendomsdata (gårds- og bruksnummer), bilder og dokumenter fra jobben. Ingen særlige kategorier."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Instrukser",
+   "innhold": [
+    {
+     "p": "Leverandøren behandler opplysningene bare etter Kundens dokumenterte instrukser. Denne avtalen og bruken av funksjonene i appen er instruksene. Opplysningene brukes ikke til egne formål, reklame eller salg til andre."
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Taushetsplikt",
+   "innhold": [
+    {
+     "p": "Alle hos Leverandøren som har tilgang, har taushetsplikt. Leverandøren går bare inn i Kundens data når det trengs for support eller feilretting, og bare etter avtale med Kunden."
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Sikkerhet (artikkel 32)",
+   "innhold": [
+    {
+     "ul": [
+      "Data lagres kryptert og overføres bare kryptert (HTTPS).",
+      "Hver bedrift ser bare sine egne data. Det er håndhevet i databasen med radnivåsikkerhet, ikke bare i appen.",
+      "Innlogging med engangskode på e-post, ingen passord å lekke.",
+      "Ansatte ser bare egne timer, fravær og lønnsgrunnlag. Leder ser hele bedriften.",
+      "Hemmelige nøkler (Visma, e-post, push) ligger bare hos driftsleverandøren, aldri i appen.",
+      "Daglig sikkerhetskopi."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Underdatabehandlere",
+   "innhold": [
+    {
+     "p": "Kunden godkjenner underdatabehandlerne i tabellen. Nye varsles minst 30 dager før bruk, og Kunden kan protestere og si opp."
+    },
+    {
+     "tabell": [
+      [
+       "Leverandør",
+       "Hva den gjør",
+       "Hvor data lagres",
+       "Grunnlag for overføring"
+      ],
+      [
+       "Supabase Inc.",
+       "Database, innlogging, fillagring, bakgrunnsjobber",
+       "EU (Irland)",
+       "Lagres i EØS. Selskapet er amerikansk: EUs standardavtaler (SCC)"
+      ],
+      [
+       "Vercel Inc.",
+       "Leverer appen og adressene på bygglogg.app til nettleseren",
+       "Globalt nett, logger IP-adresser",
+       "EU–US Data Privacy Framework / SCC"
+      ],
+      [
+       "Resend",
+       "Sender e-post (innloggingskoder, varsler, påminnelser)",
+       "USA",
+       "SCC / DPF"
+      ],
+      [
+       "Google, Apple, Mozilla, Microsoft",
+       "Leverer push-varsler til telefonen",
+       "Varierer",
+       "Varselteksten går gjennom leverandøren av telefonens nettleser"
+      ]
+     ]
+    },
+    {
+     "p": "Oppslag som ikke inneholder personopplysninger om de ansatte, men adresser: Kartverket (adressesøk og kart, Norge) og en rutetjeneste for kjøreavstand. Visma Business NXT er Kundens eget system og Kundens egen databehandler. ByggLogg leser bare derfra.",
+     "liten": true
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Overføring utenfor EØS",
+   "innhold": [
+    {
+     "p": "Skjer bare til leverandørene i tabellen og bare med gyldig overføringsgrunnlag (DPF-sertifisering eller EUs standardavtaler)."
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Bistand til Kunden",
+   "innhold": [
+    {
+     "p": "Leverandøren hjelper Kunden med å svare på krav om innsyn, retting, sletting og dataportabilitet, og med vurderinger av personvernkonsekvenser (DPIA), innen rimelig tid."
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Avvik",
+   "innhold": [
+    {
+     "p": "Leverandøren varsler Kunden uten ugrunnet opphold, og senest innen 24 timer etter å ha oppdaget et brudd på personopplysningssikkerheten. Kunden melder selv til Datatilsynet innen 72 timer der det kreves."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Revisjon",
+   "innhold": [
+    {
+     "p": "Kunden kan be om dokumentasjon på at avtalen følges, én gang per år eller etter et avvik."
+    }
+   ]
+  },
+  {
+   "punkt": 11,
+   "tittel": "Opphør",
+   "innhold": [
+    {
+     "p": "Ved opphør får Kunden utlevert alle data og har 30 dager til å hente dem. Deretter sletter Leverandøren dataene, også fra sikkerhetskopier innen 30 dager, og bekrefter slettingen skriftlig."
+    }
+   ]
+  },
+  {
+   "h2": "Del 3 – Personvernerklæring for de ansatte"
+  },
+  {
+   "p": "Personvernerklæringen ligger i appen på norsk, polsk, engelsk og litauisk: {tilPersonvern}."
+  },
+  {
+   "h2": "Del 4 – Ordrebekreftelse"
+  },
+  {
+   "p": "Kunde, antall brukere, eventuell Visma-kobling, prøveperiode, startdato og Kundens adresse i appen står i ordrebekreftelsen, som signeres av begge parter. Spørsmål om avtalen: {support}."
+  }
+ ],
+ "tilPersonvernTekst": "les personvernerklæringen"
+}
