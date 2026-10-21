@@ -13,6 +13,12 @@ const kort = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…"
 
 type Ansatt = { id: string; navn: string; sprak: string | null };
 type Varsel = { tittel: string; tekst: string; url: string; tag: string };
+type Sp = "nb" | "pl" | "en" | "lt";
+/** Språket den ansatte har valgt i appen (norsk hvis ukjent) */
+const sp = (a: { sprak: string | null }): Sp => (["pl", "en", "lt"].includes(a.sprak ?? "") ? a.sprak as Sp : "nb");
+/** Velg tekst etter mottakerens språk */
+const v = <T>(a: { sprak: string | null }, t: Record<Sp, T>): T => t[sp(a)];
+const LOCALE: Record<Sp, string> = { nb: "nb-NO", pl: "pl-PL", en: "en-GB", lt: "lt-LT" };
 
 async function send(mottakere: Ansatt[], lag: (a: Ansatt) => Varsel) {
   if (!mottakere.length) return { sendt: 0, fjernet: 0 };
@@ -33,8 +39,8 @@ async function send(mottakere: Ansatt[], lag: (a: Ansatt) => Varsel) {
 }
 
 const hm = (t: string) => t.slice(0, 5);
-const varighet = (min: number) => `${Math.floor(min / 60)} t${min % 60 ? ` ${min % 60} min` : ""}`;
-const varighetPl = (min: number) => `${Math.floor(min / 60)} godz.${min % 60 ? ` ${min % 60} min` : ""}`;
+const TIMER: Record<Sp, string> = { nb: "t", pl: "godz.", en: "h", lt: "val." };
+const varighet = (min: number, s: Sp = "nb") => `${Math.floor(min / 60)} ${TIMER[s]}${min % 60 ? ` ${min % 60} min` : ""}`;
 
 /** Fortsatt stemplet inn etter grensen: databasen sjekker selv, så kallet kan ikke brukes til å sende falske varsler */
 async function stemplet(ansattId: string) {
@@ -49,14 +55,24 @@ async function stemplet(ansattId: string) {
   webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
   const { data: a } = await sb.from("ansatte").select("id, navn, sprak").eq("id", ansattId).maybeSingle();
   if (!a) return new Response("finnes ikke", { status: 404 });
-  const res = await send([a], (x) => x.sprak === "pl"
-    ? { tittel: "Nadal zalogowany?", tekst: `Jesteś zalogowany od ${hm(r.start)} (${varighetPl(r.minutter)}). Pamiętaj, aby się wylogować, gdy kończysz pracę.`, url: "/#timer", tag: "stemplet" }
-    : { tittel: "Fortsatt stemplet inn?", tekst: `Du har vært stemplet inn siden ${hm(r.start)} (${varighet(r.minutter)}). Husk å stemple ut når du går for dagen.`, url: "/#timer", tag: "stemplet" });
+  const res = await send([a], (x) => {
+    const t = `${hm(r.start)} (${varighet(r.minutter, sp(x))})`;
+    return { ...v(x, {
+      nb: { tittel: "Fortsatt stemplet inn?", tekst: `Du har vært stemplet inn siden ${t}. Husk å stemple ut når du går for dagen.` },
+      pl: { tittel: "Nadal zalogowany?", tekst: `Jesteś zalogowany od ${t}. Pamiętaj, aby się wylogować, gdy kończysz pracę.` },
+      en: { tittel: "Still clocked in?", tekst: `You have been clocked in since ${t}. Remember to clock out when you finish for the day.` },
+      lt: { tittel: "Vis dar užsiregistravęs?", tekst: `Esate užsiregistravęs nuo ${t}. Nepamirškite atsižymėti, kai baigiate darbo dieną.` },
+    }), url: "/#timer", tag: "stemplet" };
+  });
   return Response.json(res);
 }
 
 const MND = ["jan.", "feb.", "mar.", "apr.", "mai", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "des."];
-const dato = (iso: string) => `${Number(iso.slice(8, 10))}. ${MND[Number(iso.slice(5, 7)) - 1]}`;
+/** Kort dato på mottakerens språk, f.eks. «21. okt.», «21 paź», «21 Oct», «spalio 21 d.» */
+const dato = (iso: string, s: Sp = "nb") => s === "nb"
+  ? `${Number(iso.slice(8, 10))}. ${MND[Number(iso.slice(5, 7)) - 1]}`
+  : new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString(LOCALE[s], { day: "numeric", month: s === "lt" ? "long" : "short", timeZone: "UTC" });
+const fraTil = (fra: string, til: string, s: Sp) => (fra === til ? dato(fra, s) : `${dato(fra, s)} – ${dato(til, s)}`);
 
 /** Nytt arbeid i planen: varsle dem som har fått oppgaven og ikke er varslet om den før (ikke den som la den inn) */
 async function oppgave(id: string) {
@@ -75,10 +91,9 @@ async function oppgave(id: string) {
   webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
   const { data: mottakere } = await sb.from("ansatte").select("id, navn, sprak").in("id", nye).eq("bedrift_id", o.bedrift_id).eq("aktiv", true);
   const { data: p } = await sb.from("prosjekter").select("navn, adresse").eq("id", o.prosjekt_id).maybeSingle();
-  const naar = o.fra === o.til ? dato(o.fra) : `${dato(o.fra)} – ${dato(o.til)}`;
   const r = await send(mottakere ?? [], (a) => ({
-    tittel: a.sprak === "pl" ? `Nowa praca: ${kort(o.tittel, 60)}` : `Nytt arbeid: ${kort(o.tittel, 60)}`,
-    tekst: [p?.navn, naar, p?.adresse].filter(Boolean).join(" · "),
+    tittel: `${v(a, { nb: "Nytt arbeid", pl: "Nowa praca", en: "New job", lt: "Naujas darbas" })}: ${kort(o.tittel, 60)}`,
+    tekst: [p?.navn, fraTil(o.fra, o.til, sp(a)), p?.adresse].filter(Boolean).join(" · "),
     url: "/#plan", tag: `oppgave-${o.id}`,
   }));
   return Response.json(r);
@@ -98,9 +113,13 @@ async function reklamasjon(id: string) {
   const { data: p } = await sb.from("prosjekter").select("navn").eq("id", r.prosjekt_id).maybeSingle();
   const { data: alle } = await sb.from("ansatte").select("id, navn, sprak, rolle, prosjektleder").eq("bedrift_id", r.bedrift_id).eq("aktiv", true);
   const mottakere = (alle ?? []).filter((a) => a.id === r.ansvarlig_id || a.rolle === "leder" || a.prosjektleder);
-  const res = await send(mottakere, (a) => a.sprak === "pl"
-    ? { tittel: passert ? "Reklamacja po terminie" : "Termin reklamacji za 2 dni", tekst: [r.tittel, p?.navn].filter(Boolean).join(" · "), url: "/#plan", tag: `reklamasjon-${r.id}` }
-    : { tittel: passert ? "Reklamasjon over fristen" : "Frist for reklamasjon om 2 dager", tekst: [r.tittel, p?.navn, `frist ${dato(r.frist)}`].filter(Boolean).join(" · "), url: "/#plan", tag: `reklamasjon-${r.id}` });
+  const res = await send(mottakere, (a) => ({
+    tittel: passert
+      ? v(a, { nb: "Reklamasjon over fristen", pl: "Reklamacja po terminie", en: "Warranty claim past deadline", lt: "Pretenzijos terminas praėjo" })
+      : v(a, { nb: "Frist for reklamasjon om 2 dager", pl: "Termin reklamacji za 2 dni", en: "Warranty claim due in 2 days", lt: "Pretenzijos terminas po 2 dienų" }),
+    tekst: [r.tittel, p?.navn, `${v(a, { nb: "frist", pl: "termin", en: "due", lt: "terminas" })} ${dato(r.frist, sp(a))}`].filter(Boolean).join(" · "),
+    url: "/#plan", tag: `reklamasjon-${r.id}`,
+  }));
   return Response.json(res);
 }
 
@@ -119,24 +138,31 @@ async function service(id: string) {
   // Ny: leder og prosjektleder (ikke den som registrerte den selv)
   if ((await sb.from("push_logg").insert({ type: "service:ny", id: o.id })).error == null) {
     const m = (alle ?? []).filter((a) => (a.rolle === "leder" || a.prosjektleder) && a.id !== o.registrert_av && a.id !== o.ansvarlig_id);
-    ut.ny = await send(m, (a) => a.sprak === "pl"
-      ? { tittel: `${ikon}Nowe zlecenie serwisowe`, tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` }
-      : { tittel: `${ikon}Nytt serviceoppdrag${o.prioritet === "haster" ? " – haster" : ""}`, tekst: [o.tittel, kunde, o.adresse].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` });
+    const haster = o.prioritet === "haster";
+    ut.ny = await send(m, (a) => ({
+      tittel: ikon + v(a, {
+        nb: `Nytt serviceoppdrag${haster ? " – haster" : ""}`, pl: `Nowe zlecenie serwisowe${haster ? " – pilne" : ""}`,
+        en: `New service job${haster ? " – urgent" : ""}`, lt: `Naujas serviso darbas${haster ? " – skubu" : ""}`,
+      }),
+      tekst: [o.tittel, kunde, o.adresse].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}`,
+    }));
   }
   // Delt ut til en snekker (ikke når han tok det selv)
   if (o.ansvarlig_id && o.ansvarlig_id !== o.registrert_av && (await sb.from("push_logg").insert({ type: `service:ansvarlig:${o.ansvarlig_id}`, id: o.id })).error == null) {
     const m = (alle ?? []).filter((a) => a.id === o.ansvarlig_id);
-    const naar = o.dato ? new Date(`${o.dato}T12:00:00`).toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long" }) : "";
-    ut.ansvarlig = await send(m, (a) => a.sprak === "pl"
-      ? { tittel: `${ikon}Zlecenie serwisowe dla ciebie`, tekst: [o.tittel, kunde, o.dato ?? ""].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` }
-      : { tittel: `${ikon}Serviceoppdrag til deg`, tekst: [o.tittel, kunde, naar].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` });
+    const naar = (s: Sp) => o.dato ? new Date(`${o.dato}T12:00:00Z`).toLocaleDateString(LOCALE[s], { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }) : "";
+    ut.ansvarlig = await send(m, (a) => ({
+      tittel: ikon + v(a, { nb: "Serviceoppdrag til deg", pl: "Zlecenie serwisowe dla ciebie", en: "Service job for you", lt: "Serviso darbas jums" }),
+      tekst: [o.tittel, kunde, naar(sp(a))].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}`,
+    }));
   }
   // Satt til «haster» etterpå
   if (o.prioritet === "haster" && (await sb.from("push_logg").insert({ type: "service:haster", id: o.id })).error == null && ut.ny === undefined) {
     const m = (alle ?? []).filter((a) => a.id === o.ansvarlig_id || ((a.rolle === "leder" || a.prosjektleder) && !o.ansvarlig_id));
-    ut.haster = await send(m, (a) => a.sprak === "pl"
-      ? { tittel: "🔴 Pilne zlecenie serwisowe", tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` }
-      : { tittel: "🔴 Serviceoppdraget haster", tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}` });
+    ut.haster = await send(m, (a) => ({
+      tittel: "🔴 " + v(a, { nb: "Serviceoppdraget haster", pl: "Pilne zlecenie serwisowe", en: "Urgent service job", lt: "Skubus serviso darbas" }),
+      tekst: [o.tittel, kunde].filter(Boolean).join(" · "), url: "/#prosjekter", tag: `service-${o.id}`,
+    }));
   }
   return Response.json(ut);
 }
@@ -151,12 +177,22 @@ async function personrapport(id: string) {
   if (!n) return new Response("mangler nøkler", { status: 500 });
   webpush.setVapidDetails("mailto:post@bygglogg.app", n.offentlig, n.privat);
   const { data: mottakere } = await sb.from("ansatte").select("id, navn, sprak").eq("id", r.ansatt_id).eq("bedrift_id", r.bedrift_id).eq("aktiv", true);
-  const MNDNAVN = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
-  const MNDPL = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"];
   const m = Number(String(r.periode).slice(5, 7)) - 1;
-  const res = await send(mottakere ?? [], (a) => a.sprak === "pl"
-    ? { tittel: "Twój raport miesięczny", tekst: `Raport za ${MNDPL[m]} jest gotowy.`, url: "/#rapporter", tag: `personrapport-${r.id}` }
-    : { tittel: "Din månedsrapport", tekst: `Rapporten for ${MNDNAVN[m]} er klar.`, url: "/#rapporter", tag: `personrapport-${r.id}` });
+  const MNDNAVN: Record<Sp, string[]> = {
+    nb: ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"],
+    pl: ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"],
+    en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    lt: ["sausį", "vasarį", "kovą", "balandį", "gegužę", "birželį", "liepą", "rugpjūtį", "rugsėjį", "spalį", "lapkritį", "gruodį"],
+  };
+  const res = await send(mottakere ?? [], (a) => {
+    const mnd = MNDNAVN[sp(a)][m];
+    return { ...v(a, {
+      nb: { tittel: "Din månedsrapport", tekst: `Rapporten for ${mnd} er klar.` },
+      pl: { tittel: "Twój raport miesięczny", tekst: `Raport za ${mnd} jest gotowy.` },
+      en: { tittel: "Your monthly report", tekst: `Your report for ${mnd} is ready.` },
+      lt: { tittel: "Jūsų mėnesio ataskaita", tekst: `Ataskaita už ${mnd} paruošta.` },
+    }), url: "/#rapporter", tag: `personrapport-${r.id}` };
+  });
   return Response.json(res);
 }
 
@@ -177,20 +213,20 @@ async function bestilling(id: string) {
     const bestiller = (alle ?? []).find((a) => a.id === b.bestilt_av)?.navn ?? "Byggeplassen";
     const mottakere = (alle ?? []).filter((a) => (a.rolle === "leder" || a.prosjektleder) && a.id !== b.bestilt_av);
     const r = await send(mottakere, (a) => ({
-      tittel: a.sprak === "pl" ? `Nowe zamówienie: ${kort(p?.navn ?? "", 40)}` : `Ny bestilling: ${kort(p?.navn ?? "", 40)}`,
-      tekst: `${bestiller}${b.onsket_dato ? ` (til ${dato(b.onsket_dato)})` : ""}: ${varer}`,
+      tittel: `${v(a, { nb: "Ny bestilling", pl: "Nowe zamówienie", en: "New order", lt: "Naujas užsakymas" })}: ${kort(p?.navn ?? "", 40)}`,
+      tekst: `${bestiller}${b.onsket_dato ? ` (${v(a, { nb: "til", pl: "na", en: "for", lt: "iki" })} ${dato(b.onsket_dato, sp(a))})` : ""}: ${varer}`,
       url: "/#plan", tag: `bestilling-${b.id}`,
     }));
     return Response.json(r);
   }
   const meg = (alle ?? []).filter((a) => a.id === b.bestilt_av);
-  const tekst: Record<string, [string, string]> = {
-    klar: ["Bestillingen er klar", "Zamówienie jest gotowe"],
-    levert: ["Bestillingen er levert", "Zamówienie dostarczone"],
-    avvist: ["Bestillingen kan ikke leveres", "Zamówienie nie może zostać zrealizowane"],
+  const tekst: Record<string, Record<Sp, string>> = {
+    klar: { nb: "Bestillingen er klar", pl: "Zamówienie jest gotowe", en: "Your order is ready", lt: "Užsakymas paruoštas" },
+    levert: { nb: "Bestillingen er levert", pl: "Zamówienie dostarczone", en: "Your order has been delivered", lt: "Užsakymas pristatytas" },
+    avvist: { nb: "Bestillingen kan ikke leveres", pl: "Zamówienie nie może zostać zrealizowane", en: "Your order cannot be delivered", lt: "Užsakymo pristatyti negalima" },
   };
   const r = await send(meg, (a) => ({
-    tittel: tekst[b.status]![a.sprak === "pl" ? 1 : 0],
+    tittel: v(a, tekst[b.status]!),
     tekst: [p?.navn, b.svar || varer].filter(Boolean).join(" · "),
     url: "/#prosjekter", tag: `bestilling-${b.id}`,
   }));
@@ -231,8 +267,8 @@ Deno.serve(async (req) => {
       hvor = p?.navn ?? "Prosjekt";
     } else hvor = "Felles";
     const r = await send(mottakere, (a) => ({
-      tittel: hvor ? `${avsender} · ${kort(hvor, 40)}` : avsender,
-      tekst: m.tekst ? kort(m.tekst, 180) : (a.sprak === "pl" ? "📷 Zdjęcie" : "📷 Bilde"),
+      tittel: hvor ? `${avsender} · ${kort(hvor === "Felles" ? v(a, { nb: "Felles", pl: "Wszyscy w firmie", en: "Everyone in the company", lt: "Visi įmonėje" }) : hvor, 40)}` : avsender,
+      tekst: m.tekst ? kort(m.tekst, 180) : "📷 " + v(a, { nb: "Bilde", pl: "Zdjęcie", en: "Photo", lt: "Nuotrauka" }),
       url: "/#chat", tag: m.kanal,
     }));
     return Response.json(r);
@@ -248,7 +284,7 @@ Deno.serve(async (req) => {
   if ((count ?? 0) > 5) return new Response("masseimport, hoppet over");
   const { data: alle } = await sb.from("ansatte").select("id, navn, sprak").eq("bedrift_id", p.bedrift_id).eq("aktiv", true).eq("varsel_prosjekt", true);
   const r = await send(alle ?? [], (a) => ({
-    tittel: a.sprak === "pl" ? "Nowy projekt" : "Nytt prosjekt",
+    tittel: v(a, { nb: "Nytt prosjekt", pl: "Nowy projekt", en: "New project", lt: "Naujas projektas" }),
     tekst: [p.visma_nr ? `${p.visma_nr} ${p.navn}` : p.navn, p.adresse].filter(Boolean).join(" – "),
     url: "/#prosjekter", tag: `prosjekt-${p.id}`,
   }));
