@@ -112,6 +112,7 @@ section { padding-block: 80px; }
 
 /* Funksjoner */
 .funk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.funk article.bred { grid-column: span 2; }
 .funk article { background: var(--surface); padding: 26px 24px 28px; display: grid; gap: 10px; align-content: start; min-width: 0; }
 .funk .ikon { width: 40px; height: 40px; border-radius: 8px; background: var(--navy); display: grid; place-items: center; }
 .funk .ikon svg { width: 22px; height: 22px; }
@@ -119,8 +120,8 @@ section { padding-block: 80px; }
 .ny { font-family: var(--f-body); font-style: normal; font-weight: 700; font-size: 12px; background: var(--yellow); color: var(--yellow-ink); border-radius: 99px; padding: 2px 9px; line-height: 1.4; }
 .funk p { color: var(--muted); font-size: 16px; }
 .funk ul { margin: 2px 0 0; padding-left: 18px; color: var(--muted); font-size: 15.5px; display: grid; gap: 3px; }
-@media (max-width: 920px) { .funk { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .funk { grid-template-columns: 1fr; } }
+@media (max-width: 920px) { .funk { grid-template-columns: repeat(2, minmax(0, 1fr)); } .funk article.bred { grid-column: auto; } }
+@media (max-width: 600px) { .funk { grid-template-columns: 1fr; } .funk article.bred { grid-column: auto; } }
 
 /* Regnskapssystemer og tilpasning */
 .systemer { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
@@ -279,6 +280,12 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <p>Små betalte jobber hos kunden som gjøres på en dag eller to. Merk hva som haster, del ut til en snekker og fakturer når det er gjort.</p>
         <ul><li>Haster, denne uken eller når det passer</li><li>Kunden bestiller selv via skjema på nettsiden</li><li>Timer og materiell rett til «Klar til fakturering»</li><li>Kunden kvitterer på telefonen</li></ul>
       </article>
+      <article class="bred">
+        <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
+        <h3>Fire språk <span class="ny">Nyhet</span></h3>
+        <p>Hver ansatt bruker appen på sitt eget språk: norsk, polsk, engelsk eller litauisk. Prosjekter, timer og chat er de samme for alle – det er bare knapper og tekster som byttes.</p>
+        <ul><li>Velg språk allerede på innloggingen</li><li>Invitasjonen kommer på den ansattes språk</li><li>Veiledning for iPhone og Android på alle språk</li></ul>
+      </article>
       <article>
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></div>
         <h3>Reklamasjon</h3>
@@ -321,11 +328,11 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <p>Felles chat, egen tråd per prosjekt og private meldinger, med push-varsel på telefonen.</p>
         <ul><li>Bilder rett i chatten</li><li>Varsel om nye prosjekter og bestillinger</li><li>Hele appen på norsk, polsk, engelsk og litauisk</li></ul>
       </article>
-      <article>
+      <article class="bred">
         <div class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="#FFCD00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 1 14-5.3M20 11a8 8 0 0 1-14 5.3"/><path d="M18 3v5h-5M6 21v-5h5"/></svg></div>
         <h3>Raskt i gang <span class="ny">Nyhet</span></h3>
         <p>Godkjenn ByggLogg i Visma, eller lim inn nøkkelen fra Tripletex, så kobles firmaet av seg selv. Ansatte fra regnskapet legges til med ett trykk.</p>
-        <ul><li>Invitasjon på e-post til alle ansatte</li><li>Egen veiledning for iPhone og Android</li><li>«Kom i gang»-liste som viser hva som gjenstår</li></ul>
+        <ul><li>Invitasjon på e-post på den ansattes eget språk</li><li>Egen veiledning for iPhone og Android</li><li>«Kom i gang»-liste som viser hva som gjenstår</li></ul>
       </article>
     </div>
   </div>
