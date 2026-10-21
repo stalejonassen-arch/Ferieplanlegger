@@ -43,6 +43,25 @@ async function send(to: string[], subject: string, html: string) {
   if (!res.ok) throw new Error(`Resend svarte ${res.status}: ${await res.text()}`);
 }
 
+/** E-posten til den ansatte på språket den ansatte har valgt i appen */
+function tekst(sprak: string | null, fornavn: string, dager: number, y: number) {
+  const n = `<b>${dager} / ${HOVEDFERIE}</b>`;
+  switch (sprak) {
+    case "pl": return { emne: `Czy zaplanowałeś urlop letni ${y}?`, hei: `Cześć ${fornavn}`,
+      status: `Złożyłeś wniosek o ${n} dni urlopu głównego (1 czerwca–30 września) na ${y}.`,
+      snart: "Złóż wniosek wkrótce, abyśmy mogli zaplanować lato z wyprzedzeniem.", lenke: "Złóż wniosek o urlop w aplikacji", hilsen: "Pozdrawiamy, N L Austnes AS" };
+    case "en": return { emne: `Have you planned your summer holiday ${y}?`, hei: `Hi ${fornavn}`,
+      status: `You have applied for ${n} days of main holiday (1 June–30 September) for ${y}.`,
+      snart: "Please apply soon so we can plan the summer in good time.", lenke: "Apply for holiday in the app", hilsen: "Best regards, N L Austnes AS" };
+    case "lt": return { emne: `Ar suplanavote vasaros atostogas ${y} m.?`, hei: `Sveiki, ${fornavn}`,
+      status: `Pateikėte prašymą dėl ${n} pagrindinių atostogų dienų (birželio 1 d.–rugsėjo 30 d.) ${y} m.`,
+      snart: "Pateikite prašymą netrukus, kad galėtume laiku suplanuoti vasarą.", lenke: "Prašyti atostogų programėlėje", hilsen: "Pagarbiai, N L Austnes AS" };
+    default: return { emne: `Har du planlagt sommerferien ${y}?`, hei: `Hei ${fornavn}`,
+      status: `Du har søkt om <b>${dager} av ${HOVEDFERIE}</b> dager hovedferie (1. juni–30. september) for ${y}.`,
+      snart: "Søk gjerne snart, så vi får lagt sommerplanen i god tid.", lenke: "Søk ferie i Ferieplanlegger", hilsen: "Hilsen N L Austnes AS" };
+  }
+}
+
 Deno.serve(async (req) => {
   const naa = new Date();
   const y = naa.getUTCFullYear(), mnd = naa.getUTCMonth() + 1;
@@ -54,7 +73,7 @@ Deno.serve(async (req) => {
     if (error) return new Response("allerede sendt denne måneden");
   }
 
-  const { data: ansatte } = await sb.from("ansatte").select("id, navn, epost, rolle").eq("aktiv", true);
+  const { data: ansatte } = await sb.from("ansatte").select("id, navn, epost, rolle, sprak").eq("aktiv", true);
   const { data: soknader } = await sb.from("soknader").select("ansatt_id, fra, til, status")
     .neq("status", "avslatt").lte("fra", `${y}-09-30`).gte("til", `${y}-06-01`);
 
@@ -66,11 +85,10 @@ Deno.serve(async (req) => {
   if (!tvungen) {
     for (const a of mangler) {
       if (!a.epost) continue;
-      await send([a.epost], `Har du planlagt sommerferien ${y}?`,
-        `<p>Hei ${a.navn.split(" ")[0]}</p>` +
-        `<p>Du har søkt om <b>${a.dager} av ${HOVEDFERIE}</b> dager hovedferie (1. juni–30. september) for ${y}.</p>` +
-        `<p>Søk gjerne snart, så vi får lagt sommerplanen i god tid.</p>` +
-        `<p><a href="${APP_URL}">Søk ferie i Ferieplanlegger</a></p><p style="color:#666">Hilsen N L Austnes AS</p>`);
+      const t = tekst(a.sprak, a.navn.split(" ")[0], a.dager, y);
+      await send([a.epost], t.emne,
+        `<p>${t.hei}</p><p>${t.status}</p><p>${t.snart}</p>` +
+        `<p><a href="${APP_URL}">${t.lenke}</a></p><p style="color:#666">${t.hilsen}</p>`);
     }
   }
 
