@@ -1,0 +1,375 @@
+{
+ "ui": {
+  "lukk": "Zamknij",
+  "sistOppdatert": "Ostatnia aktualizacja: 15 października 2026",
+  "tilVilkar": "Warunki umowy ByggLogg",
+  "orgnr": "nr org.",
+  "kontaktPaa": "pod adresem",
+  "sprakLabel": "Język",
+  "oversatt": "To jest tłumaczenie. W przypadku rozbieżności rozstrzygająca jest wersja norweska."
+ },
+ "personvern": [
+  {
+   "h2": "Ochrona danych osobowych w ByggLogg"
+  },
+  {
+   "p": "**{firma}**{orgnr} używa ByggLogg do rejestracji czasu pracy, urlopów i nieobecności, projektów i komunikacji wewnętrznej. {firma} jest administratorem Twoich danych osobowych. ByggLogg dostarcza Jonassen AS (nr org. 919 665 319), która przetwarza dane wyłącznie w naszym imieniu na podstawie umowy powierzenia przetwarzania danych."
+  },
+  {
+   "h3": "Co rejestrujemy"
+  },
+  {
+   "p": "Imię i nazwisko, e-mail, telefon, numer pracownika, godziny pracy i odbicia, urlopy i nieobecności, przejazdy, narzędzia i odzież roboczą, kursy i uprawnienia oraz wiadomości i zdjęcia, które sam dodajesz. W przypadku choroby zapisywany jest tylko rodzaj nieobecności (zgłoszenie własne, zwolnienie lekarskie, chore dziecko), nigdy diagnoza."
+  },
+  {
+   "h3": "Dlaczego"
+  },
+  {
+   "p": "Aby obliczyć wynagrodzenie i dodatek urlopowy, prowadzić ewidencję czasu pracy zgodnie z norweską ustawą o środowisku pracy (arbeidsmiljøloven), prowadzić projekty, wystawiać faktury klientom i dokumentować pracę. Podstawą jest Twoja umowa o pracę i nasze obowiązki prawne (RODO art. 6 ust. 1 lit. b i c oraz art. 9 ust. 2 lit. b w przypadku nieobecności z powodu choroby)."
+  },
+  {
+   "h3": "Kto widzi co"
+  },
+  {
+   "p": "Widzisz swoje godziny, nieobecności i podstawę wynagrodzenia. Kierownik widzi wszystkich pracowników. Współpracownicy widzą Twoje imię, wspólny czat i czat projektu oraz to, kto pracuje przy tym samym projekcie. Prywatne wiadomości między dwiema osobami mogą czytać tylko te dwie osoby."
+  },
+  {
+   "h3": "Odbicia i powiadomienia"
+  },
+  {
+   "p": "Odbicie pokazuje, kiedy zaczynasz i kończysz pracę. Jeśli jesteś zalogowany długo, dostaniesz powiadomienie push z przypomnieniem o wylogowaniu. Aplikacja nie śledzi, gdzie jesteś. Powiadomienia push otrzymujesz tylko, jeśli je włączysz."
+  },
+  {
+   "h3": "Jak długo"
+  },
+  {
+   "p": "Godziny, nieobecności i podstawa wynagrodzenia są przechowywane przez 5 lat po zakończeniu roku obrachunkowego (norweska ustawa o księgowości, bokføringsloven). Dokumentacja projektów i zdjęcia są przechowywane co najmniej 5 lat po przekazaniu pracy. Czat jest przechowywany przez 2 lata. Gdy kończysz pracę, Twój dostęp zostaje zamknięty."
+  },
+  {
+   "h3": "Kto przetwarza dane w naszym imieniu"
+  },
+  {
+   "p": "Dane są przechowywane w UE (Irlandia). Ci dostawcy pomagają nam prowadzić aplikację i przetwarzają dane wyłącznie w naszym imieniu:"
+  },
+  {
+   "ul": [
+    "**Supabase**: Baza danych, logowanie i przechowywanie zdjęć i dokumentów",
+    "**Vercel**: Dostarcza samą aplikację na telefon",
+    "**Resend**: Wysyła e-maile (kody logowania i powiadomienia)",
+    "**Google, Apple, Mozilla, Microsoft**: Dostarczają powiadomienia push na telefon, jeśli je włączysz"
+   ]
+  },
+  {
+   "p": "Adresy projektów są sprawdzane w norweskim urzędzie Kartverket, aby pokazać mapę i odległość. Twoje dane nigdy nie są sprzedawane ani wykorzystywane do reklamy."
+  },
+  {
+   "h3": "Twoje prawa"
+  },
+  {
+   "p": "Możesz poprosić o dostęp do danych o sobie, ich sprostowanie, usunięcie tam, gdzie pozwala na to prawo, oraz o kopię swoich danych. Kontakt: {kontakt}{epost}. Możesz też złożyć skargę do norweskiego organu ochrony danych, [Datatilsynet](https://www.datatilsynet.no)."
+  }
+ ],
+ "vilkar": [
+  {
+   "h2": "Warunki umowy ByggLogg"
+  },
+  {
+   "p": "Niniejsze warunki dotyczą subskrypcji ByggLogg od {leverandor}. Umowa składa się z czterech części: warunków subskrypcji (Część 1), umowy powierzenia przetwarzania danych (Część 2), informacji o ochronie danych osobowych, którą przedsiębiorstwo przekazuje swoim pracownikom (Część 3), oraz potwierdzenia zamówienia (Część 4), podpisywanego przez obie strony."
+  },
+  {
+   "p": "Przedsiębiorstwo jest **administratorem** danych osobowych swoich pracowników i klientów. Jonassen AS jest **podmiotem przetwarzającym** i przetwarza dane wyłącznie w imieniu przedsiębiorstwa."
+  },
+  {
+   "p": "Wersja 1.0, obowiązuje od 15 października 2026. W razie sprzeczności potwierdzenie zamówienia ma pierwszeństwo przed warunkami. W zakresie danych osobowych umowa powierzenia przetwarzania danych ma pierwszeństwo przed obydwoma dokumentami.",
+   "liten": true
+  },
+  {
+   "h2": "Część 1 – Warunki subskrypcji"
+  },
+  {
+   "p": "Warunki mają zastosowanie, gdy przedsiębiorstwo zawiera subskrypcję ByggLogg. Wraz z potwierdzeniem zamówienia stanowią całość umowy."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Strony",
+   "innhold": [
+    {
+     "p": "Dostawca: {leverandor} („Dostawca”). Klient: przedsiębiorstwo wskazane w potwierdzeniu zamówienia („Klient”)."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "Usługa",
+   "innhold": [
+    {
+     "p": "ByggLogg to aplikacja internetowa do rejestracji czasu pracy, odbić, urlopów i nieobecności, projektów, dziennika, zdjęć, niezgodności, czatu, narzędzi i uprawnień. Usługa jest świadczona w aktualnie dostępnej postaci, a Dostawca może ulepszać i zmieniać funkcje. Funkcje, za które Klient płaci dodatkowo, są określone w potwierdzeniu zamówienia. Usługa jest świadczona pod adresem bygglogg.app, a każdy klient otrzymuje własny adres, na przykład nazwafirmy.bygglogg.app. Nazwa i logo ByggLogg oraz samo oprogramowanie należą do Dostawcy. Klient otrzymuje prawo do korzystania przez czas trwania umowy."
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Cena i płatność",
+   "innhold": [
+    {
+     "ul": [
+      "Cena: 249 NOK za aktywnego użytkownika miesięcznie, bez VAT. Użytkownik jest aktywny, gdy może się zalogować. Co najmniej 5 użytkowników na przedsiębiorstwo.",
+      "Faktury wystawiane są co miesiąc z góry, z 14-dniowym terminem płatności.",
+      "Cena może zostać zmieniona z 30-dniowym wyprzedzeniem, nie wcześniej niż 12 miesięcy od rozpoczęcia.",
+      "Dopłata za integrację z Visma Business NXT lub Tripletex: 490 NOK za przedsiębiorstwo miesięcznie oraz 2 500 NOK za uruchomienie (opłata jednorazowa).",
+      "W przypadku opóźnienia w płatności dostęp może zostać zablokowany po pisemnym powiadomieniu i upływie 14-dniowego terminu. Dane nie są usuwane w razie zablokowania."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Czas trwania i wypowiedzenie",
+   "innhold": [
+    {
+     "ul": [
+      "Umowa obowiązuje do czasu jej wypowiedzenia. Wzajemny okres wypowiedzenia: 1 miesiąc liczony od końca miesiąca.",
+      "Ewentualny okres próbny i cena w okresie próbnym są określone w potwierdzeniu zamówienia. Po okresie próbnym obowiązuje cena standardowa, chyba że Klient wypowie umowę przed jego zakończeniem."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Eksploatacja, kopie zapasowe i wsparcie",
+   "innhold": [
+    {
+     "ul": [
+      "Dostawca dokłada starań, aby usługa była dostępna przez całą dobę, lecz nie gwarantuje określonego poziomu dostępności. Planowane prace konserwacyjne są zapowiadane i przeprowadzane poza godzinami pracy.",
+      "Kopia zapasowa bazy danych jest wykonywana codziennie przez dostawcę infrastruktury i przechowywana przez 7 dni.",
+      "Wsparcie przez e-mail {support}, w dni robocze w godz. 08–16. Odpowiedź w ciągu jednego dnia roboczego."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Obowiązki Klienta",
+   "innhold": [
+    {
+     "ul": [
+      "Klient decyduje, kto otrzymuje dostęp, i odbiera dostęp, gdy ktoś kończy pracę.",
+      "Klient zapewnia, że pracownicy są poinformowani o aplikacji i o tym, jakie dane są rejestrowane (zob. Część 3).",
+      "Klient odpowiada za zgodność z prawem wprowadzanych treści oraz za sprawdzenie godzin i podstawy wynagrodzenia przed wypłatą.",
+      "Środki, które mogą stanowić środki kontroli w rozumieniu rozdziału 9 norweskiej ustawy o środowisku pracy (arbeidsmiljøloven) (na przykład odbicia i powiadomienie, że ktoś nadal jest zalogowany), należy omówić z pracownikami przed ich wprowadzeniem."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Dane Klienta",
+   "innhold": [
+    {
+     "ul": [
+      "Wszystkie dane wprowadzone przez Klienta należą do Klienta. Dostawca wykorzystuje je wyłącznie w celu świadczenia usługi (zob. Część 2).",
+      "Klient może w każdej chwili otrzymać swoje dane w powszechnie używanych formatach plików (CSV/Excel oraz pliki oryginalne zdjęć i dokumentów).",
+      "Po zakończeniu umowy Klient ma 30 dni na pobranie danych. Następnie dane są usuwane, również z kopii zapasowych w ciągu 30 dni."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Ograniczenie odpowiedzialności",
+   "innhold": [
+    {
+     "ul": [
+      "Dostawca nie ponosi odpowiedzialności za szkody pośrednie, takie jak utracone korzyści lub utrata danych wynikająca z błędów samego Klienta.",
+      "Łączna odpowiedzialność Dostawcy w danym roku kalendarzowym jest ograniczona do kwoty zapłaconej przez Klienta w ciągu ostatnich 12 miesięcy.",
+      "Ograniczenia nie mają zastosowania w przypadku rażącego niedbalstwa lub winy umyślnej."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Zmiany warunków",
+   "innhold": [
+    {
+     "p": "O zmianach powiadamia się co najmniej 30 dni przed ich wejściem w życie. Jeżeli zmiana jest niekorzystna dla Klienta, Klient może wypowiedzieć umowę ze skutkiem od dnia wejścia zmiany w życie."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Prawo właściwe i spory",
+   "innhold": [
+    {
+     "p": "Prawem właściwym jest prawo norweskie. Strony w pierwszej kolejności podejmą próbę rozwiązania sporu w drodze negocjacji. Sądem właściwym jest sąd rejonowy Møre og Romsdal tingrett."
+    }
+   ]
+  },
+  {
+   "h2": "Część 2 – Umowa powierzenia przetwarzania danych (RODO art. 28)"
+  },
+  {
+   "p": "Umowa stanowi załącznik do warunków subskrypcji i ma przed nimi pierwszeństwo w zakresie danych osobowych."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Role i cel",
+   "innhold": [
+    {
+     "p": "Klient jest administratorem. Dostawca jest podmiotem przetwarzającym i przetwarza dane osobowe wyłącznie w celu dostarczania Klientowi ByggLogg: rejestracji czasu pracy i podstawy wynagrodzenia, urlopów i nieobecności, zarządzania projektami i dokumentacji, komunikacji wewnętrznej i powiadomień."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "Jakie dane i kogo dotyczą",
+   "innhold": [
+    {
+     "ul": [
+      "**Pracownicy Klienta:** imię i nazwisko, e-mail, telefon, numer pracownika, dział, rola, język, godziny pracy i odbicia, urlopy, przejazdy, narzędzia, uprawnienia i certyfikaty, wiadomości czatu, zdjęcia i logowania. Rodzaj nieobecności z powodu choroby (zgłoszenie własne, zwolnienie lekarskie, chore dziecko) stanowi dane dotyczące zdrowia w rozumieniu art. 9. Diagnoza nie jest zapisywana.",
+      "**Klienci i osoby kontaktowe Klienta:** imię i nazwisko, adres, telefon, e-mail, dane nieruchomości (numer gospodarstwa i działki – gårds- og bruksnummer), zdjęcia i dokumenty z realizowanych prac. Brak szczególnych kategorii danych."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Polecenia",
+   "innhold": [
+    {
+     "p": "Dostawca przetwarza dane wyłącznie na udokumentowane polecenie Klienta. Poleceniami są niniejsza umowa oraz korzystanie z funkcji aplikacji. Dane nie są wykorzystywane do celów własnych, reklamy ani sprzedaży innym podmiotom."
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Obowiązek zachowania poufności",
+   "innhold": [
+    {
+     "p": "Wszystkie osoby po stronie Dostawcy, które mają dostęp, są zobowiązane do zachowania poufności. Dostawca uzyskuje dostęp do danych Klienta tylko wtedy, gdy jest to potrzebne do wsparcia lub usunięcia błędów, i wyłącznie po uzgodnieniu z Klientem."
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Bezpieczeństwo (art. 32)",
+   "innhold": [
+    {
+     "ul": [
+      "Dane są przechowywane w postaci zaszyfrowanej i przesyłane wyłącznie w sposób szyfrowany (HTTPS).",
+      "Każde przedsiębiorstwo widzi wyłącznie własne dane. Jest to egzekwowane w bazie danych za pomocą zabezpieczeń na poziomie wierszy, a nie tylko w aplikacji.",
+      "Logowanie jednorazowym kodem wysyłanym e-mailem, bez haseł, które mogłyby wyciec.",
+      "Pracownicy widzą tylko własne godziny, nieobecności i podstawę wynagrodzenia. Kierownik widzi całe przedsiębiorstwo.",
+      "Klucze tajne (Visma, e-mail, push) są przechowywane wyłącznie u dostawcy infrastruktury, nigdy w aplikacji.",
+      "Codzienna kopia zapasowa."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Dalsze podmioty przetwarzające",
+   "innhold": [
+    {
+     "p": "Klient zatwierdza dalsze podmioty przetwarzające wymienione w tabeli. O nowych powiadamia się co najmniej 30 dni przed rozpoczęciem korzystania z nich, a Klient może wnieść sprzeciw i wypowiedzieć umowę."
+    },
+    {
+     "tabell": [
+      [
+       "Dostawca",
+       "Zakres działań",
+       "Miejsce przechowywania danych",
+       "Podstawa przekazania"
+      ],
+      [
+       "Supabase Inc.",
+       "Baza danych, logowanie, przechowywanie plików, zadania w tle",
+       "UE (Irlandia)",
+       "Przechowywane w EOG. Spółka jest amerykańska: standardowe klauzule umowne UE (SCC)"
+      ],
+      [
+       "Vercel Inc.",
+       "Dostarcza aplikację i adresy w domenie bygglogg.app do przeglądarki",
+       "Sieć globalna, rejestruje adresy IP",
+       "EU–US Data Privacy Framework / SCC"
+      ],
+      [
+       "Resend",
+       "Wysyła e-maile (kody logowania, powiadomienia, przypomnienia)",
+       "USA",
+       "SCC / DPF"
+      ],
+      [
+       "Google, Apple, Mozilla, Microsoft",
+       "Dostarczają powiadomienia push na telefon",
+       "Różne",
+       "Treść powiadomienia przechodzi przez dostawcę przeglądarki telefonu"
+      ]
+     ]
+    },
+    {
+     "p": "Zapytania, które nie zawierają danych osobowych pracowników, lecz adresy: Kartverket (wyszukiwanie adresów i mapy, Norwegia) oraz usługa wyznaczania tras do obliczania odległości dojazdu. Visma Business NXT jest własnym systemem Klienta i własnym podmiotem przetwarzającym Klienta. ByggLogg jedynie odczytuje z niego dane.",
+     "liten": true
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Przekazywanie danych poza EOG",
+   "innhold": [
+    {
+     "p": "Następuje wyłącznie do dostawców wymienionych w tabeli i wyłącznie na ważnej podstawie przekazania (certyfikacja DPF lub standardowe klauzule umowne UE)."
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Pomoc dla Klienta",
+   "innhold": [
+    {
+     "p": "Dostawca pomaga Klientowi, w rozsądnym terminie, w odpowiadaniu na żądania dostępu, sprostowania, usunięcia i przenoszenia danych oraz w ocenach skutków dla ochrony danych (DPIA)."
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Naruszenia",
+   "innhold": [
+    {
+     "p": "Dostawca powiadamia Klienta bez zbędnej zwłoki, nie później niż w ciągu 24 godzin od stwierdzenia naruszenia ochrony danych osobowych. Klient sam zgłasza naruszenie do Datatilsynet (norweskiego organu ochrony danych) w ciągu 72 godzin, jeżeli jest to wymagane."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Audyt",
+   "innhold": [
+    {
+     "p": "Klient może zażądać dokumentacji potwierdzającej przestrzeganie umowy raz w roku lub po wystąpieniu naruszenia."
+    }
+   ]
+  },
+  {
+   "punkt": 11,
+   "tittel": "Zakończenie",
+   "innhold": [
+    {
+     "p": "Po zakończeniu umowy Klient otrzymuje wszystkie dane i ma 30 dni na ich pobranie. Następnie Dostawca usuwa dane, również z kopii zapasowych w ciągu 30 dni, i pisemnie potwierdza ich usunięcie."
+    }
+   ]
+  },
+  {
+   "h2": "Część 3 – Informacja o ochronie danych osobowych dla pracowników"
+  },
+  {
+   "p": "Informacja o ochronie danych osobowych jest dostępna w aplikacji w języku norweskim, polskim, angielskim i litewskim: {tilPersonvern}."
+  },
+  {
+   "h2": "Część 4 – Potwierdzenie zamówienia"
+  },
+  {
+   "p": "Klient, liczba użytkowników, ewentualna integracja z Visma, okres próbny, data rozpoczęcia i adres Klienta w aplikacji są określone w potwierdzeniu zamówienia, podpisywanym przez obie strony. Pytania dotyczące umowy: {support}."
+  }
+ ],
+ "tilPersonvernTekst": "przeczytaj informację o ochronie danych osobowych"
+}

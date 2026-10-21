@@ -1,6 +1,9 @@
 // Polsk oversettelse av brukerflaten (generert fra norske tekster i koden).
 // Nøkkel = norsk tekst slik den står på skjermen. Mangler en tekst, vises den norske.
 export const PL_TEKST: Record<string, string> = {
+  "Personvern – slik behandler vi opplysningene dine": "Ochrona danych – jak przetwarzamy Twoje dane",
+  "Skjul personvern": "Ukryj ochronę danych",
+  "Skjul avtalevilkår": "Ukryj warunki umowy",
 "Stemplingen er for gammel til å sendes automatisk. Før timene manuelt.": "Rejestracja jest za stara, aby wysłać ją automatycznie. Wpisz godziny ręcznie.",
 "Prøv nå": "Spróbuj teraz",
 "Sender det du førte uten nett …": "Wysyłanie tego, co zapisano bez sieci …",

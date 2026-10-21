@@ -1,0 +1,375 @@
+{
+ "ui": {
+  "lukk": "Uždaryti",
+  "sistOppdatert": "Paskutinį kartą atnaujinta 2026 m. spalio 15 d.",
+  "tilVilkar": "ByggLogg sutarties sąlygos",
+  "orgnr": "įm. k.",
+  "kontaktPaa": "el. paštu",
+  "sprakLabel": "Kalba",
+  "oversatt": "Tai vertimas. Esant neatitikimų, taikoma versija norvegų kalba."
+ },
+ "personvern": [
+  {
+   "h2": "Asmens duomenų apsauga ByggLogg"
+  },
+  {
+   "p": "**{firma}**{orgnr} naudoja ByggLogg darbo laiko apskaitai, atostogoms ir nebuvimui darbe, projektams ir vidinei komunikacijai. {firma} yra su jumis susijusių duomenų valdytojas. ByggLogg teikia Jonassen AS (įm. k. 919 665 319), kuri duomenis tvarko tik mūsų vardu pagal duomenų tvarkymo sutartį."
+  },
+  {
+   "h3": "Ką registruojame"
+  },
+  {
+   "p": "Vardą ir pavardę, el. paštą, telefoną, darbuotojo numerį, darbo valandas ir žymėjimus, atostogas ir nebuvimą darbe, važiavimus, įrangą ir darbo drabužius, kursus ir kompetencijos pažymėjimus, taip pat žinutes ir nuotraukas, kurias įkeliate patys. Ligos atveju registruojama tik nebuvimo darbe rūšis (savideklaracija, nedarbingumo pažymėjimas, serga vaikas), niekada – diagnozė."
+  },
+  {
+   "h3": "Kodėl"
+  },
+  {
+   "p": "Kad galėtume apskaičiuoti darbo užmokestį ir atostoginius, turėti darbo laiko apskaitą, kaip reikalauja Norvegijos darbo aplinkos įstatymas (arbeidsmiljøloven), stebėti projektus, išrašyti sąskaitas klientams ir dokumentuoti darbą. Teisinis pagrindas – jūsų darbo sutartis ir mums įstatymu nustatytos pareigos (BDAR 6 straipsnio 1 dalies b ir c punktai, o nebuvimui darbe dėl ligos – 9 straipsnio 2 dalies b punktas)."
+  },
+  {
+   "h3": "Kas ką mato"
+  },
+  {
+   "p": "Jūs matote savo valandas, nebuvimą darbe ir darbo užmokesčio apskaičiavimo duomenis. Vadovas mato visus darbuotojus. Kolegos mato jūsų vardą, bendrą pokalbį ir projekto pokalbį bei tai, kas dirba tame pačiame projekte. Privačias žinutes tarp dviejų asmenų gali skaityti tik tie du asmenys."
+  },
+  {
+   "h3": "Žymėjimas ir pranešimai"
+  },
+  {
+   "p": "Žymėjimas rodo, kada pradedate ir baigiate darbą. Jei ilgai esate pažymėję darbo pradžią, gausite tiesioginį (push) pranešimą, primenantį pažymėti darbo pabaigą. Programėlė neseka, kur esate. Tiesioginius pranešimus gaunate tik tuo atveju, jei juos įjungiate."
+  },
+  {
+   "h3": "Kiek laiko"
+  },
+  {
+   "p": "Valandos, nebuvimas darbe ir darbo užmokesčio apskaičiavimo duomenys saugomi 5 metus po finansinių metų pabaigos (Norvegijos buhalterinės apskaitos įstatymas, bokføringsloven). Projektų dokumentai ir nuotraukos saugomi ne trumpiau kaip 5 metus po darbų perdavimo. Pokalbiai saugomi 2 metus. Kai išeinate iš darbo, jūsų prieiga uždaroma."
+  },
+  {
+   "h3": "Kas tvarko duomenis mūsų vardu"
+  },
+  {
+   "p": "Duomenys saugomi ES (Airijoje). Šie paslaugų teikėjai padeda mums užtikrinti programėlės veikimą ir duomenis tvarko tik mūsų vardu:"
+  },
+  {
+   "ul": [
+    "**Supabase**: duomenų bazė, prisijungimas ir nuotraukų bei dokumentų saugojimas",
+    "**Vercel**: pateikia pačią programėlę į telefoną",
+    "**Resend**: siunčia el. laiškus (prisijungimo kodus ir pranešimus)",
+    "**Google, Apple, Mozilla, Microsoft**: pristato tiesioginius pranešimus į telefoną, jei juos įjungiate"
+   ]
+  },
+  {
+   "p": "Projektų adresai tikrinami Kartverket (Norvegijos kartografijos tarnyboje), kad būtų galima parodyti žemėlapį ir atstumą. Duomenys apie jus niekada neparduodami ir nenaudojami reklamai."
+  },
+  {
+   "h3": "Jūsų teisės"
+  },
+  {
+   "p": "Galite prašyti susipažinti su apie jus saugomais duomenimis, ištaisyti klaidas, ištrinti duomenis, kai tai leidžia įstatymas, ir gauti savo duomenų kopiją. Kreipkitės į {kontakt}{epost}. Taip pat galite pateikti skundą Norvegijos duomenų apsaugos inspekcijai ([Datatilsynet](https://www.datatilsynet.no))."
+  }
+ ],
+ "vilkar": [
+  {
+   "h2": "ByggLogg sutarties sąlygos"
+  },
+  {
+   "p": "Šios sąlygos taikomos ByggLogg prenumeratai, kurią teikia {leverandor}. Sutartį sudaro keturios dalys: prenumeratos sąlygos (1 dalis), duomenų tvarkymo sutartis (2 dalis), įmonės savo darbuotojams teikiamas privatumo pranešimas (3 dalis) ir užsakymo patvirtinimas (4 dalis), kurį pasirašo abi šalys."
+  },
+  {
+   "p": "Įmonė yra savo darbuotojų ir klientų duomenų **duomenų valdytojas**. Jonassen AS yra **duomenų tvarkytojas** ir duomenis tvarko tik įmonės vardu."
+  },
+  {
+   "p": "1.0 versija, galioja nuo 2026 m. spalio 15 d. Esant prieštaravimų, užsakymo patvirtinimas turi viršenybę prieš sąlygas. Asmens duomenų klausimais duomenų tvarkymo sutartis turi viršenybę prieš abu dokumentus.",
+   "liten": true
+  },
+  {
+   "h2": "1 dalis – Prenumeratos sąlygos"
+  },
+  {
+   "p": "Šios sąlygos taikomos, kai įmonė užsisako ByggLogg prenumeratą. Kartu su užsakymo patvirtinimu jos sudaro visą sutartį."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Šalys",
+   "innhold": [
+    {
+     "p": "Tiekėjas: {leverandor} („Tiekėjas“). Klientas: užsakymo patvirtinime nurodyta įmonė („Klientas“)."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "Paslauga",
+   "innhold": [
+    {
+     "p": "ByggLogg – tai internetinė programėlė darbo laiko apskaitai, žymėjimui, atostogoms ir nebuvimui darbe, projektams, dienynui, nuotraukoms, neatitiktims, pokalbiams, įrangai ir kompetencijos pažymėjimams. Paslauga teikiama tokia, kokia ji yra tam tikru metu, ir Tiekėjas gali tobulinti bei keisti funkcijas. Funkcijos, už kurias Klientas moka papildomai, nurodomos užsakymo patvirtinime. Paslauga teikiama adresu bygglogg.app, ir kiekvienas klientas gauna savo adresą, pavyzdžiui, imonespavadinimas.bygglogg.app. Pavadinimas ir logotipas ByggLogg bei pati programinė įranga priklauso Tiekėjui. Klientas įgyja naudojimosi teisę, kol galioja sutartis."
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Kaina ir mokėjimas",
+   "innhold": [
+    {
+     "ul": [
+      "Kaina: 249 NOK už aktyvų naudotoją per mėnesį, be PVM. Naudotojas yra aktyvus, kai gali prisijungti. Ne mažiau kaip 5 naudotojai vienai įmonei.",
+      "Sąskaitos išrašomos kas mėnesį iš anksto, mokėjimo terminas – 14 dienų.",
+      "Kaina gali būti koreguojama apie tai pranešus prieš 30 dienų, bet ne anksčiau kaip praėjus 12 mėnesių nuo paslaugos teikimo pradžios.",
+      "Papildomas mokestis už susiejimą su Visma Business NXT arba Tripletex: 490 NOK vienai įmonei per mėnesį ir 2 500 NOK už paleidimą (vienkartinis mokestis).",
+      "Vėluojant mokėti, prieiga gali būti uždaryta po rašytinio įspėjimo ir 14 dienų termino. Uždarius prieigą, duomenys neištrinami."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Trukmė ir nutraukimas",
+   "innhold": [
+    {
+     "ul": [
+      "Sutartis galioja, kol ji nutraukiama. Abipusis įspėjimo apie nutraukimą terminas: 1 mėnuo, skaičiuojant nuo mėnesio pabaigos.",
+      "Galimas bandomasis laikotarpis ir kaina bandomuoju laikotarpiu nurodomi užsakymo patvirtinime. Pasibaigus bandomajam laikotarpiui, taikoma įprasta kaina, nebent Klientas nutraukia sutartį iki jo pabaigos."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Veikimas, atsarginės kopijos ir pagalba",
+   "innhold": [
+    {
+     "ul": [
+      "Tiekėjas siekia, kad paslauga būtų pasiekiama visą parą, tačiau negarantuoja konkretaus veikimo laiko. Apie planinę techninę priežiūrą pranešama iš anksto, ir ji atliekama ne darbo valandomis.",
+      "Infrastruktūros paslaugų teikėjas kasdien daro duomenų bazės atsargines kopijas ir jas saugo 7 dienas.",
+      "Pagalba el. paštu {support}, darbo dienomis 08–16 val. Atsakoma per vieną darbo dieną."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Kliento atsakomybė",
+   "innhold": [
+    {
+     "ul": [
+      "Klientas sprendžia, kas gauna prieigą, ir panaikina prieigą, kai kas nors išeina iš darbo.",
+      "Klientas užtikrina, kad darbuotojai būtų informuoti apie programėlę ir apie tai, kokie duomenys registruojami (žr. 3 dalį).",
+      "Klientas atsako už tai, kad įkeliamas turinys būtų teisėtas, ir už tai, kad valandos bei darbo užmokesčio apskaičiavimo duomenys būtų patikrinti prieš išmokant atlyginimą.",
+      "Priemonės, kurios gali būti laikomos kontrolės priemonėmis pagal Norvegijos darbo aplinkos įstatymo (arbeidsmiljøloven) 9 skyrių (pavyzdžiui, žymėjimas ir pranešimas, kad kas nors vis dar yra pažymėjęs darbo pradžią), prieš pradedant jas taikyti turi būti aptartos su darbuotojais."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Kliento duomenys",
+   "innhold": [
+    {
+     "ul": [
+      "Visi Kliento įkelti duomenys priklauso Klientui. Tiekėjas juos naudoja tik paslaugai teikti (žr. 2 dalį).",
+      "Klientas bet kuriuo metu gali gauti savo duomenis įprastais failų formatais (CSV / Excel ir originalūs nuotraukų bei dokumentų failai).",
+      "Sutarčiai pasibaigus, Klientas turi 30 dienų duomenims atsisiųsti. Po to jie ištrinami, įskaitant atsargines kopijas – per 30 dienų."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Atsakomybės apribojimas",
+   "innhold": [
+    {
+     "ul": [
+      "Tiekėjas neatsako už netiesioginius nuostolius, pavyzdžiui, negautą pelną arba duomenų praradimą dėl paties Kliento klaidų.",
+      "Bendra Tiekėjo atsakomybė per kalendorinius metus apribojama suma, kurią Klientas sumokėjo per paskutinius 12 mėnesių.",
+      "Apribojimai netaikomi didelio neatsargumo ar tyčios atveju."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Sąlygų pakeitimai",
+   "innhold": [
+    {
+     "p": "Apie pakeitimus pranešama ne vėliau kaip prieš 30 dienų iki jų įsigaliojimo. Jei pakeitimas Klientui nepalankus, Klientas gali nutraukti sutartį nuo pakeitimo įsigaliojimo dienos."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Taikytina teisė ir ginčai",
+   "innhold": [
+    {
+     "p": "Taikoma Norvegijos teisė. Šalys pirmiausia stengiasi nesutarimus išspręsti derybomis. Ginčai sprendžiami Møre ir Romsdalio apylinkės teisme (Møre og Romsdal tingrett)."
+    }
+   ]
+  },
+  {
+   "h2": "2 dalis – Duomenų tvarkymo sutartis (BDAR 28 straipsnis)"
+  },
+  {
+   "p": "Ši sutartis yra prenumeratos sąlygų priedas ir asmens duomenų klausimais turi viršenybę prieš jas."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Vaidmenys ir tikslas",
+   "innhold": [
+    {
+     "p": "Klientas yra duomenų valdytojas. Tiekėjas yra duomenų tvarkytojas ir asmens duomenis tvarko tik tam, kad teiktų ByggLogg Klientui: darbo laiko apskaita ir darbo užmokesčio apskaičiavimo duomenys, atostogos ir nebuvimas darbe, projektų valdymas ir dokumentavimas, vidinė komunikacija ir pranešimai."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "Kokie duomenys ir apie ką",
+   "innhold": [
+    {
+     "ul": [
+      "**Kliento darbuotojai:** vardas ir pavardė, el. paštas, telefonas, darbuotojo numeris, padalinys, vaidmuo, kalba, valandos ir žymėjimai, atostogos, važiavimai, įranga, kompetencijos pažymėjimai ir sertifikatai, pokalbių žinutės, nuotraukos ir prisijungimai. Nebuvimo darbe dėl ligos rūšis (savideklaracija, nedarbingumo pažymėjimas, serga vaikas) yra sveikatos duomenys pagal 9 straipsnį. Diagnozė nesaugoma.",
+      "**Kliento klientai ir kontaktiniai asmenys:** vardas ir pavardė, adresas, telefonas, el. paštas, nekilnojamojo turto duomenys (Norvegijos žemės sklypo ir valdos numeriai, gårds- og bruksnummer), darbų nuotraukos ir dokumentai. Jokių specialių kategorijų duomenų."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Nurodymai",
+   "innhold": [
+    {
+     "p": "Tiekėjas tvarko duomenis tik pagal dokumentais įformintus Kliento nurodymus. Ši sutartis ir programėlės funkcijų naudojimas yra nurodymai. Duomenys nenaudojami Tiekėjo paties tikslais, reklamai ar pardavimui kitiems."
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Konfidencialumo pareiga",
+   "innhold": [
+    {
+     "p": "Visi Tiekėjo darbuotojai, turintys prieigą, privalo laikytis konfidencialumo. Tiekėjas prie Kliento duomenų jungiasi tik tada, kai to reikia pagalbai suteikti ar klaidoms ištaisyti, ir tik suderinęs su Klientu."
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Saugumas (32 straipsnis)",
+   "innhold": [
+    {
+     "ul": [
+      "Duomenys saugomi užšifruoti ir perduodami tik užšifruoti (HTTPS).",
+      "Kiekviena įmonė mato tik savo duomenis. Tai užtikrinama duomenų bazėje taikant eilučių lygmens saugumą, o ne tik programėlėje.",
+      "Prisijungimas vienkartiniu kodu el. paštu – nėra slaptažodžių, kurie galėtų nutekėti.",
+      "Darbuotojai mato tik savo valandas, nebuvimą darbe ir darbo užmokesčio apskaičiavimo duomenis. Vadovas mato visą įmonę.",
+      "Slaptieji raktai (Visma, el. paštas, tiesioginiai pranešimai) laikomi tik pas infrastruktūros paslaugų teikėją, niekada programėlėje.",
+      "Kasdienė atsarginė kopija."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Pagalbiniai duomenų tvarkytojai",
+   "innhold": [
+    {
+     "p": "Klientas patvirtina lentelėje nurodytus pagalbinius duomenų tvarkytojus. Apie naujus pranešama ne vėliau kaip prieš 30 dienų iki jų naudojimo pradžios, ir Klientas gali prieštarauti bei nutraukti sutartį."
+    },
+    {
+     "tabell": [
+      [
+       "Tiekėjas",
+       "Ką jis daro",
+       "Kur saugomi duomenys",
+       "Duomenų perdavimo pagrindas"
+      ],
+      [
+       "Supabase Inc.",
+       "Duomenų bazė, prisijungimas, failų saugojimas, foniniai procesai",
+       "ES (Airija)",
+       "Saugoma EEE. Bendrovė yra amerikietiška: ES standartinės sutarčių sąlygos (SCC)"
+      ],
+      [
+       "Vercel Inc.",
+       "Pateikia programėlę ir bygglogg.app adresus į naršyklę",
+       "Pasaulinis tinklas, registruoja IP adresus",
+       "ES ir JAV duomenų privatumo sistema (EU–US Data Privacy Framework) / SCC"
+      ],
+      [
+       "Resend",
+       "Siunčia el. laiškus (prisijungimo kodus, pranešimus, priminimus)",
+       "JAV",
+       "SCC / DPF"
+      ],
+      [
+       "Google, Apple, Mozilla, Microsoft",
+       "Pristato tiesioginius pranešimus į telefoną",
+       "Skiriasi",
+       "Pranešimo tekstas perduodamas per telefono naršyklės teikėją"
+      ]
+     ]
+    },
+    {
+     "p": "Užklausos, kuriose nėra darbuotojų asmens duomenų, o tik adresai: Kartverket (adresų paieška ir žemėlapiai, Norvegija) ir maršrutų paslauga važiavimo atstumui nustatyti. Visma Business NXT yra paties Kliento sistema ir paties Kliento duomenų tvarkytojas. ByggLogg iš jos tik skaito duomenis.",
+     "liten": true
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Duomenų perdavimas už EEE ribų",
+   "innhold": [
+    {
+     "p": "Vyksta tik lentelėje nurodytiems tiekėjams ir tik turint galiojantį perdavimo pagrindą (DPF sertifikavimas arba ES standartinės sutarčių sąlygos)."
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Pagalba Klientui",
+   "innhold": [
+    {
+     "p": "Tiekėjas per protingą terminą padeda Klientui atsakyti į prašymus susipažinti su duomenimis, juos ištaisyti, ištrinti ir perkelti, taip pat atlikti poveikio duomenų apsaugai vertinimus (DPIA)."
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Pažeidimai",
+   "innhold": [
+    {
+     "p": "Tiekėjas praneša Klientui be nepagrįsto delsimo ir ne vėliau kaip per 24 valandas nuo asmens duomenų saugumo pažeidimo nustatymo. Klientas pats praneša Norvegijos duomenų apsaugos inspekcijai (Datatilsynet) per 72 valandas, kai to reikalaujama."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Auditas",
+   "innhold": [
+    {
+     "p": "Klientas gali prašyti dokumentų, įrodančių, kad sutarties laikomasi, kartą per metus arba po pažeidimo."
+    }
+   ]
+  },
+  {
+   "punkt": 11,
+   "tittel": "Sutarties pabaiga",
+   "innhold": [
+    {
+     "p": "Sutarčiai pasibaigus, Klientui perduodami visi duomenys ir jis turi 30 dienų jiems atsisiųsti. Po to Tiekėjas ištrina duomenis, įskaitant atsargines kopijas – per 30 dienų, ir raštu patvirtina ištrynimą."
+    }
+   ]
+  },
+  {
+   "h2": "3 dalis – Privatumo pranešimas darbuotojams"
+  },
+  {
+   "p": "Privatumo pranešimas programėlėje pateikiamas norvegų, lenkų, anglų ir lietuvių kalbomis: {tilPersonvern}."
+  },
+  {
+   "h2": "4 dalis – Užsakymo patvirtinimas"
+  },
+  {
+   "p": "Klientas, naudotojų skaičius, galimas susiejimas su Visma, bandomasis laikotarpis, pradžios data ir Kliento adresas programėlėje nurodomi užsakymo patvirtinime, kurį pasirašo abi šalys. Klausimai dėl sutarties: {support}."
+  }
+ ],
+ "tilPersonvernTekst": "skaityti privatumo pranešimą"
+}

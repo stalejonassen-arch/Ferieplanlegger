@@ -1,0 +1,375 @@
+{
+ "ui": {
+  "lukk": "Close",
+  "sistOppdatert": "Last updated 15 October 2026",
+  "tilVilkar": "ByggLogg terms and conditions",
+  "orgnr": "reg. no.",
+  "kontaktPaa": "at",
+  "sprakLabel": "Language",
+  "oversatt": "This is a translation. The Norwegian version applies in case of discrepancy."
+ },
+ "personvern": [
+  {
+   "h2": "Privacy in ByggLogg"
+  },
+  {
+   "p": "**{firma}**{orgnr} uses ByggLogg for time recording, holidays and absence, projects and internal communication. {firma} is the controller of the personal data about you. ByggLogg is provided by Jonassen AS (reg. no. 919 665 319), which processes the data only on our behalf under a data processing agreement."
+  },
+  {
+   "h3": "What we record"
+  },
+  {
+   "p": "Name, e-mail, phone number, employee number, hours and clock-ins, holidays and absence, mileage, equipment and workwear, courses and competence certificates, and messages and photos you add yourself. For sickness, only the type of absence is recorded (self-certification, doctor's sick note, sick child), never the diagnosis."
+  },
+  {
+   "h3": "Why"
+  },
+  {
+   "p": "To calculate pay and holiday pay, keep track of working hours as required by the Working Environment Act (arbeidsmiljøloven), follow up projects, invoice customers and document the work. The legal basis is your employment contract and our legal obligations (General Data Protection Regulation, Article 6(1)(b) and (c), and Article 9(2)(b) for sickness absence)."
+  },
+  {
+   "h3": "Who sees what"
+  },
+  {
+   "p": "You see your own hours, absence and payroll data. Managers see all employees. Colleagues see your name, the shared chat and project chats, and who is on the same project. Private messages between two people can only be read by those two."
+  },
+  {
+   "h3": "Clocking in and notifications"
+  },
+  {
+   "p": "Clocking in shows when you start and finish. If you have been clocked in for a long time, you receive a push notification reminding you to clock out. The app does not track your location. You only receive push notifications if you turn them on."
+  },
+  {
+   "h3": "How long"
+  },
+  {
+   "p": "Hours, absence and payroll data are stored for 5 years after the end of the financial year (the Bookkeeping Act (bokføringsloven)). Project documentation and photos are stored for at least 5 years after the job has been handed over. Chat is stored for 2 years. When you leave, your access is closed."
+  },
+  {
+   "h3": "Who processes the data on our behalf"
+  },
+  {
+   "p": "The data is stored in the EU (Ireland). These suppliers help us run the app and process the data only on our behalf:"
+  },
+  {
+   "ul": [
+    "**Supabase**: Database, login and storage of photos and documents",
+    "**Vercel**: Delivers the app itself to your phone",
+    "**Resend**: Sends e-mail (login codes and notifications)",
+    "**Google, Apple, Mozilla, Microsoft**: Deliver push notifications to your phone, if you turn them on"
+   ]
+  },
+  {
+   "p": "Project addresses are looked up with Kartverket (the Norwegian Mapping Authority) to show maps and distances. Data about you is never sold or used for advertising."
+  },
+  {
+   "h3": "Your rights"
+  },
+  {
+   "p": "You may request access to the data stored about you, have errors corrected, request erasure where the law permits, and receive a copy of your data. Contact {kontakt}{epost}. You may also lodge a complaint with [the Norwegian Data Protection Authority (Datatilsynet)](https://www.datatilsynet.no)."
+  }
+ ],
+ "vilkar": [
+  {
+   "h2": "ByggLogg terms and conditions"
+  },
+  {
+   "p": "These terms apply to subscriptions to ByggLogg from {leverandor}. The agreement has four parts: the subscription terms (Part 1), the data processing agreement (Part 2), the privacy notice the company gives its employees (Part 3) and the order confirmation (Part 4), which is signed by both parties."
+  },
+  {
+   "p": "The company is the **controller** of the personal data about its employees and customers. Jonassen AS is the **processor** and processes the data only on the company's behalf."
+  },
+  {
+   "p": "Version 1.0, effective from 15 October 2026. In the event of conflict, the order confirmation takes precedence over the terms. For personal data, the data processing agreement takes precedence over both.",
+   "liten": true
+  },
+  {
+   "h2": "Part 1 – Subscription terms"
+  },
+  {
+   "p": "These terms apply when a company subscribes to ByggLogg. Together with the order confirmation, they constitute the entire agreement."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Parties",
+   "innhold": [
+    {
+     "p": "Supplier: {leverandor} (\"the Supplier\"). Customer: the company named in the order confirmation (\"the Customer\")."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "The service",
+   "innhold": [
+    {
+     "p": "ByggLogg is a web-based app for time recording, clocking in, holidays and absence, projects, site diary, photos, non-conformities, chat, equipment and competence certificates. The service is provided as it is at any given time, and the Supplier may improve and change features. Features for which the Customer pays extra are set out in the order confirmation. The service is provided at bygglogg.app, and each customer receives its own address, for example companyname.bygglogg.app. The ByggLogg name and logo and the software itself belong to the Supplier. The Customer is granted a right of use for as long as the agreement remains in force."
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Price and payment",
+   "innhold": [
+    {
+     "ul": [
+      "Price: NOK 249 per active user per month, excl. VAT. A user is active when that person is able to log in. Minimum 5 users per company.",
+      "Invoiced monthly in advance, with 14 days' payment terms.",
+      "The price may be adjusted with 30 days' notice, no earlier than 12 months after start-up.",
+      "Add-on for integration with Visma Business NXT or Tripletex: NOK 490 per company per month, and NOK 2,500 for start-up (one-off fee).",
+      "In the event of late payment, access may be suspended after written notice and a 14-day deadline. Data is not deleted upon suspension."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Term and termination",
+   "innhold": [
+    {
+     "ul": [
+      "The agreement remains in force until terminated. Mutual notice period: 1 month from the end of the month.",
+      "Any trial period and the price during the trial period are set out in the order confirmation. After the trial period, the ordinary price applies unless the Customer terminates before it ends."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Operation, backup and support",
+   "innhold": [
+    {
+     "ul": [
+      "The Supplier endeavours to keep the service available around the clock but does not guarantee any specific uptime. Planned maintenance is notified in advance and scheduled outside working hours.",
+      "The database is backed up daily by the hosting provider and retained for 7 days.",
+      "Support by e-mail at {support}, weekdays 08:00–16:00. Response within one working day."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "The Customer's responsibilities",
+   "innhold": [
+    {
+     "ul": [
+      "The Customer decides who is given access and removes access when someone leaves.",
+      "The Customer ensures that employees are informed about the app and what data is recorded (see Part 3).",
+      "The Customer is responsible for ensuring that the content entered is lawful, and that hours and payroll data are checked before payment.",
+      "Measures that may constitute control measures under Chapter 9 of the Working Environment Act (arbeidsmiljøloven) (for example clocking in and notifications that someone is still clocked in) must be discussed with the employees before they are introduced."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "The Customer's data",
+   "innhold": [
+    {
+     "ul": [
+      "All data entered by the Customer belongs to the Customer. The Supplier uses it only to provide the service (see Part 2).",
+      "The Customer may at any time obtain its data in common file formats (CSV/Excel and original files for photos and documents).",
+      "Upon termination, the Customer has 30 days to retrieve the data. The data is then deleted, including from backups within 30 days."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Limitation of liability",
+   "innhold": [
+    {
+     "ul": [
+      "The Supplier is not liable for indirect loss, such as loss of profit, or for loss of data caused by the Customer's own errors.",
+      "The Supplier's total liability per calendar year is limited to the amount paid by the Customer in the preceding 12 months.",
+      "These limitations do not apply in cases of gross negligence or wilful misconduct."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Changes to the terms",
+   "innhold": [
+    {
+     "p": "Changes are notified at least 30 days before they take effect. The Customer may terminate with effect from the date of the change if the change is to the Customer's detriment."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Governing law and disputes",
+   "innhold": [
+    {
+     "p": "Norwegian law applies. The parties shall first seek to resolve any disagreement through negotiation. The agreed legal venue is Møre og Romsdal District Court (Møre og Romsdal tingrett)."
+    }
+   ]
+  },
+  {
+   "h2": "Part 2 – Data processing agreement (GDPR Article 28)"
+  },
+  {
+   "p": "This agreement is an appendix to the subscription terms and takes precedence over them with regard to personal data."
+  },
+  {
+   "punkt": 1,
+   "tittel": "Roles and purpose",
+   "innhold": [
+    {
+     "p": "The Customer is the controller. The Supplier is the processor and processes personal data only in order to provide ByggLogg to the Customer: time recording and payroll data, holidays and absence, project management and documentation, internal communication and notifications."
+    }
+   ]
+  },
+  {
+   "punkt": 2,
+   "tittel": "What data and about whom",
+   "innhold": [
+    {
+     "ul": [
+      "**The Customer's employees:** name, e-mail, phone number, employee number, department, role, language, hours and clock-ins, holidays, mileage, equipment, competence certificates and licences, chat messages, photos and logins. The type of sickness absence (self-certification, doctor's sick note, sick child) constitutes health data under Article 9. The diagnosis is not stored.",
+      "**The Customer's customers and contact persons:** name, address, phone number, e-mail, property data (cadastral unit numbers – gårds- og bruksnummer), photos and documents from the job. No special categories."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 3,
+   "tittel": "Instructions",
+   "innhold": [
+    {
+     "p": "The Supplier processes the data only on the Customer's documented instructions. This agreement and the use of the features in the app constitute the instructions. The data is not used for the Supplier's own purposes, advertising or sale to third parties."
+    }
+   ]
+  },
+  {
+   "punkt": 4,
+   "tittel": "Confidentiality",
+   "innhold": [
+    {
+     "p": "Everyone at the Supplier who has access is bound by a duty of confidentiality. The Supplier accesses the Customer's data only when necessary for support or troubleshooting, and only by agreement with the Customer."
+    }
+   ]
+  },
+  {
+   "punkt": 5,
+   "tittel": "Security (Article 32)",
+   "innhold": [
+    {
+     "ul": [
+      "Data is stored encrypted and transmitted only in encrypted form (HTTPS).",
+      "Each company sees only its own data. This is enforced in the database with row-level security, not just in the app.",
+      "Login with a one-time code sent by e-mail, so there are no passwords to leak.",
+      "Employees see only their own hours, absence and payroll data. Managers see the whole company.",
+      "Secret keys (Visma, e-mail, push) are held only by the hosting provider, never in the app.",
+      "Daily backup."
+     ]
+    }
+   ]
+  },
+  {
+   "punkt": 6,
+   "tittel": "Sub-processors",
+   "innhold": [
+    {
+     "p": "The Customer approves the sub-processors listed in the table. New sub-processors are notified at least 30 days before use, and the Customer may object and terminate."
+    },
+    {
+     "tabell": [
+      [
+       "Supplier",
+       "What it does",
+       "Where data is stored",
+       "Transfer mechanism"
+      ],
+      [
+       "Supabase Inc.",
+       "Database, login, file storage, background jobs",
+       "EU (Ireland)",
+       "Stored in the EEA. The company is American: EU Standard Contractual Clauses (SCC)"
+      ],
+      [
+       "Vercel Inc.",
+       "Delivers the app and the addresses on bygglogg.app to the browser",
+       "Global network, logs IP addresses",
+       "EU–US Data Privacy Framework / SCC"
+      ],
+      [
+       "Resend",
+       "Sends e-mail (login codes, notifications, reminders)",
+       "USA",
+       "SCC / DPF"
+      ],
+      [
+       "Google, Apple, Mozilla, Microsoft",
+       "Deliver push notifications to the phone",
+       "Varies",
+       "The notification text passes through the provider of the phone's browser"
+      ]
+     ]
+    },
+    {
+     "p": "Look-ups that do not contain personal data about the employees, but addresses: Kartverket (address search and maps, Norway) and a routing service for driving distance. Visma Business NXT is the Customer's own system and the Customer's own processor. ByggLogg only reads from it.",
+     "liten": true
+    }
+   ]
+  },
+  {
+   "punkt": 7,
+   "tittel": "Transfers outside the EEA",
+   "innhold": [
+    {
+     "p": "Take place only to the suppliers listed in the table and only with a valid transfer mechanism (DPF certification or EU Standard Contractual Clauses)."
+    }
+   ]
+  },
+  {
+   "punkt": 8,
+   "tittel": "Assistance to the Customer",
+   "innhold": [
+    {
+     "p": "The Supplier assists the Customer, within a reasonable time, in responding to requests for access, rectification, erasure and data portability, and with data protection impact assessments (DPIA)."
+    }
+   ]
+  },
+  {
+   "punkt": 9,
+   "tittel": "Breaches",
+   "innhold": [
+    {
+     "p": "The Supplier notifies the Customer without undue delay, and no later than 24 hours after becoming aware of a personal data breach. The Customer itself notifies the Norwegian Data Protection Authority (Datatilsynet) within 72 hours where required."
+    }
+   ]
+  },
+  {
+   "punkt": 10,
+   "tittel": "Audit",
+   "innhold": [
+    {
+     "p": "The Customer may request documentation that the agreement is being complied with, once a year or following a breach."
+    }
+   ]
+  },
+  {
+   "punkt": 11,
+   "tittel": "Termination",
+   "innhold": [
+    {
+     "p": "Upon termination, the Customer receives all data and has 30 days to retrieve it. The Supplier then deletes the data, including from backups within 30 days, and confirms the deletion in writing."
+    }
+   ]
+  },
+  {
+   "h2": "Part 3 – Privacy notice for employees"
+  },
+  {
+   "p": "The privacy notice is available in the app in Norwegian, Polish, English and Lithuanian: {tilPersonvern}."
+  },
+  {
+   "h2": "Part 4 – Order confirmation"
+  },
+  {
+   "p": "The Customer, number of users, any Visma integration, trial period, start date and the Customer's address in the app are set out in the order confirmation, which is signed by both parties. Questions about the agreement: {support}."
+  }
+ ],
+ "tilPersonvernTekst": "read the privacy notice"
+}

@@ -1,6 +1,9 @@
 // Litauisk oversettelse av brukerflaten (laget fra de norske tekstene, samme nøkler som pl.ts).
 // Nøkkel = norsk tekst slik den står på skjermen. Mangler en tekst, vises den norske.
 export const LT_TEKST: Record<string, string> = {
+  "Personvern – slik behandler vi opplysningene dine": "Privatumas – kaip tvarkome jūsų duomenis",
+  "Skjul personvern": "Slėpti privatumo pranešimą",
+  "Skjul avtalevilkår": "Slėpti sutarties sąlygas",
 "Stemplingen er for gammel til å sendes automatisk. Før timene manuelt.": "Registracija per sena, kad būtų išsiųsta automatiškai. Įvesk valandas rankiniu būdu.",
 "Prøv nå": "Bandyti dabar",
 "Sender det du førte uten nett …": "Siunčiama, ką įvedei be ryšio …",

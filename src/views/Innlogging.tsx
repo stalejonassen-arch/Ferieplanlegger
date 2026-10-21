@@ -78,8 +78,8 @@ export function Innlogging() {
           <a href="https://bygglogg.app" target="_blank" rel="noopener">Om ByggLogg</a>
         </div>
       </div>
-      {vis === "personvern" && <Personvern lukk={() => setVis(null)} tilVilkar={() => setVis("vilkar")} />}
-      {vis === "vilkar" && <Vilkar lukk={() => setVis(null)} tilPersonvern={() => setVis("personvern")} />}
+      {vis === "personvern" && <Personvern sprak={sprak()} lukk={() => setVis(null)} tilVilkar={() => setVis("vilkar")} />}
+      {vis === "vilkar" && <Vilkar sprak={sprak()} lukk={() => setVis(null)} tilPersonvern={() => setVis("personvern")} />}
     </div>
   );
 }

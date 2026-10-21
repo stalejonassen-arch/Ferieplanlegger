@@ -433,8 +433,8 @@ export function App() {
         {aktiv === "lonn" && <Lonn />}
         {aktiv === "plan" && <>{planlegger && b("bestilling") && <Bestillingsoversikt />}{b("reklamasjon") && (planlegger || mineReklamasjoner > 0) && <Reklamasjoner />}{b("plan") && <Tidsplan />}{planlegger && b("materiell") && <Leveranseoversikt />}</>}
         {aktiv === "oppsett" && <Oppsett />}
-        {aktiv === "personvern" && <Personvern sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
-        {aktiv === "vilkar" && <Vilkar sprak={meg.sprak === "pl" ? "pl" : "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}
+        {aktiv === "personvern" && <Personvern sprak={meg.sprak ?? "nb"} lukk={() => velg("timer")} tilVilkar={() => { velg("vilkar"); window.scrollTo(0, 0); }} />}
+        {aktiv === "vilkar" && <Vilkar sprak={meg.sprak ?? "nb"} lukk={() => velg("timer")} tilPersonvern={() => { velg("personvern"); window.scrollTo(0, 0); }} />}
         <div className="small muted" style={{ textAlign: "center", margin: "18px 0 90px" }}>
           <a href="#personvern" onClick={(e) => { e.preventDefault(); velg("personvern"); window.scrollTo(0, 0); }}>Personvern</a>
           {" · "}<a href="#vilkar" onClick={(e) => { e.preventDefault(); velg("vilkar"); window.scrollTo(0, 0); }}>Avtalevilkår</a>
