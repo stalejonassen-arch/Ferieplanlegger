@@ -56,6 +56,13 @@ p { margin: 0; }
 .topp nav a { text-decoration: none; color: var(--hero-muted); }
 .topp nav a:hover { color: var(--hero-fg); }
 @media (max-width: 720px) { .topp nav { display: none; } }
+.topp .hoyre { display: flex; align-items: center; gap: 12px 26px; flex-wrap: wrap; justify-content: flex-end; }
+.sprak-valg { display: flex; gap: 2px; font-size: 14px; font-weight: 600; }
+.sprak-valg button { font: inherit; background: none; border: 0; color: var(--hero-muted); padding: 6px 7px; border-radius: 4px; cursor: pointer; }
+.sprak-valg button:hover { color: var(--hero-fg); }
+.sprak-valg button[aria-pressed=true] { color: var(--yellow); }
+@media (max-width: 1080px) { .topp .wrap { flex-wrap: wrap; } }
+@media (max-width: 420px) { .sprak-valg { font-size: 13px; } .sprak-valg button { padding: 6px 4px; } }
 
 /* Hero */
 .hero { background: radial-gradient(1200px 500px at 85% -10%, #1B37A8 0%, transparent 60%), var(--navy); color: var(--hero-fg); }
@@ -201,6 +208,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF" fill-opacity=".08"/><g transform="translate(64 64) scale(6)"><path d="M6 30 L32 9 L58 30" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 27 V55 H49 V27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/><path d="M23 41 L30 48 L42 35" fill="none" stroke="#FFCD00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
       <b>ByggLogg</b>
     </a>
+    <div class="hoyre">
     <nav aria-label="Hovedmeny">
       <a href="#funksjoner">Funksjoner</a>
       <a href="#appen">Se appen</a>
@@ -208,6 +216,10 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       <a href="#pris">Pris</a>
       <a href="#kontakt">Kontakt</a>
     </nav>
+      <div class="sprak-valg" data-ikke-oversett role="group" aria-label="Språk / Language">
+        <button type="button" lang="nb" data-sprak="nb">Norsk</button><button type="button" lang="pl" data-sprak="pl">Polski</button><button type="button" lang="en" data-sprak="en">English</button><button type="button" lang="lt" data-sprak="lt">Lietuvių</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -508,11 +520,13 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
   </div>
 </footer>
 
+<script src="/hjem-sprak.js"></script>
 <script>
+function t(x) { return window.hjemOversett ? window.hjemOversett(x) : x; }
 document.getElementById("kopier").addEventListener("click", function () {
   var b = this, tekst = document.getElementById("epost").textContent;
-  function ferdig() { b.textContent = "Kopiert"; setTimeout(function () { b.textContent = "Kopier e-postadresse"; }, 1800); }
-  function velg() { var r = document.createRange(); r.selectNodeContents(document.getElementById("epost")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Merket – trykk Kopier"; }
+  function ferdig() { b.textContent = t("Kopiert"); setTimeout(function () { b.textContent = t("Kopier e-postadresse"); }, 1800); }
+  function velg() { var r = document.createRange(); r.selectNodeContents(document.getElementById("epost")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = t("Merket – trykk Kopier"); }
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(tekst).then(ferdig, velg); else velg();
 });
 </script>
