@@ -1,4 +1,6 @@
 import { MineServiceoppdrag, ServiceOppdrag } from "./views/Service";
+import { MineTilbud, Tilbudsoppfolging } from "./views/Tilbud";
+import { Ukesjekk } from "./views/Ukesjekk";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, feiltekst } from "./lib/api";
 import { isoOf, type Ansatt, type Data, type Tema } from "./lib/ferie";
@@ -401,9 +403,9 @@ export function App() {
           </nav>
         )}
 
-        {aktiv === "timer" && <><VarselBanner />{b("service") && <MineServiceoppdrag />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
+        {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}{b("service") && <MineServiceoppdrag />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
-        {aktiv === "prosjekter" && <>{b("service") && <ServiceOppdrag />}<Prosjekter /></>}
+        {aktiv === "prosjekter" && <>{b("service") && <ServiceOppdrag />}{b("tilbud") && <Tilbudsoppfolging />}<Prosjekter /></>}
         {aktiv === "avvik" && <Avvik />}
         {aktiv === "utstyr" && <Utstyr />}
         {aktiv === "kurs" && <Kompetanse />}

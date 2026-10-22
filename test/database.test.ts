@@ -100,6 +100,8 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0061_avdeling_salg.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0062_serviceoppdrag.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0063_sprak_engelsk_litauisk.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0064_tilbud.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0065_ukesjekk.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1077,6 +1079,47 @@ describe("avdelingsrapport", () => {
     expect(r.map((x: any) => x.visma_ordrenr)).toEqual([1]);
     expect(await as(JIM, "select nr from public.visma_avdelinger")).toEqual([{ nr: 3 }]);
     await db.query("update public.ansatte set avdeling_id = $1 where epost = $2", [tidl, JIM]);
+  });
+});
+
+describe("tilbudsoppfølging", () => {
+  it("leder ser alle tilbud, selgeren bare sine egne, og oppfølging logges", async () => {
+    const jimNavn = (await db.query<any>("select navn from public.ansatte where epost = $1", [JIM])).rows[0].navn;
+    await db.query(`insert into public.tilbud (bedrift_id, visma_ordrenr, dato, kunde, belop, selger_navn)
+      values (1, 9001, current_date - 10, 'Kari Tilbud', 50000, $1), (1, 9002, current_date - 10, 'Per Tilbud', 80000, 'Annen Selger')`, [jimNavn]);
+    expect(await as(STALE, "select visma_ordrenr from public.tilbud")).toHaveLength(2);
+    const egne = await as<any>(JIM, "select id, visma_ordrenr from public.tilbud");
+    expect(egne.map((x: any) => x.visma_ordrenr)).toEqual([9001]);
+    const andre = (await db.query<any>("select id from public.tilbud where visma_ordrenr = 9002")).rows[0].id;
+    await expect(as(JIM, "select public.folg_opp_tilbud($1, 'ringt')", [andre])).rejects.toThrow(/Fant ikke/);
+    await expect(as(JIM, "select public.folg_opp_tilbud($1, 'slett')", [egne[0].id])).rejects.toThrow(/Ukjent/);
+    await expect(as(JIM, "select public.folg_opp_tilbud($1, 'ringt', '', current_date - 1)", [egne[0].id])).rejects.toThrow(/Ugyldig/);
+    await as(JIM, "select public.folg_opp_tilbud($1, 'ringt', 'Venter på banken')", [egne[0].id]);
+    let [t] = await as<any>(JIM, "select sist_kontakt, neste_kontakt - sist_kontakt as dager, notat, jsonb_array_length(logg) n, utfall from public.tilbud where id = $1", [egne[0].id]);
+    expect(t.dager).toBe(7); expect(t.notat).toBe("Venter på banken"); expect(t.n).toBe(1); expect(t.utfall).toBeNull();
+    await as(JIM, "select public.folg_opp_tilbud($1, 'tapt', 'Valgte en annen')", [egne[0].id]);
+    [t] = await as<any>(JIM, "select neste_kontakt, utfall, jsonb_array_length(logg) n from public.tilbud where id = $1", [egne[0].id]);
+    expect(t.utfall).toBe("tapt"); expect(t.neste_kontakt).toBeNull(); expect(t.n).toBe(2);
+    // Ingen kan endre tilbudet direkte (bare via oppfølgingen)
+    await expect(as(STALE, "update public.tilbud set belop = 1 where id = $1", [andre])).rejects.toThrow();
+    await as(STALE, "select public.folg_opp_tilbud($1, 'utsett', '', current_date + 3)", [andre]);
+    expect((await db.query<any>("select neste_kontakt - current_date as d from public.tilbud where id = $1", [andre])).rows[0].d).toBe(3);
+    await db.query("delete from public.tilbud where visma_ordrenr in (9001, 9002)");
+  });
+});
+
+describe("ukesjekk", () => {
+  it("teller det som venter på leder, og hopper over moduler som er slått av", async () => {
+    await db.query(`insert into public.tilbud (bedrift_id, visma_ordrenr, dato, kunde, belop, selger_navn)
+      values (1, 9101, current_date - 10, 'A', 50000, ''), (1, 9102, current_date - 2, 'B', 50000, ''), (1, 9103, current_date - 10, 'C', 1000, '')`);
+    const t = (await db.query<any>("select public.ukesjekk_tall(1::smallint) j")).rows[0].j;
+    expect(t.tilbud).toBe(1);
+    expect(typeof t.soknader).toBe("number");
+    await expect(as(STALE, "select public.ukesjekk_tall(1::smallint)")).rejects.toThrow();
+    await db.query("update public.bedrifter set moduler_av = '{tilbud}' where id = 1");
+    expect((await db.query<any>("select public.ukesjekk_tall(1::smallint) j")).rows[0].j.tilbud).toBeUndefined();
+    await db.query("update public.bedrifter set moduler_av = '{}' where id = 1");
+    await db.query("delete from public.tilbud where visma_ordrenr between 9101 and 9103");
   });
 });
 

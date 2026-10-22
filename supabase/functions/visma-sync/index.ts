@@ -345,6 +345,56 @@ async function synkAvdelingSalg(tok: string, b: { id: number; visma_firma_nr: nu
   return `${rader.length} ordre på ${avdRader.length} avdelinger`;
 }
 
+/** Tilbud til oppfølging: ordretype 5 i Business NXT. Når tilbudet blir ordre, endres typen på samme ordrenummer. */
+async function synkTilbud(tok: string, b: { id: number; visma_firma_nr: number }) {
+  const oFelt = await felt(tok, "Order");
+  const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
+  const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
+  const fra = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10).replaceAll("-", "");
+  const idag = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
+  // Selgerne er ansatte i Visma (aktører med ansattnummer)
+  const selgere = new Map((await alle(tok, b.visma_firma_nr, "associate", ["employeeNo", "name"], "{ employeeNo: { _gt: 0 } }"))
+    .map((a) => [Number(a.employeeNo), s(a.name)]));
+  const tilbud = await alle(tok, b.visma_firma_nr, "order",
+    ["orderNo", "orderType", ...velg(oFelt, ["orderDate", "name", "customerNo", "sellerOrBuyer", "orderSumNetDomestic", "quotationNo", "yourReference", "orgUnit1", "finishDate"])],
+    `{ _and: [{ orderType: { _eq: 5 } }, { orderDate: { _gte: ${fra} } }] }`);
+  const { data: fins } = await sb.from("tilbud").select("visma_ordrenr, status, status_dato").eq("bedrift_id", b.id);
+  const fra_db = new Map((fins ?? []).map((t) => [t.visma_ordrenr as number, t]));
+  const naa = new Date().toISOString();
+  const rader = tilbud
+    .filter((o) => n(o.orderSumNetDomestic) > 0 || fra_db.has(Number(o.orderNo)))
+    .map((o) => {
+      const nr = Number(o.orderNo), status = dato(o.finishDate) ? "avsluttet" : "apen", f = fra_db.get(nr);
+      return {
+        bedrift_id: b.id, visma_ordrenr: nr, tilbudsnr: Number(o.quotationNo) || null, dato: dato(o.orderDate),
+        kunde: s(o.name).slice(0, 120), kunde_nr: Number(o.customerNo) || null, referanse: s(o.yourReference).slice(0, 120),
+        belop: n(o.orderSumNetDomestic), selger_nr: Number(o.sellerOrBuyer) || null, selger_navn: selgere.get(Number(o.sellerOrBuyer)) ?? "",
+        avdeling_nr: Number(o.orgUnit1) || null, status, status_dato: f && f.status === status ? f.status_dato : idag, oppdatert: naa,
+      };
+    });
+  for (let i = 0; i < rader.length; i += 500) {
+    const { error } = await sb.from("tilbud").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,visma_ordrenr" });
+    if (error) throw new Error(error.message);
+  }
+  // Åpne tilbud som ikke lenger er tilbud: blitt ordre (vunnet), avsluttet eller slettet
+  const sett = new Set(rader.map((r) => r.visma_ordrenr));
+  const borte = (fins ?? []).filter((t) => t.status === "apen" && !sett.has(t.visma_ordrenr as number)).map((t) => t.visma_ordrenr as number);
+  let vunnet = 0;
+  for (let i = 0; i < borte.length; i += 100) {
+    const del = borte.slice(i, i + 100);
+    const funnet = await alle(tok, b.visma_firma_nr, "order", ["orderNo", "orderType", ...velg(oFelt, ["finishDate"])], `{ orderNo: { _in: [${del.join(",")}] } }`);
+    const kart = new Map(funnet.map((o) => [Number(o.orderNo), o]));
+    for (const nr of del) {
+      const o = kart.get(nr);
+      const status = !o ? "borte" : Number(o.orderType) !== 5 ? "vunnet" : dato(o.finishDate) ? "avsluttet" : "apen";
+      if (status === "apen") continue;
+      if (status === "vunnet") vunnet++;
+      await sb.from("tilbud").update({ status, status_dato: idag, oppdatert: naa }).eq("bedrift_id", b.id).eq("visma_ordrenr", nr);
+    }
+  }
+  return `${rader.filter((r) => r.status === "apen").length} åpne tilbud, ${vunnet} nye ordre`;
+}
+
 /** Feilsøking og tvungen henting krever driftsnøkkelen (tabellen drift_noekkel), ellers kan hvem som helst lese Visma-data */
 const BESKYTTET = ["typer", "firmaer", "prove", "type", "skjema", "varer", "utstyr", "salg", "avdeling"];
 async function harNoekkel(req: Request) {
@@ -514,7 +564,10 @@ Deno.serve(async (req) => {
         try { avdeling = await synkAvdelingSalg(tok, b); }
         catch (e) { avdeling = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, avdeling, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      let tilbud: string;
+      try { tilbud = await synkTilbud(tok, b); }
+      catch (e) { tilbud = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, avdeling, tilbud, prosjektklasse: `${pk.nr} ${pk.navn}` };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
