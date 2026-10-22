@@ -15,6 +15,7 @@ const y = y0 + 1;
 
 /** Oppdiktet e-post ut fra fornavnet, f.eks. «ola@demo.no» */
 const demoEpost = (navn: string) => `${navn.split(" ")[0]!.toLowerCase()}@demo.no`;
+let demoTilbud: import("./tilbud").Tilbud[] | null = null;
 const demoInvitert = new Map<string, string>();
 const vismaDemo = { koblet: false, firma: "", status: "", sist: null as string | null, orgnr: "999888777", kunder: 0, prosjekter: 0 };
 const forslagDemo: import("./api").AnsattForslag[] = [
@@ -534,6 +535,38 @@ export function demoApi(): Api {
       }
       salg.push({ visma_ordrenr: nr++, avdeling_nr: 3, ordredato: `${y}-${String(new Date().getMonth() + 1).padStart(2, "0")}-02`, fakturadato: null, kunde: "Strand, Even", selger_nr: 5, ordresum: 186500, omsetning: 0, db: 0, kostnad: 0 });
       return { avdelinger: [{ nr: 3, navn: "Kjøkken & Interiør" }], salg };
+    },
+    async tilbud() {
+      if (!demoTilbud) {
+        const idag = new Date().toISOString().slice(0, 10), f = (n: number) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+        const t = (nr: number, dagerSiden: number, kunde: string, belop: number, selger: string, x: Partial<import("./tilbud").Tilbud> = {}): import("./tilbud").Tilbud => ({
+          id: `t${nr}`, visma_ordrenr: nr, tilbudsnr: 240000 + nr % 1000, dato: f(dagerSiden), kunde, kunde_nr: null, referanse: "", belop, selger_nr: selger === "Lars Berg" ? 2 : 3,
+          selger_navn: selger, avdeling_nr: null, status: "apen", status_dato: f(dagerSiden), utfall: null, sist_kontakt: null, neste_kontakt: null, notat: "", logg: [], ...x,
+        });
+        demoTilbud = [
+          t(9611, 9, "Merete Hansen", 186400, "Lars Berg", { referanse: "Nytt bad 2. etasje" }),
+          t(9604, 12, "Jonas Lunde", 74250, "Nina Solheim", { referanse: "Terrasse 40 m²" }),
+          t(9598, 15, "Strand, Even", 412900, "Lars Berg", { referanse: "Tilbygg", sist_kontakt: f(8), neste_kontakt: f(1), notat: "Venter på svar fra banken. Ring igjen.", logg: [{ dato: f(8), av: "stale", hva: "ringt", notat: "Venter på svar fra banken. Ring igjen." }] }),
+          t(9620, 3, "Dahl, Ola", 38600, "Nina Solheim"),
+          t(9590, 21, "Moen, Siri", 92300, "Lars Berg", { sist_kontakt: f(4), neste_kontakt: f(-3), notat: "Vil se på det etter helgen.", logg: [{ dato: f(4), av: "stale", hva: "ringt", notat: "Vil se på det etter helgen." }] }),
+          t(9555, 40, "Vik, Lars", 128000, "Nina Solheim", { status: "vunnet", status_dato: f(18) }),
+          t(9548, 44, "Berg, Line", 56700, "Lars Berg", { status: "vunnet", status_dato: f(30) }),
+          t(9531, 52, "Nilsen, Tor", 64900, "Lars Berg", { utfall: "tapt", logg: [{ dato: f(25), av: "stale", hva: "tapt", notat: "Valgte en annen leverandør" }] }),
+        ];
+        void idag;
+      }
+      const m = meg();
+      return planlegger() ? demoTilbud : demoTilbud.filter((t) => t.selger_navn === m?.navn);
+    },
+    async folgOppTilbud(id, handling, notat = "", neste = null) {
+      const t = (demoTilbud ?? []).find((x) => x.id === id); if (!t) throw new Error("Fant ikke tilbudet.");
+      const idag = new Date().toISOString().slice(0, 10), om = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+      if (handling === "tapt" || handling === "ikke_aktuelt") { t.utfall = handling; t.neste_kontakt = null; }
+      if (handling === "gjenapne") t.utfall = null;
+      if (handling === "ringt") t.sist_kontakt = idag;
+      if (["ringt", "utsett", "gjenapne"].includes(handling)) t.neste_kontakt = neste ?? om(7);
+      if (notat.trim()) t.notat = notat.trim();
+      t.logg = [...t.logg, { dato: idag, av: meg()?.id ?? null, hva: handling, notat: notat.trim() }];
     },
     async ansatteMedPush() { return d.ansatte.filter((a) => a.aktiv).slice(0, 3).map((a) => a.id); },
     async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },

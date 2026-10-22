@@ -88,6 +88,9 @@ export interface Api {
   ansatteMedPush(): Promise<string[]>;
   /** Salg per avdeling fra Visma (bare avdelinger brukeren har lov til å se) */
   avdelingSalg(): Promise<{ avdelinger: import("./avdeling").VismaAvdeling[]; salg: import("./avdeling").AvdelingSalg[] }>;
+  /** Tilbud fra Visma siste år (åpne og avgjorte), for oppfølging */
+  tilbud(): Promise<import("./tilbud").Tilbud[]>;
+  folgOppTilbud(id: string, handling: import("./tilbud").TilbudHandling, notat?: string, neste?: string | null): Promise<void>;
   /** Leder: send (eller send på nytt) invitasjon til appen på e-post */
   sendInvitasjon(ansattId: string): Promise<void>;
   /** Leder: sist invitert og sist innlogget per ansatt */
@@ -643,6 +646,12 @@ function supabaseApi(sb: SupabaseClient): Api {
       const tall = (x: any) => ({ ...x, ordresum: Number(x.ordresum), omsetning: Number(x.omsetning), db: Number(x.db), kostnad: Number(x.kostnad) });
       return { avdelinger: a.error ? [] : (a.data as any[]), salg: s.error ? [] : (s.data as any[]).map(tall) };
     },
+    async tilbud() {
+      const fra = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+      const r = await alle(() => sb.from("tilbud").select("id, visma_ordrenr, tilbudsnr, dato, kunde, kunde_nr, referanse, belop, selger_nr, selger_navn, avdeling_nr, status, status_dato, utfall, sist_kontakt, neste_kontakt, notat, logg").gte("dato", fra).order("visma_ordrenr"), 5000);
+      return r.error ? [] : (r.data as any[]).map((t) => ({ ...t, belop: Number(t.belop), logg: Array.isArray(t.logg) ? t.logg : [] }));
+    },
+    async folgOppTilbud(id, handling, notat = "", neste = null) { ok(await sb.rpc("folg_opp_tilbud", { t: id, handling, notat, neste })); },
     async sendInvitasjon(a) { ok(await sb.rpc("send_invitasjon", { a })); },
     async ansatteInnlogging() { const r = await sb.rpc("ansatte_innlogging"); return r.error ? [] : (r.data as { ansatt_id: string; invitert: string | null; innlogget: string | null }[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },

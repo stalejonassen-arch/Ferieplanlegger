@@ -1468,3 +1468,30 @@ header.top select.temavalg option { color: #10162E; }
 
 .sprak-valg { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px; }
 .sprak-valg [aria-pressed=true] { font-weight: 700; text-decoration: none; }
+
+/* Tilbudsoppfølging */
+.tilbud-kpi { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); }
+.tilbud-kpi b { color: var(--ink, inherit); }
+.tilbud-rad { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+.tilbud-rad.apen { border-color: var(--accent); }
+.tilbud-topp { all: unset; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; width: 100%; align-items: baseline; }
+.tilbud-topp:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.tilbud-kunde { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tilbud-belop { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.tilbud-meta { grid-column: 1; }
+.tilbud-topp .chip { grid-column: 2; grid-row: 2; justify-self: end; }
+.tilbud-detaljer { display: grid; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.tilbud-logg { margin: 0; padding-left: 18px; color: var(--muted); }
+
+/* Ukesjekk */
+.ukesjekk summary { cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; list-style: none; }
+.ukesjekk summary::-webkit-details-marker { display: none; }
+.ukesjekk summary::after { content: "▾"; margin-left: auto; color: var(--muted); }
+.ukesjekk[open] summary::after { content: "▴"; }
+.ukesjekk-liste { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.ukesjekk-liste li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; }
+.ukesjekk-liste li > span { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.ukesjekk-liste li.ok > span { background: var(--approved); color: var(--surface); }
+.ukesjekk-liste li.ikke > span { background: var(--pending); color: var(--pending-ink); }
+.ukesjekk-liste a { text-decoration: none; color: inherit; display: grid; }
+.ukesjekk-liste a:hover > span:first-child { text-decoration: underline; }

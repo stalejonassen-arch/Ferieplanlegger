@@ -233,9 +233,45 @@ async function bestilling(id: string) {
   return Response.json(r);
 }
 
+/** Ukesjekk fredag: kort oppsummering til leder av det som venter (tallene fra ukesjekk_tall) */
+async function ukesjekk(id: string) {
+  const { data: a } = await sb.from("ansatte").select("id, navn, sprak, rolle, bedrift_id, aktiv").eq("id", id).maybeSingle();
+  if (!a || !a.aktiv || a.rolle !== "leder") return new Response("ikke aktuelt");
+  const uke = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `ukesjekk:${uke}`, id: a.id });
+  if (finnes) return new Response("allerede sendt");
+  const { data: t } = await sb.rpc("ukesjekk_tall", { b: a.bedrift_id });
+  const n = (t ?? {}) as Record<string, number>;
+  const s = sp(a);
+  const deler: Record<Sp, [string, (k: number) => string][]> = {
+    nb: [["tilbud", (k) => `${k} tilbud å følge opp`], ["soknader", (k) => `${k} feriesøknad${k === 1 ? "" : "er"} venter`], ["godkjenn", (k) => `${k} timeføring${k === 1 ? "" : "er"} ikke godkjent`],
+      ["bestilling", (k) => `${k} bestilling${k === 1 ? "" : "er"} ikke behandlet`], ["service_faktura", (k) => `${k} serviceoppdrag til fakturering`], ["service_drar", (k) => `${k} serviceoppdrag drar ut`],
+      ["reklamasjon", (k) => `${k} reklamasjon${k === 1 ? "" : "er"} over fristen`], ["avvik", (k) => `${k} avvik åpne for lenge`]],
+    pl: [["tilbud", (k) => `oferty do kontaktu: ${k}`], ["soknader", (k) => `wnioski urlopowe: ${k}`], ["godkjenn", (k) => `niezatwierdzone godziny: ${k}`],
+      ["bestilling", (k) => `nowe zamówienia: ${k}`], ["service_faktura", (k) => `zlecenia do fakturowania: ${k}`], ["service_drar", (k) => `opóźnione zlecenia: ${k}`],
+      ["reklamasjon", (k) => `reklamacje po terminie: ${k}`], ["avvik", (k) => `otwarte odchylenia: ${k}`]],
+    en: [["tilbud", (k) => `${k} quote${k === 1 ? "" : "s"} to follow up`], ["soknader", (k) => `${k} holiday request${k === 1 ? "" : "s"} waiting`], ["godkjenn", (k) => `${k} time entr${k === 1 ? "y" : "ies"} not approved`],
+      ["bestilling", (k) => `${k} order${k === 1 ? "" : "s"} not handled`], ["service_faktura", (k) => `${k} service job${k === 1 ? "" : "s"} to invoice`], ["service_drar", (k) => `${k} service job${k === 1 ? "" : "s"} running late`],
+      ["reklamasjon", (k) => `${k} warranty claim${k === 1 ? "" : "s"} overdue`], ["avvik", (k) => `${k} deviation${k === 1 ? "" : "s"} open too long`]],
+    lt: [["tilbud", (k) => `pasiūlymai: ${k}`], ["soknader", (k) => `atostogų prašymai: ${k}`], ["godkjenn", (k) => `nepatvirtintos valandos: ${k}`],
+      ["bestilling", (k) => `nauji užsakymai: ${k}`], ["service_faktura", (k) => `serviso darbai sąskaitai: ${k}`], ["service_drar", (k) => `vėluojantys serviso darbai: ${k}`],
+      ["reklamasjon", (k) => `pretenzijos po termino: ${k}`], ["avvik", (k) => `atviri neatitikimai: ${k}`]],
+  };
+  const tekst = deler[s].filter(([k]) => (n[k] ?? 0) > 0).map(([k, f]) => f(n[k]!));
+  const { data: nk } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!nk) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:post@bygglogg.app", nk.offentlig, nk.privat);
+  const res = await send([a], () => ({
+    tittel: v(a, { nb: "Ukesjekk før helgen", pl: "Podsumowanie tygodnia", en: "Weekly check before the weekend", lt: "Savaitės apžvalga prieš savaitgalį" }),
+    tekst: tekst.length ? kort(tekst.join(" · "), 180) : v(a, { nb: "Alt ser bra ut denne uka. God helg!", pl: "Wszystko w porządku w tym tygodniu. Miłego weekendu!", en: "Everything looks good this week. Have a nice weekend!", lt: "Šią savaitę viskas gerai. Gero savaitgalio!" }),
+    url: "/#timer", tag: "ukesjekk",
+  }));
+  return Response.json({ ...res, tall: n });
+}
+
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon", "service"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon", "service", "ukesjekk"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
   if (type === "oppgave") return oppgave(id);
@@ -243,6 +279,7 @@ Deno.serve(async (req) => {
   if (type === "personrapport") return personrapport(id);
   if (type === "reklamasjon") return reklamasjon(id);
   if (type === "service") return service(id);
+  if (type === "ukesjekk") return ukesjekk(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });
