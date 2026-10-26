@@ -7,8 +7,8 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:title" content="ByggLogg – dagen på byggeplassen, ført mens den skjer">
 <meta property="og:description" content="Appen for byggefirma: snekkerne stempler, bestiller og dokumenterer på telefonen, leder ser hele uka, og timene går rett til faktura og lønn i Visma eller Tripletex.">
-<meta property="og:image" content="https://bygglogg.app/skjerm/tidsplan-pc.webp">
-<meta property="og:image:alt" content="Ukeplanen i ByggLogg">
+<meta property="og:image" content="https://bygglogg.app/skjerm/prosjekt-pc.webp">
+<meta property="og:image:alt" content="Prosjektsiden i ByggLogg">
 <title>ByggLogg</title>
 <meta name="description" content="Appen for byggefirma: snekkerne stempler, bestiller og dokumenterer på telefonen, leder ser hele uka, og timene går rett til faktura og lønn i Visma eller Tripletex.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -132,24 +132,36 @@ p { margin: 0; }
 }
 @media (max-width: 900px) { .dag.spill .dag-slutt { animation: none; opacity: 1; } .dag { padding-bottom: 8px; } .dag-slutt { margin-top: 20px; } }
 
-/* Roller */
+/* Prosjektet */
 section { padding-block: clamp(64px, 9vw, 120px); }
-.roller { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto 1fr; gap: 40px 36px; margin-top: 48px; }
-.rolle h3 { margin-top: 18px; }
-.rolle p { color: var(--muted); margin-top: 8px; }
-.rolle ul { margin: 12px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
-.rolle.leder-r { grid-column: 1 / span 7; grid-row: span 2; }
-.rolle.snekker-r { grid-column: 8 / span 5; grid-row: 1; display: grid; grid-template-columns: 150px 1fr; gap: 0 20px; align-items: start; }
-.rolle.snekker-r h3 { margin-top: 0; }
-.rolle.butikk-r { grid-column: 8 / span 5; grid-row: 2; }
-.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #0A0E20; box-shadow: 0 30px 60px -30px rgba(5,14,51,.45); }
-.telefon { border-radius: 26px; border: 6px solid #0A0E20; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(5,14,51,.5); background: #0A0E20; }
-.telefon img { width: 100%; aspect-ratio: 600 / 1100; object-fit: cover; object-position: top; }
-@media (max-width: 900px) {
-  .roller { grid-template-columns: 1fr; }
-  .rolle.leder-r, .rolle.snekker-r, .rolle.butikk-r { grid-column: auto; grid-row: auto; }
-  .rolle.snekker-r { grid-template-columns: 120px 1fr; }
-}
+.prosjekt-rad { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; margin-top: 48px; align-items: start; }
+.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F4F6FB; box-shadow: 0 30px 60px -30px rgba(5,14,51,.45); }
+.telefon { border-radius: 30px; border: 7px solid #0A0E20; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(5,14,51,.5); background: #0A0E20; }
+.deler { margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 32px; }
+.deler div b { display: block; font-family: var(--f-display); font-size: 22px; font-weight: 700; line-height: 1.1; }
+.deler div span { color: var(--muted); font-size: 16px; }
+@media (max-width: 900px) { .prosjekt-rad { grid-template-columns: 1fr; } .prosjekt-rad .telefon { max-width: 260px; } .deler { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .deler { grid-template-columns: 1fr; } }
+
+/* Tallene */
+.tall-seksjon { background: var(--natt); color: var(--hfg); }
+.tall-seksjon .ingress { color: var(--hmuted); }
+.tall-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 44px 36px; margin-top: 52px; }
+.tall-grid figure { margin: 0; }
+.tall-grid figcaption { margin-top: 16px; color: var(--hmuted); max-width: 52ch; }
+.tall-grid figcaption b { display: block; color: var(--hfg); font-family: var(--f-display); font-size: 26px; font-weight: 700; line-height: 1.05; margin-bottom: 4px; }
+.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F4F6FB; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
+.f-okonomi { grid-column: 1 / -1; }
+.f-okonomi .skjerm { padding: 6px 4px; }
+.f-omsetning { grid-column: 1 / span 7; }
+.f-maal { grid-column: 8 / span 5; align-self: start; }
+.f-avdeling { grid-column: 1 / span 6; }
+.f-rapport { grid-column: 7 / span 6; align-self: center; }
+.rapportkort { background: #13286F; border: 1px solid #2B4296; border-radius: 14px; padding: 26px 28px; }
+.rapportkort h3 { color: var(--gul); font-size: 30px; }
+.rapportkort p { color: var(--hmuted); margin-top: 10px; }
+.rapportkort ul { margin: 14px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+@media (max-width: 900px) { .tall-grid { grid-template-columns: 1fr; } .tall-grid > * { grid-column: auto !important; } }
 
 /* Regnskap */
 .regnskap { background: var(--flate); }
@@ -227,7 +239,8 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     </a>
     <div class="hoyre">
       <nav aria-label="Hovedmeny">
-        <a href="#roller">Appen</a>
+        <a href="#prosjektet">Prosjektet</a>
+        <a href="#tall">Tallene</a>
         <a href="#regnskap">Regnskap</a>
         <a href="#alt">Alt som er med</a>
         <a href="#pris">Pris</a>
@@ -274,27 +287,55 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
   </div>
 </div>
 
-<section id="roller">
+<section id="prosjektet">
   <div class="wrap">
-    <h2>Én app. Tre måter å bruke den på.</h2>
-    <p class="ingress">Snekkerne har den på telefonen ute. Leder og butikk bruker den samme appen på PC, med det de trenger øverst.</p>
-    <div class="roller">
-      <div class="rolle leder-r">
-        <div class="vindu"><img src="/skjerm/tidsplan-pc.webp" width="1400" height="1394" loading="lazy" alt="Ukeplanen i ByggLogg med jobber fordelt på de ansatte"></div>
-        <h3>For leder: hele uka på én skjerm</h3>
-        <p>Del ut jobber med ett trykk, se hvem som er hvor og hvem som har ferie. Timer mot kalkyle, fakturerte timer mot årsmålet, og en ukesjekk hver fredag med det som trenger deg.</p>
-      </div>
-      <div class="rolle snekker-r">
-        <div class="telefon"><img src="/skjerm/forside-mobil.webp" width="600" height="1298" loading="lazy" alt="Startsiden i ByggLogg på telefonen, med stempling og dagens jobb"></div>
-        <div>
-          <h3>For snekkeren: ett trykk inn, ett trykk ut</h3>
-          <p>Riktig prosjekt, dagens jobb og chat med laget. Virker uten dekning, og på norsk, polsk, engelsk eller litauisk.</p>
-        </div>
-      </div>
-      <div class="rolle butikk-r">
-        <div class="vindu"><img src="/skjerm/butikk-pc.webp" width="1400" height="864" loading="lazy" alt="Bestillinger fra byggeplassen og reklamasjoner i ByggLogg"></div>
-        <h3>For butikk og kontor</h3>
-        <p>Bestillinger fra byggeplassen, reklamasjoner med frist, serviceoppdrag og tilbud som skal følges opp.</p>
+    <h2>Alt om jobben på ett sted.</h2>
+    <p class="ingress">Hvert prosjekt fra Visma eller Tripletex får sin egen side, med kunde, adresse, selger og snekker øverst, og timer brukt mot kalkyle. Snekkeren ser det samme på telefonen ute.</p>
+    <div class="prosjekt-rad">
+      <div class="vindu"><img src="/skjerm/prosjekt-pc.webp" width="1952" height="1372" loading="lazy" alt="Prosjektsiden i ByggLogg med kunde, kontaktperson, adresse, timer mot kalkyle og alle delene av prosjektet"></div>
+      <div class="telefon"><img src="/skjerm/prosjekt-mobil.webp" width="800" height="1720" loading="lazy" alt="Den samme prosjektsiden på telefonen"></div>
+    </div>
+    <div class="deler">
+      <div><b>Plan og materiell</b><span>Hvem som gjør hva, og materiallisten delt i leveranser.</span></div>
+      <div><b>Egenkontroll og SJA</b><span>Sjekklister som signeres på stedet, og mannskapsliste.</span></div>
+      <div><b>Dagbok, bilder og avvik</b><span>Dokumentert mens jobben pågår, ikke etterpå.</span></div>
+      <div><b>Tillegg og reklamasjon</b><span>Kunden signerer tilleggsarbeid på telefonen.</span></div>
+      <div><b>Statistikk og økonomi</b><span>Timer per person, omsetning, dekningsbidrag og hva som gjenstår å fakturere.</span></div>
+      <div><b>Sluttdokumentasjon</b><span>Sluttrapport og FDV til kunden, klar for Boligmappa.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="tall-seksjon" id="tall">
+  <div class="wrap">
+    <h2>Tallene, uten å vente på regnskapet.</h2>
+    <p class="ingress">ByggLogg henter ordrene og regnskapet fra Visma hvert kvarter. Leder ser hvordan det går på hver jobb, hver avdeling og hele firmaet, mens det fortsatt er tid til å gjøre noe med det.</p>
+    <div class="tall-grid">
+      <figure class="f-okonomi">
+        <div class="skjerm"><img src="/skjerm/okonomi.webp" width="1936" height="188" loading="lazy" alt="Økonomi på et prosjekt: omsetning, dekningsbidrag, DG, fakturert og hva som gjenstår å fakturere"></div>
+        <figcaption><b>Økonomi på hvert prosjekt</b>Omsetning, dekningsbidrag og DG på jobben, hva som er fakturert og hva som gjenstår. Bare leder ser den.</figcaption>
+      </figure>
+      <figure class="f-omsetning">
+        <div class="skjerm"><img src="/skjerm/omsetning.webp" width="1936" height="1064" loading="lazy" alt="Omsetning denne måneden mot samme tid i fjor og mot målet"></div>
+        <figcaption><b>Omsetning mot mål</b>Hittil i måneden mot samme tempo i fjor og mot månedsmålet, rett fra hovedboken i Visma.</figcaption>
+      </figure>
+      <figure class="f-maal">
+        <div class="skjerm"><img src="/skjerm/maal.webp" width="1936" height="512" loading="lazy" alt="Fakturerte timer per måned mot årsmålet"></div>
+        <figcaption><b>Fakturerte timer mot årsmålet</b>Grønt når månedsmålet er nådd. Se med en gang om det går mot 7 000 timer eller ikke.</figcaption>
+      </figure>
+      <figure class="f-avdeling">
+        <div class="skjerm"><img src="/skjerm/avdeling.webp" width="1936" height="1150" loading="lazy" alt="Salgsrapport for en avdeling med antall salg, omsetning, dekningsbidrag og DG per måned"></div>
+        <figcaption><b>Salg per avdeling</b>Antall salg, omsetning, reell fortjeneste og DG, måned for måned mot i fjor. Avdelingen ser sin egen rapport.</figcaption>
+      </figure>
+      <div class="f-rapport rapportkort">
+        <h3>En egen rapport til hver ansatt</h3>
+        <p>Hver måned får de ansatte sin egen rapport på telefonen, med det som betyr noe i jobben deres:</p>
+        <ul>
+          <li>Snekkerne: timer på kunde mot interntid</li>
+          <li>Butikk og prosjektleder: DG på salget sitt</li>
+          <li>Sammenlignet med forrige måned og snittet</li>
+        </ul>
+        <p>Selgerne får i tillegg tilbudene som skal følges opp, og leder en ukesjekk hver fredag.</p>
       </div>
     </div>
   </div>

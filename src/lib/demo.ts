@@ -73,6 +73,17 @@ function startdata(): Data {
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
+    // Fakturerte timer fra Visma i år, så målgrafen har noe å vise (rundt månedsmålet på 583 t, juli med fellesferie)
+    fakturerteTimer: (() => {
+      const y = new Date().getFullYear(), m = new Date().getMonth() + 1;
+      const per = [548, 571, 612, 596, 640, 603, 214, 588, 631, 0, 0, 0];
+      const ut: import("./faktura").FakturertTime[] = [];
+      for (let i = 0; i < m; i++) {
+        const t = i + 1 === m ? Math.round(560 * Math.min(1, new Date().getDate() / 30)) : per[i]!;
+        ut.push({ visma_ordrenr: 9000 + i, linjenr: 1, ordredato: `${y}-${String(i + 1).padStart(2, "0")}-01`, fakturadato: `${y}-${String(i + 1).padStart(2, "0")}-25`, fakturanr: String(20000 + i), kunde_id: null, prosjekt_id: null, antall: t, fakturert: t, ikke_fakturert: i + 1 === m ? 74 : 0, pris: 695 });
+      }
+      return ut;
+    })(),
     serviceProsjekt: "psvc", serviceoppdrag: demoService(),
     kampanjer: demoKampanjer(),
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], personrapporter: [], salgKategorier: demoSalg(), dgKategorier: structuredClone(STANDARD_DG), stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
