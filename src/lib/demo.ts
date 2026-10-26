@@ -79,6 +79,17 @@ function startdata(): Data {
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
   ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
+    // Fakturerte timer fra Visma i år, så målgrafen har noe å vise (rundt månedsmålet på 583 t, juli med fellesferie)
+    fakturerteTimer: (() => {
+      const y = new Date().getFullYear(), m = new Date().getMonth() + 1;
+      const per = [548, 571, 612, 596, 640, 603, 214, 588, 631, 0, 0, 0];
+      const ut: import("./faktura").FakturertTime[] = [];
+      for (let i = 0; i < m; i++) {
+        const t = i + 1 === m ? Math.round(560 * Math.min(1, new Date().getDate() / 30)) : per[i]!;
+        ut.push({ visma_ordrenr: 9000 + i, linjenr: 1, ordredato: `${y}-${String(i + 1).padStart(2, "0")}-01`, fakturadato: `${y}-${String(i + 1).padStart(2, "0")}-25`, fakturanr: String(20000 + i), kunde_id: null, prosjekt_id: null, antall: t, fakturert: t, ikke_fakturert: i + 1 === m ? 74 : 0, pris: 695 });
+      }
+      return ut;
+    })(),
     serviceProsjekt: "psvc", serviceoppdrag: demoService(),
     kampanjer: demoKampanjer(),
     bedrift: {
