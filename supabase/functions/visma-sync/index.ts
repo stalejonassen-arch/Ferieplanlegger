@@ -280,7 +280,7 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
   const pf = `orgUnit${klasseNr}`;
   const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
     ["orderNo", "lineNo", "productNo", pf, "totalQuantity", "finished", "unrealisedQuantity", "priceInCurrency", "finishDate", "invoiceNo",
-      `joinup_Order { orderDate customerNo transactionType orderType ${pf} }`],
+      `joinup_Order { orderDate customerNo transactionType orderType finishDate ${pf} }`],
     `{ productNo: { _in: [${varenr.map((v) => JSON.stringify(v)).join(",")}] } }`);
   const pid = await prosjektKart(b.id);
   const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
@@ -288,21 +288,38 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
   const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
   const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
   const naa = new Date().toISOString();
-  // Kalkyle per prosjekt: «Arbeid» på ordrene (bestilt antall). Har prosjektet ingen ordre med arbeid ennå, brukes tilbudene.
-  const iOrdre = new Map<string, number>(), iTilbud = new Map<string, number>();
+  // Kalkyle per prosjekt: «Arbeid» på salgsordrene pluss åpne tilbud (ordretype 5 som ikke er avsluttet).
+  // Ordrer og tilbud uten prosjekt i Visma telles på kundens prosjekt når kunden har nøyaktig ett aktivt prosjekt.
+  const { data: pr } = await sb.from("prosjekter").select("id, kunde_id, faktura_kunde_id, aktiv, start").eq("bedrift_id", b.id);
+  // Når prosjektet startet: startdato i Visma, ellers første ordre på prosjektet. Uten start brukes ikke kundens løse ordrer.
+  const { data: po } = await sb.from("prosjekt_ordre").select("prosjekt_id, ordredato").eq("bedrift_id", b.id);
+  const startet = new Map<string, string>();
+  for (const p of pr ?? []) if (p.start) startet.set(p.id as string, p.start as string);
+  for (const o of po ?? []) {
+    const p = o.prosjekt_id as string, d = o.ordredato as string | null;
+    if (d && (!startet.has(p) || d < startet.get(p)!)) startet.set(p, d);
+  }
+  const perKunde = new Map<string, string[]>();
+  for (const p of pr ?? []) {
+    if (!p.aktiv) continue;
+    for (const k of new Set([p.kunde_id, p.faktura_kunde_id].filter(Boolean) as string[])) perKunde.set(k, [...(perKunde.get(k) ?? []), p.id as string]);
+  }
+  // Kundens løse ordrer telles fra 90 dager før prosjektet startet (tilbudet kommer gjerne før prosjektet)
+  const fra = (p: string) => { const d = startet.get(p); return d ? Number(new Date(Date.parse(`${d}T12:00:00Z`) - 90 * 864e5).toISOString().slice(0, 10).replace(/-/g, "")) : Infinity; };
+  const kalk = new Map<string, number>();
   for (const l of linjer) {
     const o = (l.joinup_Order ?? {}) as Record<string, unknown>;
     if (Number(o.transactionType) !== 1) continue;
-    const p = pid.get(Number(l[pf])) ?? pid.get(Number(o[pf]));
-    if (!p) continue;
-    const m = Number(o.orderType) === 5 ? iTilbud : iOrdre;
-    m.set(p, (m.get(p) ?? 0) + (Number(l.totalQuantity) || 0));
+    const tilbud = Number(o.orderType) === 5;
+    if (tilbud && Number(o.finishDate) > 0) continue; // avsluttet tilbud (tapt eller gjort om til ordre)
+    let p = pid.get(Number(l[pf])) ?? pid.get(Number(o[pf]));
+    if (!p && !Number(l[pf]) && !Number(o[pf])) {
+      const kp = perKunde.get(kid.get(Number(o.customerNo)) ?? "");
+      if (kp?.length === 1 && Number(o.orderDate) >= fra(kp[0])) p = kp[0];
+    }
+    if (p) kalk.set(p, (kalk.get(p) ?? 0) + (Number(l.totalQuantity) || 0));
   }
-  const kalk = new Map<string, number>();
-  for (const p of new Set([...iOrdre.keys(), ...iTilbud.keys()])) {
-    const t = (iOrdre.get(p) ?? 0) > 0 ? iOrdre.get(p)! : iTilbud.get(p) ?? 0;
-    if (t > 0) kalk.set(p, Math.round(t * 100) / 100);
-  }
+  for (const [p, t] of kalk) if (t > 0) kalk.set(p, Math.round(t * 100) / 100); else kalk.delete(p);
   const { data: naaKalk, error: kErr } = await sb.from("prosjekter").select("id, visma_kalkyle_timer").eq("bedrift_id", b.id);
   if (!kErr) for (const x of naaKalk ?? []) {
     const ny = kalk.get(x.id as string) ?? null, gml = x.visma_kalkyle_timer == null ? null : Number(x.visma_kalkyle_timer);
