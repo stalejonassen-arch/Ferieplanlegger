@@ -440,6 +440,8 @@ export const EN_TEKST: Record<string, string> = {
 "Registrer": "Register",
 "Avbryt": "Cancel",
 "Lukk": "Close",
+"Forrige bilde": "Previous photo",
+"Neste bilde": "Next photo",
 "Personvern": "Privacy",
 "Avtalevilkår": "Terms",
 "Om ByggLogg": "About ByggLogg",

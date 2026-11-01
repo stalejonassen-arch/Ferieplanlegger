@@ -440,6 +440,8 @@ export const LT_TEKST: Record<string, string> = {
 "Registrer": "Registruoti",
 "Avbryt": "Atšaukti",
 "Lukk": "Uždaryti",
+"Forrige bilde": "Ankstesnė nuotrauka",
+"Neste bilde": "Kita nuotrauka",
 "Personvern": "Privatumas",
 "Avtalevilkår": "Sutarties sąlygos",
 "Om ByggLogg": "Apie ByggLogg",

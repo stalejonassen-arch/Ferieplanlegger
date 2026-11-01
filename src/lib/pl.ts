@@ -419,6 +419,8 @@ export const PL_TEKST: Record<string, string> = {
 "Registrer": "Zarejestruj",
 "Avbryt": "Anuluj",
 "Lukk": "Zamknij",
+"Forrige bilde": "Poprzednie zdjęcie",
+"Neste bilde": "Następne zdjęcie",
 "Personvern": "Ochrona danych",
 "Avtalevilkår": "Warunki umowy",
 "Om ByggLogg": "O ByggLogg",
