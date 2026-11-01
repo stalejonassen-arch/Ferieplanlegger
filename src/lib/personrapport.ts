@@ -33,7 +33,8 @@ const forrigeMnd = (periode: string) => { const a = Number(periode.slice(0, 4)),
 
 /** Hvilke deler rapporten til en ansatt har */
 export function rapportType(a: Ansatt): { timer: boolean; dg: boolean } {
-  const dg = !!a.prosjektleder;
+  // Butikk/prosjektleder og daglig leder får DG på salget; snekkerne får timer
+  const dg = !!a.prosjektleder || a.rolle === "leder";
   return { dg, timer: !dg && a.i_timerapport !== false };
 }
 
@@ -48,7 +49,7 @@ export function lagInnhold(a: Ansatt, d: Pick<Data, "timer" | "ansatte"> & { sal
     const fm = fordelingPerAnsatt(d.timer, forrigeMnd(periode)).get(a.id);
     const hittil = { intern: 0, sum: 0 };
     for (let i = 1; i <= m; i++) { const x = fordelingPerAnsatt(d.timer, `${aar}-${String(i).padStart(2, "0")}`).get(a.id); if (x) { hittil.intern += x.intern; hittil.sum += x.sum; } }
-    const iRapport = d.ansatte.filter((x) => x.aktiv && x.i_timerapport !== false && !x.prosjektleder && denne.get(x.id)?.sum);
+    const iRapport = d.ansatte.filter((x) => x.aktiv && rapportType(x).timer && denne.get(x.id)?.sum);
     const snitt = iRapport.length ? r1(iRapport.reduce((s, x) => s + andel(denne.get(x.id)!), 0) / iRapport.length) : null;
     ut.timer = {
       kunde: r1(f.fakturerbart), ikkeFakturerbart: r1(f.ikkeFakturerbart), intern: r1(f.intern), sum: r1(f.sum), andelIntern: andel(f),
