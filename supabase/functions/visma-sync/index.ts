@@ -91,38 +91,52 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
   const naa = new Date();
   const fra = count ? new Date(Date.UTC(naa.getUTCFullYear(), naa.getUTCMonth() - 1, 1)) : new Date(Date.UTC(naa.getUTCFullYear() - 1, 0, 1));
   const fraTall = fra.getUTCFullYear() * 10000 + (fra.getUTCMonth() + 1) * 100 + 1;
+  // Selger på ordren (ansattnummer i Visma) og navnet, så hver selger får sitt eget salg i rapporten
+  const oFelt = await felt(tok, "Order");
+  const medSelger = oFelt.has("sellerOrBuyer");
+  const selgere = new Map<number, string>();
+  if (medSelger) {
+    try {
+      for (const x of await alle(tok, b.visma_firma_nr, "associate", ["employeeNo", "name"], "{ employeeNo: { _gt: 0 } }")) selgere.set(Number(x.employeeNo), s(x.name));
+    } catch (e) { console.error("Selgere", e); }
+  }
   const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
-    ["description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic"],
+    ["description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
     `{ _and: [{ finishDate: { _gte: ${fraTall} } }, { transactionType: { _eq: 1 } }] }`);
-  type Sum = { omsetning: number; db: number; linjer: number; eks: Map<string, { omsetning: number; db: number }> };
+  type Sum = { omsetning: number; db: number; linjer: number; selger: number; eks: Map<string, { omsetning: number; db: number }> };
   const per = new Map<string, Sum>();
+  const legg = (nokkel: string, selger: number, tekst: string, oms: number, db: number) => {
+    const x = per.get(nokkel) ?? { omsetning: 0, db: 0, linjer: 0, selger, eks: new Map() };
+    x.omsetning += oms; x.db += db; x.linjer++;
+    const e = x.eks.get(tekst) ?? { omsetning: 0, db: 0 }; e.omsetning += oms; e.db += db; x.eks.set(tekst, e);
+    per.set(nokkel, x);
+  };
   for (const l of linjer) {
     const d = s(l.finishDate);
     if (!/^\d{8}$/.test(d) || d === "00000000") continue;
     const oms = Number(l.invoicedAmountTotalDomestic) || 0, db = Number(l.grossProfitTotalDomestic) || 0;
     if (!oms && !db) continue;
+    const selger = Number(((l.joinup_Order ?? {}) as Record<string, unknown>).sellerOrBuyer) || 0;
+    const mnd = `${d.slice(0, 4)}|${Number(d.slice(4, 6))}`, tekst = s(l.description).slice(0, 60);
+    // «*» = alt salg for selgeren i måneden; kategoriene (vinduer, dører, tak …) kommer i tillegg
+    legg(`${mnd}|*|${selger}`, selger, tekst, oms, db);
     const k = kategoriFor(s(l.description), regler);
-    if (!k) continue;
-    const nokkel = `${d.slice(0, 4)}-${Number(d.slice(4, 6))}-${k}`;
-    const x = per.get(nokkel) ?? { omsetning: 0, db: 0, linjer: 0, eks: new Map() };
-    x.omsetning += oms; x.db += db; x.linjer++;
-    const tekst = s(l.description).slice(0, 60);
-    const e = x.eks.get(tekst) ?? { omsetning: 0, db: 0 }; e.omsetning += oms; e.db += db; x.eks.set(tekst, e);
-    per.set(nokkel, x);
+    if (k) legg(`${mnd}|${k}|${selger}`, selger, tekst, oms, db);
   }
   const tid = new Date().toISOString();
   const rader = [...per].map(([n, x]) => {
-    const [aar, mnd, kategori] = n.split("-");
-    const eksempler = [...x.eks].sort((a, b) => Math.abs(b[1].omsetning) - Math.abs(a[1].omsetning)).slice(0, 15)
+    const [aar, mnd, kategori] = n.split("|");
+    const eksempler = [...x.eks].sort((a, b) => Math.abs(b[1].omsetning) - Math.abs(a[1].omsetning)).slice(0, kategori === "*" ? 5 : 15)
       .map(([tekst, v]) => ({ tekst, omsetning: Math.round(v.omsetning), db: Math.round(v.db) }));
-    return { bedrift_id: b.id, aar: Number(aar), mnd: Number(mnd), kategori, omsetning: Math.round(x.omsetning * 100) / 100, db: Math.round(x.db * 100) / 100, linjer: x.linjer, eksempler, oppdatert: tid };
+    return { bedrift_id: b.id, aar: Number(aar), mnd: Number(mnd), kategori, selger_nr: x.selger, selger_navn: selgere.get(x.selger) ?? "",
+      omsetning: Math.round(x.omsetning * 100) / 100, db: Math.round(x.db * 100) / 100, linjer: x.linjer, eksempler, oppdatert: tid };
   });
   // Månedene som er hentet på nytt erstattes helt (en kategori kan ha falt bort)
   const del = await sb.from("salg_kategori_mnd").delete().eq("bedrift_id", b.id)
     .or(`aar.gt.${fra.getUTCFullYear()},and(aar.eq.${fra.getUTCFullYear()},mnd.gte.${fra.getUTCMonth() + 1})`);
   if (del.error) throw new Error(del.error.message);
   for (let i = 0; i < rader.length; i += 500) {
-    const { error } = await sb.from("salg_kategori_mnd").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,aar,mnd,kategori" });
+    const { error } = await sb.from("salg_kategori_mnd").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,aar,mnd,kategori,selger_nr" });
     if (error) throw new Error(error.message);
   }
   return `${linjer.length} linjer, ${rader.length} måneder/kategorier`;

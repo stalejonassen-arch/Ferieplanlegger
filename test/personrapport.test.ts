@@ -22,13 +22,23 @@ describe("personlig månedsrapport", () => {
     expect(i.dg).toBeUndefined();
   });
   it("DG for prosjektleder: måned, forrige, hittil i år og i fjor", () => {
+    const h = { selger_nr: 3, selger_navn: "Harald" }, annen = { selger_nr: 2, selger_navn: "Ståle Jonassen" };
     const salgKategorier = [
-      { aar: 2026, mnd: 9, kategori: "tak", omsetning: 1000, db: 300, linjer: 1 }, { aar: 2026, mnd: 8, kategori: "tak", omsetning: 1000, db: 100, linjer: 1 },
-      { aar: 2025, mnd: 9, kategori: "tak", omsetning: 500, db: 50, linjer: 1 }, { aar: 2026, mnd: 9, kategori: "vinduer", omsetning: 2000, db: 400, linjer: 1 },
+      { aar: 2026, mnd: 9, kategori: "tak", omsetning: 1000, db: 300, linjer: 1, ...h }, { aar: 2026, mnd: 8, kategori: "tak", omsetning: 1000, db: 100, linjer: 1, ...h },
+      { aar: 2025, mnd: 9, kategori: "tak", omsetning: 500, db: 50, linjer: 1, ...h }, { aar: 2026, mnd: 9, kategori: "vinduer", omsetning: 2000, db: 400, linjer: 1, ...h },
+      { aar: 2026, mnd: 9, kategori: "*", omsetning: 5000, db: 1000, linjer: 4, ...h },
+      // En annen selgers salg skal ikke telle med
+      { aar: 2026, mnd: 9, kategori: "tak", omsetning: 9000, db: 0, linjer: 1, ...annen }, { aar: 2026, mnd: 9, kategori: "*", omsetning: 9000, db: 0, linjer: 1, ...annen },
     ];
     const i = lagInnhold(ansatte[2]!, { timer: [], ansatte, salgKategorier, dgKategorier: [{ id: "vinduer", navn: "Vinduer" }, { id: "tak", navn: "Takplater" }] }, "2026-09-01");
     expect(i.timer).toBeUndefined();
     expect(i.dg![1]).toMatchObject({ id: "tak", mnd: { dg: 30 }, forrige: { dg: 10 }, hittil: { omsetning: 2000, dg: 20 }, ifjor: { dg: 10 } });
     expect(i.dg![0]!.mnd.dg).toBe(20);
+    expect(i.totalt).toMatchObject({ mnd: { omsetning: 5000, dg: 20 } });
+    expect(i.ikkeSelger).toBeUndefined();
+    // Uten treff på selger i Visma: tomt salg og beskjed
+    const u = lagInnhold({ ...ansatte[2]!, navn: "Ukjent Person" }, { timer: [], ansatte, salgKategorier, dgKategorier: [{ id: "tak", navn: "Takplater" }] }, "2026-09-01");
+    expect(u.ikkeSelger).toBe(true);
+    expect(u.totalt!.mnd.omsetning).toBe(0);
   });
 });

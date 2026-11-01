@@ -3,7 +3,7 @@
 //  - Snekkere (med i timerapporten): timer på kunde mot interntid. Lav interntid er bra.
 //  - Prosjektleder/butikk (f.eks. Harald): DG på salg av vinduer og takplater.
 import type { Ansatt, Data } from "./ferie";
-import { sumKategori, type SalgKategoriMnd } from "./dg";
+import { ALT_SALG, selgerNr, sumKategori, type SalgKategoriMnd } from "./dg";
 import { fordelingPerAnsatt, type Fordeling } from "./timer";
 
 export interface Personrapport {
@@ -25,7 +25,13 @@ export interface DgDel {
   hittil: { omsetning: number; db: number; dg: number | null };
   ifjor: { omsetning: number; db: number; dg: number | null };
 }
-export interface Innhold { navn: string; periode: string; timer?: TimerDel; dg?: DgDel[] }
+export interface Innhold {
+  navn: string; periode: string; timer?: TimerDel; dg?: DgDel[];
+  /** Alt salg for selgeren i måneden (kategoriene over er med i denne) */
+  totalt?: DgDel;
+  /** Selgeren ble ikke funnet i Visma (da er salget tomt) */
+  ikkeSelger?: boolean;
+}
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const andel = (f: Pick<Fordeling, "intern" | "sum">) => (f.sum ? r1((f.intern / f.sum) * 100) : 0);
@@ -59,17 +65,23 @@ export function lagInnhold(a: Ansatt, d: Pick<Data, "timer" | "ansatte"> & { sal
     };
   }
   if (type.dg) {
-    const rader = d.salgKategorier ?? [];
+    // Bare selgerens eget salg (Selger på ordren i Visma)
+    const alle = d.salgKategorier ?? [];
+    const nr = selgerNr(a.navn, alle);
+    const rader = nr == null ? [] : alle.filter((x) => x.selger_nr === nr);
+    if (nr == null) ut.ikkeSelger = true;
     const fm = forrigeMnd(periode);
     const p = { aar, mnd: m }, f = { aar: Number(fm.slice(0, 4)), mnd: Number(fm.slice(5, 7)) };
     const tall = (x: ReturnType<typeof sumKategori>) => ({ omsetning: Math.round(x.omsetning), db: Math.round(x.db), dg: x.dg });
-    ut.dg = (d.dgKategorier ?? []).map((k) => ({
-      id: k.id, navn: k.navn,
-      mnd: tall(sumKategori(rader, k.id, p, p)),
-      forrige: tall(sumKategori(rader, k.id, f, f)),
-      hittil: tall(sumKategori(rader, k.id, { aar, mnd: 1 }, p)),
-      ifjor: tall(sumKategori(rader, k.id, { aar: aar - 1, mnd: m }, { aar: aar - 1, mnd: m })),
-    }));
+    const del = (id: string, navn: string): DgDel => ({
+      id, navn,
+      mnd: tall(sumKategori(rader, id, p, p)),
+      forrige: tall(sumKategori(rader, id, f, f)),
+      hittil: tall(sumKategori(rader, id, { aar, mnd: 1 }, p)),
+      ifjor: tall(sumKategori(rader, id, { aar: aar - 1, mnd: m }, { aar: aar - 1, mnd: m })),
+    });
+    ut.dg = (d.dgKategorier ?? []).map((k) => del(k.id, k.navn));
+    ut.totalt = del(ALT_SALG, "Alt salg");
   }
   return ut;
 }
