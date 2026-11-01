@@ -1081,6 +1081,7 @@ export const EN_TEKST: Record<string, string> = {
 "Legg ved bilde": "Attach photo",
 "+ Nytt prosjekt": "+ New project",
 "Fra Visma": "From Visma",
+"fra Visma": "from Visma",
 "Mål for": "Target for",
 "% av": "% of",
 "målet": "the target",

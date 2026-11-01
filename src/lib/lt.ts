@@ -1081,6 +1081,7 @@ export const LT_TEKST: Record<string, string> = {
 "Legg ved bilde": "Pridėti nuotrauką",
 "+ Nytt prosjekt": "+ Naujas projektas",
 "Fra Visma": "Iš Visma",
+"fra Visma": "iš Visma",
 "Mål for": "Tikslas:",
 "% av": "% nuo",
 "målet": "tikslo",

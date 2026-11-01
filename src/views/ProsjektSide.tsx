@@ -3,7 +3,7 @@ import { useApp } from "../App";
 import { api, type FdvVare } from "../lib/api";
 import { kortDato, langDato } from "../lib/ferie";
 import { TILLEGG_STATUS, VAER, type Tillegg, type TilleggStatus } from "../lib/hms";
-import { t2, timeStatus, type Prosjekt } from "../lib/timer";
+import { kalkyle, kalkyleFraVisma, t2, timeStatus, type Prosjekt } from "../lib/timer";
 import { Bilder } from "./Bilder";
 import { Avvik } from "./Avvik";
 import { Sluttdok } from "./Sluttdok";
@@ -191,14 +191,15 @@ function Oversikt({ p }: { p: Prosjekt }) {
   const egne = d.timer.filter((t) => t.prosjekt_id === p.id);
   const sum = egne.reduce((n, t) => n + Number(t.timer), 0);
   const fakt = egne.filter((t) => t.fakturerbar !== false).reduce((n, t) => n + Number(t.timer), 0);
-  const est = p.estimert_timer ? Number(p.estimert_timer) : null;
+  const est = kalkyle(p);
   const tilleggT = d.tillegg.filter((t) => t.prosjekt_id === p.id && (t.status === "signert" || t.status === "fakturert")).reduce((n, t) => n + (t.timer ?? 0), 0);
   const ramme = est != null ? est + tilleggT : null;
   const pct = ramme ? Math.min(100, (sum / ramme) * 100) : 0;
   const perAnsatt = new Map<string, number>();
   for (const t of egne) perAnsatt.set(t.ansatt_id, (perAnsatt.get(t.ansatt_id) ?? 0) + Number(t.timer));
-  const [f, setF] = useState({ estimert: est != null ? String(est) : "", start: p.planlagt_start ?? "", slutt: p.planlagt_slutt ?? "", notat: p.notat ?? "" });
-  useEffect(() => setF({ estimert: est != null ? String(est) : "", start: p.planlagt_start ?? "", slutt: p.planlagt_slutt ?? "", notat: p.notat ?? "" }), [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const manuell = p.estimert_timer ? Number(p.estimert_timer) : null;
+  const [f, setF] = useState({ estimert: manuell != null ? String(manuell) : "", start: p.planlagt_start ?? "", slutt: p.planlagt_slutt ?? "", notat: p.notat ?? "" });
+  useEffect(() => setF({ estimert: manuell != null ? String(manuell) : "", start: p.planlagt_start ?? "", slutt: p.planlagt_slutt ?? "", notat: p.notat ?? "" }), [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const lagre = () => kjor(() => api.lagreProsjekt({
     id: p.id, navn: p.navn, kunde_id: p.kunde_id, estimert_timer: Number(f.estimert.replace(",", ".")) || null,
     planlagt_start: f.start || null, planlagt_slutt: f.slutt || null, notat: f.notat.trim(),
@@ -209,7 +210,7 @@ function Oversikt({ p }: { p: Prosjekt }) {
       <h2 style={{ margin: 0 }}>Timer og plan</h2>
       <div className="legend">
         <div><span className="label">Brukt</span><span className="v">{t2(sum)} t</span></div>
-        <div><span className="label">Kalkulert</span><span className="v">{est != null ? `${t2(est)} t` : "–"}</span></div>
+        <div><span className="label">Kalkulert</span><span className="v">{est != null ? `${t2(est)} t` : "–"}</span>{kalkyleFraVisma(p) && <span className="small muted">fra Visma</span>}</div>
         {tilleggT > 0 && <div><span className="label">+ tillegg</span><span className="v">{t2(tilleggT)} t</span></div>}
         <div><span className="label">Igjen</span><span className="v" style={ramme != null && sum > ramme ? { color: "var(--warn)" } : undefined}>{ramme != null ? `${t2(ramme - sum)} t` : "–"}</span></div>
         <div><span className="label">Fakturerbart</span><span className="v">{t2(fakt)} t</span></div>
@@ -234,7 +235,7 @@ function Oversikt({ p }: { p: Prosjekt }) {
         <div className="panel" style={{ background: "var(--sunk)" }}>
           <div className="row">
             <label className="field"><span className="label">Kalkulerte timer</span>
-              <input type="text" inputMode="decimal" value={f.estimert} onChange={(e) => setF({ ...f, estimert: e.target.value })} placeholder="F.eks. 120" /></label>
+              <input type="text" inputMode="decimal" value={f.estimert} onChange={(e) => setF({ ...f, estimert: e.target.value })} placeholder={p.visma_kalkyle_timer ? `Fra Visma: ${t2(Number(p.visma_kalkyle_timer))}` : "F.eks. 120"} /></label>
             <label className="field"><span className="label">Planlagt start</span>
               <input type="date" value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></label>
             <label className="field"><span className="label">Planlagt ferdig</span>
@@ -526,7 +527,7 @@ function Adresse({ p, adr }: { p: Prosjekt; adr: string }) {
 function TimerStatus({ p }: { p: Prosjekt }) {
   const { d } = useApp();
   const brukt = d.timer.filter((t) => t.prosjekt_id === p.id).reduce((n, t) => n + Number(t.timer), 0);
-  const est = p.estimert_timer ? Number(p.estimert_timer) : null;
+  const est = kalkyle(p);
   const tillegg = d.tillegg.filter((t) => t.prosjekt_id === p.id && (t.status === "signert" || t.status === "fakturert")).reduce((n, t) => n + (t.timer ?? 0), 0);
   const ramme = est != null ? est + tillegg : null;
   const s = timeStatus(brukt, ramme);

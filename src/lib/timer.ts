@@ -4,7 +4,7 @@ import { arbeidsdager } from "./fravaer";
 import { addDays, helligdag, ukedag, type Ansatt, type Data } from "./ferie";
 
 export interface Kunde { id: string; visma_nr: number | null; navn: string; adresse: string; postnr: string; poststed: string; telefon: string; epost: string; aktiv: boolean }
-export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string; fra_svenn?: boolean; faktura_kunde_id?: string | null; fastpris?: boolean; fakturert_full?: boolean; kommunenr?: string; kommune?: string; gnr?: number | null; bnr?: number | null; fnr?: number | null; snr?: number | null; bruksenhet?: string; boligmappe_nr?: string; fag?: string; kontakt_navn?: string; kontakt_telefon?: string; selger_id?: string | null; snekker_id?: string | null; adresse_manuell?: boolean; slatt_sammen_med?: string | null }
+export interface Prosjekt { id: string; visma_nr: number | null; navn: string; kunde_id: string | null; adresse: string; estimert_timer: number | null; visma_kalkyle_timer?: number | null; start: string | null; slutt: string | null; aktiv: boolean; planlagt_start?: string | null; planlagt_slutt?: string | null; notat?: string; fra_svenn?: boolean; faktura_kunde_id?: string | null; fastpris?: boolean; fakturert_full?: boolean; kommunenr?: string; kommune?: string; gnr?: number | null; bnr?: number | null; fnr?: number | null; snr?: number | null; bruksenhet?: string; boligmappe_nr?: string; fag?: string; kontakt_navn?: string; kontakt_telefon?: string; selger_id?: string | null; snekker_id?: string | null; adresse_manuell?: boolean; slatt_sammen_med?: string | null }
 export interface Time {
   id: string; ansatt_id: string; prosjekt_id: string | null; dato: string;
   fra: string; til: string; lunsj_min: number; timer: number; lunsj_unntak: boolean;
@@ -206,6 +206,12 @@ export function sisteProsjekter(timer: Time[], ansattId: string, antall = 4) {
   const sortert = timer.filter((t) => t.ansatt_id === ansattId && t.prosjekt_id).sort((a, b) => (b.dato + b.fra).localeCompare(a.dato + a.fra));
   return [...new Set(sortert.map((t) => t.prosjekt_id as string))].slice(0, antall);
 }
+
+/** Kalkulerte timer: det som er lagt inn i ByggLogg, ellers «Arbeid» på tilbud/ordre i Visma */
+export const kalkyle = (p: Pick<Prosjekt, "estimert_timer" | "visma_kalkyle_timer">): number | null =>
+  p.estimert_timer ? Number(p.estimert_timer) : p.visma_kalkyle_timer ? Number(p.visma_kalkyle_timer) : null;
+/** Kommer kalkylen fra Visma (ikke lagt inn i ByggLogg)? */
+export const kalkyleFraVisma = (p: Pick<Prosjekt, "estimert_timer" | "visma_kalkyle_timer">) => !p.estimert_timer && !!p.visma_kalkyle_timer;
 
 export type TStatus = "ingen" | "ok" | "snart" | "over";
 /** Timestatus mot kalkyle (+ godkjente tillegg): grønn under 80 %, gul 80–100 %, rød over */
