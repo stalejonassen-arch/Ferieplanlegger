@@ -112,8 +112,8 @@ export function MinePersonrapporter() {
 export function PersonrapporterLeder() {
   const { d, meg, idag, kjor } = useApp();
   const [periode, setPeriode] = useState(forrigeMnd(idag));
-  const kandidater = d.ansatte.filter((a) => a.aktiv && a.id !== meg.id && a.rolle !== "leder" && (rapportType(a).timer || rapportType(a).dg))
-    .sort((a, b) => Number(!!b.prosjektleder) - Number(!!a.prosjektleder) || a.navn.localeCompare(b.navn, "nb"));
+  const kandidater = d.ansatte.filter((a) => a.aktiv && (rapportType(a).timer || rapportType(a).dg))
+    .sort((a, b) => Number(a.id !== meg.id) - Number(b.id !== meg.id) || Number(rapportType(b).dg) - Number(rapportType(a).dg) || a.navn.localeCompare(b.navn, "nb"));
   const finnes = (id: string) => (d.personrapporter ?? []).find((r) => r.ansatt_id === id && r.periode === periode);
   const [valgt, setValgt] = useState<Set<string>>(new Set());
   const [kommentar, setKommentar] = useState<Record<string, string>>({});
