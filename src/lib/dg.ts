@@ -3,13 +3,30 @@
 // Samme regel brukes i visma-sync (supabase/functions/visma-sync/index.ts) – hold dem like.
 
 export interface DgKategori { id: string; navn: string; med: string[]; uten: string[] }
-export interface SalgKategoriMnd { aar: number; mnd: number; kategori: string; omsetning: number; db: number; linjer: number; eksempler?: { tekst: string; omsetning: number; db: number }[]; oppdatert?: string }
+export interface SalgKategoriMnd { aar: number; mnd: number; kategori: string; omsetning: number; db: number; linjer: number; eksempler?: { tekst: string; omsetning: number; db: number }[]; oppdatert?: string; selger_nr?: number; selger_navn?: string }
 
 /** Første kategori der teksten har et av ordene i «med» og ingen av ordene i «uten» (store/små bokstaver likt) */
 export function kategoriFor(tekst: string, regler: DgKategori[]): string | null {
   const t = tekst.toLowerCase();
   for (const k of regler) {
     if (k.med.some((o) => o && t.includes(o.toLowerCase())) && !k.uten.some((o) => o && t.includes(o.toLowerCase()))) return k.id;
+  }
+  return null;
+}
+
+/** Kategorien «*» er alt salg for en selger (uansett kategori) */
+export const ALT_SALG = "*";
+
+/** Selgernummeret i Visma for en ansatt: navnet i Visma må inneholde alle ordene i navnet i ByggLogg (eller omvendt) */
+export function selgerNr(navn: string, rader: Pick<SalgKategoriMnd, "selger_nr" | "selger_navn">[]): number | null {
+  const ord = (s: string) => s.toLowerCase().split(/[^a-zæøåäöü]+/).filter((w) => w.length > 1);
+  const mine = ord(navn);
+  if (!mine.length) return null;
+  const funnet = new Map<number, string>();
+  for (const r of rader) if (r.selger_nr && r.selger_navn) funnet.set(r.selger_nr, r.selger_navn);
+  for (const [nr, n] of funnet) {
+    const deres = ord(n);
+    if (mine.every((w) => deres.includes(w)) || (deres.length > 1 && deres.every((w) => mine.includes(w)))) return nr;
   }
   return null;
 }

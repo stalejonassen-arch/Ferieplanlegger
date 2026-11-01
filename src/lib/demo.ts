@@ -888,6 +888,7 @@ function thauglandDrakt(d: Data): Data {
 /** Standardregler for DG-kategoriene (samme som i databasen) */
 export const STANDARD_DG: import("./dg").DgKategori[] = [
   { id: "vinduer", navn: "Vinduer", med: ["vindu", "nordan", "natre", "h-karmen", "takv mh", "skyvedør"], uten: ["base", "kitt", "pensel", "holder", "vindusvr", "vrider", "deponer", "maling", "frakt", "beslag", "lås", "sålbenk", "rullesett"] },
+  { id: "dorer", navn: "Dører", med: ["dør", "ytterdør", "innerdør", "balkongdør", "terrassedør", "garasjeport", "boddør", "branndør"], uten: ["vrider", "håndtak", "stopper", "lås", "pumpe", "dørlist", "terskel", "beslag", "hengsel", "hengsle", "karmlist", "frakt", "deponer", "maling", "pensel", "dørfjær", "dørskilt", "dørmatte"] },
   { id: "tak", navn: "Takplater", med: ["takpl", "takplate", "takpakke", "powertekk", "takpanne", "takshingel", "takstein", "plannja", "tata steel", "tata click", "tata takpl", "decra", "ruukki", "falstak", "click fals"], uten: ["glava", "flexi", "takrenne", "taklist", "undertak", "takstol", "sponpl", "takv", "spiker", "skrue", "huntonit", "trefib", "kraning"] },
 ];
 
@@ -899,8 +900,15 @@ function demoSalg(): import("./dg").SalgKategoriMnd[] {
     const t = new Date(n.getFullYear(), n.getMonth() - i, 1), aar = t.getFullYear(), mnd = t.getMonth() + 1;
     const sesong = [0.4, 0.5, 0.8, 1.1, 1.4, 1.5, 1.0, 1.2, 1.3, 1.1, 0.7, 0.4][mnd - 1]!;
     const v = Math.round(180000 * sesong * (0.85 + ((aar * 7 + mnd * 13) % 30) / 100)), tk = Math.round(140000 * sesong * (0.8 + ((aar * 3 + mnd * 11) % 35) / 100));
-    ut.push({ aar, mnd, kategori: "vinduer", omsetning: v, db: Math.round(v * (0.17 + ((mnd * 5) % 7) / 100)), linjer: 6 + (mnd % 5), eksempler: [{ tekst: "Vinduspakke enebolig", omsetning: Math.round(v * 0.6), db: Math.round(v * 0.11) }, { tekst: "Skifte vindu", omsetning: Math.round(v * 0.4), db: Math.round(v * 0.08) }] });
-    ut.push({ aar, mnd, kategori: "tak", omsetning: tk, db: Math.round(tk * (0.12 + ((mnd * 3) % 8) / 100)), linjer: 4 + (mnd % 4), eksempler: [{ tekst: "Stål takplater sort", omsetning: Math.round(tk * 0.7), db: Math.round(tk * 0.09) }, { tekst: "Takpanne betong", omsetning: Math.round(tk * 0.3), db: Math.round(tk * 0.04) }] });
+    // To selgere: Nina (butikk/prosjektleder) og Lars (daglig leder) deler salget
+    for (const [nr, navn, andel] of [[2, "Nina Solheim", 0.65], [1, "Lars Berg", 0.35]] as const) {
+      const vv = Math.round(v * andel), tt = Math.round(tk * andel), dd = Math.round(v * 0.45 * andel), alt = Math.round((v + tk) * 1.8 * andel);
+      const sel = { selger_nr: nr, selger_navn: navn };
+      ut.push({ aar, mnd, kategori: "vinduer", omsetning: vv, db: Math.round(vv * (0.17 + ((mnd * 5) % 7) / 100)), linjer: 6 + (mnd % 5), ...sel, eksempler: [{ tekst: "Vinduspakke enebolig", omsetning: Math.round(vv * 0.6), db: Math.round(vv * 0.11) }, { tekst: "Skifte vindu", omsetning: Math.round(vv * 0.4), db: Math.round(vv * 0.08) }] });
+      ut.push({ aar, mnd, kategori: "dorer", omsetning: dd, db: Math.round(dd * (0.21 + ((mnd * 2) % 6) / 100)), linjer: 2 + (mnd % 3), ...sel, eksempler: [{ tekst: "Ytterdør hvit 10x21", omsetning: Math.round(dd * 0.7), db: Math.round(dd * 0.16) }, { tekst: "Innerdør glatt", omsetning: Math.round(dd * 0.3), db: Math.round(dd * 0.07) }] });
+      ut.push({ aar, mnd, kategori: "tak", omsetning: tt, db: Math.round(tt * (0.12 + ((mnd * 3) % 8) / 100)), linjer: 4 + (mnd % 4), ...sel, eksempler: [{ tekst: "Stål takplater sort", omsetning: Math.round(tt * 0.7), db: Math.round(tt * 0.09) }, { tekst: "Takpanne betong", omsetning: Math.round(tt * 0.3), db: Math.round(tt * 0.04) }] });
+      ut.push({ aar, mnd, kategori: "*", omsetning: alt, db: Math.round(alt * (0.24 + ((mnd * 7) % 6) / 100)), linjer: 40 + mnd, ...sel, eksempler: [] });
+    }
   }
   return ut;
 }

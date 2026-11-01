@@ -103,6 +103,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0064_tilbud.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0065_ukesjekk.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0066_kalkyle_fra_visma.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0067_salg_per_selger.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -899,10 +900,11 @@ describe("personlige månedsrapporter og DG", () => {
     await expect(as(JIM, "select public.lagre_dg_kategorier('[]')")).rejects.toThrow(/Bare leder/);
     await expect(as(STALE, "select public.lagre_dg_kategorier('[{\"id\": \"X Y\", \"navn\": \"\", \"med\": [], \"uten\": []}]')")).rejects.toThrow(/Ugyldige/);
     const std = (await db.query<any>("select dg_kategorier from public.bedrifter where id = 1")).rows[0].dg_kategorier;
-    expect(std.map((k: any) => k.id)).toEqual(["vinduer", "tak"]);
-    await db.query("insert into public.salg_kategori_mnd (bedrift_id, aar, mnd, kategori, omsetning, db) values (1, 2026, 9, 'tak', 1000, 200)");
+    expect(std.map((k: any) => k.id)).toEqual(["vinduer", "dorer", "tak"]);
+    await db.query("insert into public.salg_kategori_mnd (bedrift_id, aar, mnd, kategori, omsetning, db, selger_nr) values (1, 2026, 9, 'tak', 1000, 200, 0)");
+    await db.query("insert into public.salg_kategori_mnd (bedrift_id, aar, mnd, kategori, omsetning, db, selger_nr, selger_navn) values (1, 2026, 9, 'tak', 500, 50, 3, 'Harald')");
     expect(await as(JIM, "select * from public.salg_kategori_mnd")).toHaveLength(0);
-    expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(1);
+    expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(2);
     await as(STALE, "select public.lagre_dg_kategorier($1)", [JSON.stringify(std)]);
     expect(await as(STALE, "select * from public.salg_kategori_mnd")).toHaveLength(0);
   });

@@ -280,7 +280,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("rapporter").select("id, tittel, periode, ingress, lenke, sti, publisert, opprettet").order("periode", { ascending: false }).limit(200),
         alle(() => sb.from("rapport_lest").select("rapport_id, ansatt_id, lest").order("rapport_id").order("ansatt_id"), 10000),
         sb.from("personrapporter").select("*").order("periode", { ascending: false }).limit(2000),
-        sb.from("salg_kategori_mnd").select("aar, mnd, kategori, omsetning, db, linjer, eksempler, oppdatert").order("aar").order("mnd").limit(5000),
+        sb.from("salg_kategori_mnd").select("*").order("aar").order("mnd").limit(5000),
         sb.from("stempling").select("*"),
         alle(() => sb.from("fravaer").select("id, ansatt_id, type, fra, til, grad, merknad, opprettet").order("fra", { ascending: false }).order("id"), 10000),
         alle(() => sb.from("prosjekt_ordre").select("visma_ordrenr, prosjekt_id, kunde_nr, transaksjonstype, ordretype, fakturert, kostnad, ordredato, ferdig").order("visma_ordrenr"), 20000),

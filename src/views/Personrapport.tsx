@@ -56,17 +56,19 @@ export function PersonrapportKort({ innhold, kommentar, egen }: { innhold: Innho
           )}
         </div>
       )}
+      {innhold.ikkeSelger && <p className="small muted" style={{ margin: 0 }}>Fant ikke {egen ? "deg" : innhold.navn.split(" ")[0]} som selger i Visma (samme navn som Selger på ordrene), så salget er tomt.</p>}
       {innhold.dg && innhold.dg.map((k) => <DgBlokk key={k.id} k={k} />)}
-      {innhold.dg && <p className="small muted" style={{ margin: 0 }}>DG = dekningsbidrag delt på fakturert salg (eks. mva), fra ordrelinjene i Visma.</p>}
+      {innhold.totalt && <DgBlokk k={innhold.totalt} totalt />}
+      {innhold.dg && <p className="small muted" style={{ margin: 0 }}>Ditt salg som selger på ordrene i Visma. Totalt er alt du har solgt i måneden – vinduer, dører og takplater er med i totalen. DG = dekningsbidrag delt på fakturert salg (eks. mva).</p>}
       {kommentar?.trim() && <div className="prapport-kommentar"><span className="label">Fra leder</span><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{kommentar}</p></div>}
     </div>
   );
 }
 
-function DgBlokk({ k }: { k: DgDel }) {
+function DgBlokk({ k, totalt }: { k: DgDel; totalt?: boolean }) {
   return (
-    <div className="prapport-del">
-      <h4>DG {k.navn.toLowerCase()}</h4>
+    <div className={`prapport-del${totalt ? " prapport-totalt" : ""}`}>
+      <h4>{totalt ? "Totalt – alt salg denne måneden" : `DG ${k.navn.toLowerCase()}`}</h4>
       {k.mnd.omsetning === 0 && k.hittil.omsetning === 0 ? <p className="small muted">Ikke noe salg registrert.</p> : (
         <>
           <div className="prapport-tall">
@@ -139,18 +141,18 @@ export function PersonrapporterLeder() {
         <label className="field kort"><span className="label">Måned</span>
           <input type="month" value={periode.slice(0, 7)} max={idag.slice(0, 7)} onChange={(e) => e.target.value && setPeriode(`${e.target.value}-01`)} /></label>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Hver ansatt får sin egen rapport og ser bare den. Snekkerne får timer på kunde mot interntid (lav interntid er bra). Butikk/prosjektleder får DG på salg av vinduer og takplater fra Visma{salgOppdatert ? ` (oppdatert ${kl(salgOppdatert)})` : ""}. Skriv gjerne et par ord til hver før du publiserer.</p>
+      <p className="small muted" style={{ margin: 0 }}>Hver ansatt får sin egen rapport og ser bare den. Snekkerne får timer på kunde mot interntid (lav interntid er bra). Butikk/prosjektleder (og du) får sitt eget salg fra Visma: totalt i måneden, og DG på vinduer, dører og takplater{salgOppdatert ? ` (oppdatert ${kl(salgOppdatert)})` : ""}. Skriv gjerne et par ord til hver før du publiserer.</p>
       <div className="list">
         {kandidater.map((a) => {
           const f = finnes(a.id), i = innhold.get(a.id)!;
-          const kort = i.dg ? i.dg.map((k) => `${k.navn}: ${pst(k.mnd.dg)}`).join(" · ") : i.timer ? (i.timer.sum ? `${t2(i.timer.kunde)} t på kunde · ${pst(i.timer.andelIntern)} interntid` : "Ingen timer denne måneden") : "";
+          const kort = i.dg ? (i.ikkeSelger ? "Ikke funnet som selger i Visma" : [i.totalt ? `Totalt ${kr(i.totalt.mnd.omsetning)} (${pst(i.totalt.mnd.dg)})` : "", ...i.dg.map((k) => `${k.navn}: ${pst(k.mnd.dg)}`)].filter(Boolean).join(" · ")) : i.timer ? (i.timer.sum ? `${t2(i.timer.kunde)} t på kunde · ${pst(i.timer.andelIntern)} interntid` : "Ingen timer denne måneden") : "";
           return (
             <div key={a.id} className="item" style={{ flexWrap: "wrap" }}>
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0, flex: "1 1 240px" }}>
                 <input type="checkbox" style={{ width: "auto", flex: "none", marginTop: 4 }} checked={valgt.has(a.id)} disabled={!!f?.publisert}
                   onChange={(e) => { const n = new Set(valgt); if (e.target.checked) n.add(a.id); else n.delete(a.id); setValgt(n); }} />
                 <div style={{ minWidth: 0 }}>
-                  <div className="t">{a.navn} <span className="small muted">{i.dg ? "· DG vinduer og tak" : "· timer"}</span></div>
+                  <div className="t">{a.navn} <span className="small muted">{i.dg ? "· salg og DG" : "· timer"}</span></div>
                   <div className="s">{kort}</div>
                   {f?.publisert && <div className="s">Publisert {kl(f.publisert)} · {f.lest ? `lest ${kl(f.lest)}` : "ikke lest ennå"}</div>}
                 </div>
@@ -173,18 +175,26 @@ export function PersonrapporterLeder() {
   );
 }
 
-/** Leder: hvilke ord på ordrelinjene som gjør at salget regnes som vinduer eller takplater */
+/** Leder: hvilke ord på ordrelinjene som gjør at salget regnes som vinduer, dører eller takplater */
 function DgRegler() {
   const { d, kjor } = useApp();
   const [k, setK] = useState<DgKategori[]>(() => structuredClone(d.dgKategorier ?? []));
   useEffect(() => { setK(structuredClone(d.dgKategorier ?? [])); }, [d.dgKategorier]);
-  const siste = (id: string) => (d.salgKategorier ?? []).filter((x) => x.kategori === id).sort((a, b) => b.aar * 12 + b.mnd - (a.aar * 12 + a.mnd))[0];
+  // Siste måned med salg i kategorien, med de største linjene fra alle selgerne
+  const siste = (id: string) => {
+    const r = (d.salgKategorier ?? []).filter((x) => x.kategori === id);
+    const m = r.reduce((n, x) => Math.max(n, x.aar * 12 + x.mnd), 0);
+    const denne = r.filter((x) => x.aar * 12 + x.mnd === m);
+    if (!denne.length) return undefined;
+    const eksempler = denne.flatMap((x) => x.eksempler ?? []).sort((a, b) => Math.abs(b.omsetning) - Math.abs(a.omsetning));
+    return { ...denne[0], eksempler };
+  };
   const ord = (s: string) => s.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
   const [prove, setProve] = useState("");
   const endret = JSON.stringify(k) !== JSON.stringify(d.dgKategorier ?? []);
   return (
     <details className="oppsett-under" style={{ marginTop: 12 }}>
-      <summary><b>Hva regnes som vinduer og takplater?</b> <span className="small muted">Salget sorteres etter teksten på ordrelinjen i Visma, så også «Diverse»-varenummer kommer med.</span></summary>
+      <summary><b>Hva regnes som vinduer, dører og takplater?</b> <span className="small muted">Salget sorteres etter teksten på ordrelinjen i Visma, så også «Diverse»-varenummer kommer med.</span></summary>
       {k.map((x, i) => {
         const s = siste(x.id);
         return (
