@@ -1,5 +1,5 @@
 import { useApp } from "../App";
-import { t2, timeStatus } from "../lib/timer";
+import { kalkyle, t2, timeStatus } from "../lib/timer";
 
 /** Kompakt: planlagte timer på prosjektet mot det som er ført så langt (alle ansatte). Oppdateres når timer registreres. */
 export function ProsjektForbruk({ prosjektId, lys }: { prosjektId: string; lys?: boolean }) {
@@ -7,7 +7,7 @@ export function ProsjektForbruk({ prosjektId, lys }: { prosjektId: string; lys?:
   const p = d.prosjekter.find((x) => x.id === prosjektId);
   if (!p) return null;
   const brukt = d.timer.filter((t) => t.prosjekt_id === p.id).reduce((n, t) => n + Number(t.timer), 0);
-  const est = p.estimert_timer ? Number(p.estimert_timer) : null;
+  const est = kalkyle(p);
   const tillegg = d.tillegg.filter((t) => t.prosjekt_id === p.id && (t.status === "signert" || t.status === "fakturert")).reduce((n, t) => n + (t.timer ?? 0), 0);
   const ramme = est != null ? est + tillegg : null;
   const s = timeStatus(brukt, ramme);

@@ -288,6 +288,26 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
   const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
   const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
   const naa = new Date().toISOString();
+  // Kalkyle per prosjekt: «Arbeid» på ordrene (bestilt antall). Har prosjektet ingen ordre med arbeid ennå, brukes tilbudene.
+  const iOrdre = new Map<string, number>(), iTilbud = new Map<string, number>();
+  for (const l of linjer) {
+    const o = (l.joinup_Order ?? {}) as Record<string, unknown>;
+    if (Number(o.transactionType) !== 1) continue;
+    const p = pid.get(Number(l[pf])) ?? pid.get(Number(o[pf]));
+    if (!p) continue;
+    const m = Number(o.orderType) === 5 ? iTilbud : iOrdre;
+    m.set(p, (m.get(p) ?? 0) + (Number(l.totalQuantity) || 0));
+  }
+  const kalk = new Map<string, number>();
+  for (const p of new Set([...iOrdre.keys(), ...iTilbud.keys()])) {
+    const t = (iOrdre.get(p) ?? 0) > 0 ? iOrdre.get(p)! : iTilbud.get(p) ?? 0;
+    if (t > 0) kalk.set(p, Math.round(t * 100) / 100);
+  }
+  const { data: naaKalk, error: kErr } = await sb.from("prosjekter").select("id, visma_kalkyle_timer").eq("bedrift_id", b.id);
+  if (!kErr) for (const x of naaKalk ?? []) {
+    const ny = kalk.get(x.id as string) ?? null, gml = x.visma_kalkyle_timer == null ? null : Number(x.visma_kalkyle_timer);
+    if (ny !== gml) await sb.from("prosjekter").update({ visma_kalkyle_timer: ny }).eq("id", x.id);
+  }
   const rader = linjer.flatMap((l) => {
     const o = (l.joinup_Order ?? {}) as Record<string, unknown>;
     // Bare salgsordrer (transaksjonstype 1); tilbud (ordretype 5) telles ikke

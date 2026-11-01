@@ -1056,6 +1056,7 @@ export const PL_TEKST: Record<string, string> = {
 "Legg ved bilde": "Dołącz zdjęcie",
 "+ Nytt prosjekt": "+ Nowy projekt",
 "Fra Visma": "Z Visma",
+"fra Visma": "z Visma",
 "Mål for": "Cel na",
 "% av": "% z",
 "målet": "celu",

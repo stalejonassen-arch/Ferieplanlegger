@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api, type DokKategori, type FdvDok } from "../lib/api";
 import { kortDato, langDato } from "../lib/ferie";
-import { t2, type Prosjekt } from "../lib/timer";
+import { kalkyle, t2, type Prosjekt } from "../lib/timer";
 
 // ------------------------------------------------------------ Dokumenter
 
@@ -139,7 +139,7 @@ export function Statistikk({ p }: { p: Prosjekt }) {
   const maksPeriode = Math.max(1, ...perioder.map(([, n]) => n));
   const etikett = (k: string) => (perUke ? `u${Number(k.slice(5))}` : `${MND[Number(k.slice(5, 7)) - 1]}${k.slice(2, 4) !== datoer[0].slice(2, 4) ? " " + k.slice(2, 4) : ""}`);
 
-  const est = p.estimert_timer ? Number(p.estimert_timer) : null;
+  const est = kalkyle(p);
   const tillegg = d.tillegg.filter((t) => t.prosjekt_id === p.id && (t.status === "signert" || t.status === "fakturert"));
   const tilleggT = tillegg.reduce((n, t) => n + (t.timer ?? 0), 0);
   const ramme = est != null ? est + tilleggT : null;

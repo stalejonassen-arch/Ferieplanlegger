@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
-import { prosjektTimer, sistAktiv, t2 } from "../lib/timer";
+import { kalkyle, prosjektTimer, sistAktiv, t2 } from "../lib/timer";
 import { timeStatus } from "../lib/timer";
 import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
@@ -104,7 +104,7 @@ export function Prosjekter() {
               <thead><tr><th>Nr</th><th>Prosjekt</th><th>Timer</th>{leder && <th />}</tr></thead>
               <tbody>
                 {liste.map((p) => {
-                  const b = brukt.get(p.id) ?? 0, est = p.estimert_timer ? Number(p.estimert_timer) : null;
+                  const b = brukt.get(p.id) ?? 0, est = kalkyle(p);
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
                       <td className="n">{p.visma_nr ?? (leder ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
