@@ -39,9 +39,10 @@ const forrigeMnd = (periode: string) => { const a = Number(periode.slice(0, 4)),
 
 /** Hvilke deler rapporten til en ansatt har */
 export function rapportType(a: Ansatt): { timer: boolean; dg: boolean } {
-  // Butikk/prosjektleder og daglig leder får DG på salget; snekkerne får timer
-  const dg = !!a.prosjektleder || a.rolle === "leder";
-  return { dg, timer: !dg && a.i_timerapport !== false };
+  // Butikk/prosjektleder og daglig leder får salget sitt; snekkerne får timer.
+  // En snekker som også selger i butikken (i_salgsrapport) får begge deler.
+  const kontor = !!a.prosjektleder || a.rolle === "leder";
+  return { dg: a.i_salgsrapport ?? kontor, timer: !kontor && a.i_timerapport !== false };
 }
 
 /** Lager innholdet i rapporten for én ansatt og én måned (periode = YYYY-MM-01) */

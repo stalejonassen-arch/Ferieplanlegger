@@ -42,6 +42,8 @@ export interface Ansatt {
   skjulte_kampanjer?: string[];
   /** Telles med i oversikten over kundetimer og interntid */
   i_timerapport?: boolean;
+  /** Salg fra Visma i den personlige rapporten. null = automatisk (leder og prosjektleder) */
+  i_salgsrapport?: boolean | null;
   lunsj_min?: number;
   /** Utstyrskonto i Visma (prosjekt der verktøy og arbeidstøy føres) */
   utstyr_prosjekt_id?: string | null;

@@ -222,6 +222,7 @@ function AnsattKort({ a, lagre, overfort, inn, oppdaterInn }: { a: Ansatt; lagre
         </div>
         {hake("lunsjtrekk", "Lunsjtrekk", !!a.lunsjtrekk, "lunsj trekkes på dager over 5,5 timer uten registrert lunsj")}
         {hake("i_timerapport", "Med i timerapporten", a.i_timerapport !== false, "telles i oversikten over kundetimer og interntid")}
+        {hake("i_salgsrapport", "Salg i månedsrapporten", a.i_salgsrapport ?? (!!a.prosjektleder || a.rolle === "leder"), "eget salg fra Visma (Selger på ordren) – for de som også står i butikken")}
       </fieldset>
       <fieldset><legend>Varsler</legend>
         {hake("varsel_prosjekt", "Varsel om nye prosjekter", a.varsel_prosjekt !== false)}
