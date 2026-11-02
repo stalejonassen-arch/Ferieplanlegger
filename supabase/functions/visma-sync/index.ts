@@ -104,8 +104,12 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
     } catch (e) { console.error("Selgere", e); }
   }
   const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
-    ["productNo", "description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
+    ["orderNo", "productNo", "description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
     `{ _and: [{ finishDate: { _gte: ${fraTall} } }, { transactionType: { _eq: 1 } }] }`);
+  // Selger satt i ByggLogg på ordrer som mangler selger i Visma (fakturerte ordrer kan ikke endres der)
+  const overstyr = new Map<number, number>();
+  const { data: os } = await sb.from("ordre_selger").select("visma_ordrenr, selger_nr").eq("bedrift_id", b.id);
+  for (const x of os ?? []) overstyr.set(Number(x.visma_ordrenr), Number(x.selger_nr));
   type Sum = { omsetning: number; db: number; linjer: number; selger: number; eks: Map<string, { omsetning: number; db: number }> };
   const per = new Map<string, Sum>();
   const legg = (nokkel: string, selger: number, tekst: string, oms: number, db: number) => {
@@ -122,7 +126,7 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
     if (BETALING.test(s(l.productNo))) continue;
     const oms = Number(l.invoicedAmountTotalDomestic) || 0, db = Number(l.grossProfitTotalDomestic) || 0;
     if (!oms && !db) continue;
-    const selger = Number(((l.joinup_Order ?? {}) as Record<string, unknown>).sellerOrBuyer) || 0;
+    const selger = Number(((l.joinup_Order ?? {}) as Record<string, unknown>).sellerOrBuyer) || overstyr.get(Number(l.orderNo)) || 0;
     const mnd = `${d.slice(0, 4)}|${Number(d.slice(4, 6))}`, tekst = s(l.description).slice(0, 60);
     // «*» = alt salg for selgeren i måneden; kategoriene (vinduer, dører, tak …) kommer i tillegg
     legg(`${mnd}|*|${selger}`, selger, tekst, oms, db);
