@@ -9,6 +9,12 @@ const t = (ansatt: string, dato: string, timer: number, prosjekt: string | null,
 
 describe("personlig månedsrapport", () => {
   const ansatte = [a("mads"), a("jim"), a("harald", { prosjektleder: true }), a("kari", { i_timerapport: false })];
+  it("snekker som også selger i butikken får både timer og salg", () => {
+    expect(rapportType(a("jim", { i_salgsrapport: true }))).toEqual({ timer: true, dg: true });
+    expect(rapportType(a("harald", { prosjektleder: true }))).toEqual({ timer: false, dg: true });
+    expect(rapportType(a("harald", { prosjektleder: true, i_salgsrapport: false }))).toEqual({ timer: false, dg: false });
+    expect(rapportType(a("mads"))).toEqual({ timer: true, dg: false });
+  });
   it("velger del ut fra rollen", () => {
     expect(rapportType(ansatte[0]!)).toEqual({ timer: true, dg: false });
     expect(rapportType(ansatte[2]!)).toEqual({ timer: false, dg: true });

@@ -141,18 +141,20 @@ export function PersonrapporterLeder() {
         <label className="field kort"><span className="label">Måned</span>
           <input type="month" value={periode.slice(0, 7)} max={idag.slice(0, 7)} onChange={(e) => e.target.value && setPeriode(`${e.target.value}-01`)} /></label>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Hver ansatt får sin egen rapport og ser bare den. Snekkerne får timer på kunde mot interntid (lav interntid er bra). Butikk/prosjektleder (og du) får sitt eget salg fra Visma: totalt i måneden, og DG på vinduer, dører og takplater{salgOppdatert ? ` (oppdatert ${kl(salgOppdatert)})` : ""}. Skriv gjerne et par ord til hver før du publiserer.</p>
+      <p className="small muted" style={{ margin: 0 }}>Hver ansatt får sin egen rapport og ser bare den. Snekkerne får timer på kunde mot interntid (lav interntid er bra). Butikk/prosjektleder, du og de som er merket «Salg i månedsrapporten» (f.eks. en snekker som står i butikken) får sitt eget salg fra Visma: totalt i måneden, og DG på vinduer, dører og takplater{salgOppdatert ? ` (oppdatert ${kl(salgOppdatert)})` : ""}. Skriv gjerne et par ord til hver før du publiserer.</p>
       <div className="list">
         {kandidater.map((a) => {
           const f = finnes(a.id), i = innhold.get(a.id)!;
-          const kort = i.dg ? (i.ikkeSelger ? "Ikke funnet som selger i Visma" : [i.totalt ? `Totalt ${kr(i.totalt.mnd.omsetning)} (${pst(i.totalt.mnd.dg)})` : "", ...i.dg.map((k) => `${k.navn}: ${pst(k.mnd.dg)}`)].filter(Boolean).join(" · ")) : i.timer ? (i.timer.sum ? `${t2(i.timer.kunde)} t på kunde · ${pst(i.timer.andelIntern)} interntid` : "Ingen timer denne måneden") : "";
+          const salg = i.dg ? (i.ikkeSelger ? "Ikke funnet som selger i Visma" : [i.totalt ? `Salg ${kr(i.totalt.mnd.omsetning)} (${pst(i.totalt.mnd.dg)})` : "", ...i.dg.map((k) => `${k.navn}: ${pst(k.mnd.dg)}`)].filter(Boolean).join(" · ")) : "";
+          const timer = i.timer ? (i.timer.sum ? `${t2(i.timer.kunde)} t på kunde · ${pst(i.timer.andelIntern)} interntid` : "Ingen timer denne måneden") : "";
+          const kort = [timer, salg].filter(Boolean).join(" · ");
           return (
             <div key={a.id} className="item" style={{ flexWrap: "wrap" }}>
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0, flex: "1 1 240px" }}>
                 <input type="checkbox" style={{ width: "auto", flex: "none", marginTop: 4 }} checked={valgt.has(a.id)} disabled={!!f?.publisert}
                   onChange={(e) => { const n = new Set(valgt); if (e.target.checked) n.add(a.id); else n.delete(a.id); setValgt(n); }} />
                 <div style={{ minWidth: 0 }}>
-                  <div className="t">{a.navn} <span className="small muted">{i.dg ? "· salg og DG" : "· timer"}</span></div>
+                  <div className="t">{a.navn} <span className="small muted">{`· ${[i.timer ? "timer" : "", i.dg ? "salg og DG" : ""].filter(Boolean).join(" og ")}`}</span></div>
                   <div className="s">{kort}</div>
                   {f?.publisert && <div className="s">Publisert {kl(f.publisert)} · {f.lest ? `lest ${kl(f.lest)}` : "ikke lest ennå"}</div>}
                 </div>
