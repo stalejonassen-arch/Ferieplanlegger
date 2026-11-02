@@ -103,9 +103,28 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
       for (const x of await alle(tok, b.visma_firma_nr, "associate", ["employeeNo", "name"], "{ employeeNo: { _gt: 0 } }")) selgere.set(Number(x.employeeNo), s(x.name));
     } catch (e) { console.error("Selgere", e); }
   }
-  const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
-    ["orderNo", "productNo", "description", "finishDate", "invoicedAmountSoFarDomestic", "grossProfitSoFarDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
-    `{ _and: [{ finishDate: { _gte: ${fraTall} } }, { transactionType: { _eq: 1 } }] }`);
+  // Fakturaene i perioden, slik de står i regnskapet (salgskonto 3000–3999): fakturadato og beløp eks. mva per fakturanr.
+  // Regnskapet er fasiten. Måneden er fakturadatoen (ikke ordredato eller når linjen ble ferdigmeldt).
+  const gl = await alle(tok, b.visma_firma_nr, "generalLedgerTransaction", ["invoiceNo", "voucherDate", "postedAmountDomestic"],
+    `{ _and: [{ accountNo: { _gte: 3000, _lt: 4000 } }, { voucherDate: { _gte: ${fraTall} } }] }`);
+  const faktura = new Map<string, { dato: string; regnskap: number }>();
+  let utenFaktura = 0;
+  for (const x of gl) {
+    const nr = s(x.invoiceNo), d = s(x.voucherDate), belop = -(Number(x.postedAmountDomestic) || 0);
+    if (!nr) { utenFaktura += belop; continue; }
+    const f = faktura.get(nr) ?? { dato: d, regnskap: 0 };
+    f.regnskap += belop; if (d < f.dato) f.dato = d;
+    faktura.set(nr, f);
+  }
+  // Ordrelinjene på disse fakturaene (selger, varetekst og kostpris)
+  const linjer: Record<string, unknown>[] = [];
+  const nrListe = [...faktura.keys()];
+  for (let i = 0; i < nrListe.length; i += 150) {
+    const del = nrListe.slice(i, i + 150).map((n) => JSON.stringify(n)).join(",");
+    linjer.push(...await alle(tok, b.visma_firma_nr, "orderLine",
+      ["orderNo", "productNo", "description", "invoiceNo", "invoicedAmountSoFarDomestic", "grossProfitSoFarDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
+      `{ _and: [{ invoiceNo: { _in: [${del}] } }, { transactionType: { _eq: 1 } }] }`));
+  }
   // Selger satt i ByggLogg på ordrer som mangler selger i Visma (fakturerte ordrer kan ikke endres der)
   const overstyr = new Map<number, number>();
   const { data: os } = await sb.from("ordre_selger").select("visma_ordrenr, selger_nr").eq("bedrift_id", b.id);
@@ -118,23 +137,42 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
     const e = x.eks.get(tekst) ?? { omsetning: 0, db: 0 }; e.omsetning += oms; e.db += db; x.eks.set(tekst, e);
     per.set(nokkel, x);
   };
+  // Betalingslinjer på kontantsalg (Bankaksept, Visa, Mastercard, Kontant, øresavrunding: varenr Z1000–Z1099)
+  // er ikke salg. Kassebongene står med pris inkl. mva på ordrelinjene, mens regnskapet er eks. mva.
+  // Derfor skaleres linjene på hver faktura så summen blir lik regnskapet (eks. mva), og DB = salg − kostpris.
+  const paaFaktura = new Map<string, Record<string, unknown>[]>();
   for (const l of linjer) {
-    const d = s(l.finishDate);
-    if (!/^\d{8}$/.test(d) || d === "00000000") continue;
-    // Betalingslinjer på kontantsalg (Bankaksept, Visa, Mastercard, Kontant, øresavrunding: varenr Z1000–Z1099)
-    // har minus salgsbeløpet og like mye minus i DB. Tas de med, går DG kraftig ned ved mye kontantsalg.
     if (BETALING.test(s(l.productNo))) continue;
-    // Bare det som faktisk er fakturert (kontantbonger er også fakturert). «Totalt»-feltene i Visma er hele
-    // ordresummen, også linjer som er ferdigmeldt men ikke fakturert ennå.
-    const oms = Number(l.invoicedAmountSoFarDomestic) || 0, db = Number(l.grossProfitSoFarDomestic) || 0;
-    if (!oms && !db) continue;
-    const selger = Number(((l.joinup_Order ?? {}) as Record<string, unknown>).sellerOrBuyer) || overstyr.get(Number(l.orderNo)) || 0;
-    const mnd = `${d.slice(0, 4)}|${Number(d.slice(4, 6))}`, tekst = s(l.description).slice(0, 60);
-    // «*» = alt salg for selgeren i måneden; kategoriene (vinduer, dører, tak …) kommer i tillegg
-    legg(`${mnd}|*|${selger}`, selger, tekst, oms, db);
-    const k = kategoriFor(s(l.description), regler);
-    if (k) legg(`${mnd}|${k}|${selger}`, selger, tekst, oms, db);
+    const nr = s(l.invoiceNo);
+    if (!faktura.has(nr)) continue;
+    paaFaktura.set(nr, [...(paaFaktura.get(nr) ?? []), l]);
   }
+  let avvik = 0;
+  for (const [nr, f] of faktura) {
+    const d = f.dato;
+    if (!/^\d{8}$/.test(d)) continue;
+    const mnd = `${d.slice(0, 4)}|${Number(d.slice(4, 6))}`;
+    const ls = paaFaktura.get(nr) ?? [];
+    const sumLinjer = ls.reduce((n, l) => n + (Number(l.invoicedAmountSoFarDomestic) || 0), 0);
+    if (!ls.length || Math.abs(sumLinjer) < 0.5) {
+      // Faktura uten ordrelinjer (f.eks. ført rett i regnskapet): telles som salg uten selger
+      if (Math.abs(f.regnskap) >= 0.5) { legg(`${mnd}|*|0`, 0, `Faktura ${nr}`, f.regnskap, 0); avvik++; }
+      continue;
+    }
+    const faktor = f.regnskap / sumLinjer;
+    for (const l of ls) {
+      const linje = Number(l.invoicedAmountSoFarDomestic) || 0, kost = linje - (Number(l.grossProfitSoFarDomestic) || 0);
+      if (!linje && !kost) continue;
+      const oms = linje * faktor, db = oms - kost;
+      const selger = Number(((l.joinup_Order ?? {}) as Record<string, unknown>).sellerOrBuyer) || overstyr.get(Number(l.orderNo)) || 0;
+      const tekst = s(l.description).slice(0, 60);
+      // «*» = alt salg for selgeren i måneden; kategoriene (vinduer, dører, tak …) kommer i tillegg
+      legg(`${mnd}|*|${selger}`, selger, tekst, oms, db);
+      const k = kategoriFor(s(l.description), regler);
+      if (k) legg(`${mnd}|${k}|${selger}`, selger, tekst, oms, db);
+    }
+  }
+  if (Math.abs(utenFaktura) >= 0.5) console.log("Salg i regnskapet uten fakturanr (ikke med per selger):", Math.round(utenFaktura));
   const tid = new Date().toISOString();
   const rader = [...per].map(([n, x]) => {
     const [aar, mnd, kategori] = n.split("|");
@@ -151,7 +189,7 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
     const { error } = await sb.from("salg_kategori_mnd").upsert(rader.slice(i, i + 500), { onConflict: "bedrift_id,aar,mnd,kategori,selger_nr" });
     if (error) throw new Error(error.message);
   }
-  return `${linjer.length} linjer, ${rader.length} måneder/kategorier`;
+  return `${faktura.size} fakturaer, ${linjer.length} linjer, ${rader.length} måneder/kategorier${avvik ? `, ${avvik} fakturaer uten ordrelinjer` : ""}`;
 }
 
 /** Henter alle rader fra en tabell med sidevisning. */
