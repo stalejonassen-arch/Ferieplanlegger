@@ -68,6 +68,9 @@ async function synkOmsetning(tok: string, b: { id: number; visma_firma_nr: numbe
   return rader.length;
 }
 
+/** Betalingsmiddel-linjer på kontantsalg i kassen (Bankaksept Z1000, Kontant Z1001, Visa Z1002, Mastercard Z1003, øresavrunding Z1010 …) */
+const BETALING = /^Z10\d\d$/i;
+
 /** Kategori for en ordrelinje ut fra teksten (samme regel som src/lib/dg.ts) */
 type DgKategori = { id: string; navn: string; med: string[]; uten: string[] };
 function kategoriFor(tekst: string, regler: DgKategori[]): string | null {
@@ -81,15 +84,15 @@ function kategoriFor(tekst: string, regler: DgKategori[]): string | null {
 /**
  * Salg per kategori (vinduer, takplater …) og måned: fakturert beløp og dekningsbidrag fra ordrelinjene.
  * Linjene sorteres etter teksten, så også «Diverse»-varenummer kommer med. Første gang hentes i fjor og i år,
- * deretter forrige og denne måneden.
+ * deretter forrige og denne måneden (med ?salg=alle hentes alt på nytt).
  */
-async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: number }) {
+async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: number }, alt = false) {
   const { data: bd } = await sb.from("bedrifter").select("dg_kategorier").eq("id", b.id).maybeSingle();
   const regler = ((bd?.dg_kategorier ?? []) as DgKategori[]).filter((k) => Array.isArray(k.med) && Array.isArray(k.uten));
   if (!regler.length) return "ingen kategorier";
   const { count } = await sb.from("salg_kategori_mnd").select("aar", { count: "exact", head: true }).eq("bedrift_id", b.id);
   const naa = new Date();
-  const fra = count ? new Date(Date.UTC(naa.getUTCFullYear(), naa.getUTCMonth() - 1, 1)) : new Date(Date.UTC(naa.getUTCFullYear() - 1, 0, 1));
+  const fra = count && !alt ? new Date(Date.UTC(naa.getUTCFullYear(), naa.getUTCMonth() - 1, 1)) : new Date(Date.UTC(naa.getUTCFullYear() - 1, 0, 1));
   const fraTall = fra.getUTCFullYear() * 10000 + (fra.getUTCMonth() + 1) * 100 + 1;
   // Selger på ordren (ansattnummer i Visma) og navnet, så hver selger får sitt eget salg i rapporten
   const oFelt = await felt(tok, "Order");
@@ -101,7 +104,7 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
     } catch (e) { console.error("Selgere", e); }
   }
   const linjer = await alle(tok, b.visma_firma_nr, "orderLine",
-    ["description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
+    ["productNo", "description", "finishDate", "invoicedAmountTotalDomestic", "grossProfitTotalDomestic", ...(medSelger ? ["joinup_Order { sellerOrBuyer }"] : [])],
     `{ _and: [{ finishDate: { _gte: ${fraTall} } }, { transactionType: { _eq: 1 } }] }`);
   type Sum = { omsetning: number; db: number; linjer: number; selger: number; eks: Map<string, { omsetning: number; db: number }> };
   const per = new Map<string, Sum>();
@@ -114,6 +117,9 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
   for (const l of linjer) {
     const d = s(l.finishDate);
     if (!/^\d{8}$/.test(d) || d === "00000000") continue;
+    // Betalingslinjer på kontantsalg (Bankaksept, Visa, Mastercard, Kontant, øresavrunding: varenr Z1000–Z1099)
+    // har minus salgsbeløpet og like mye minus i DB. Tas de med, går DG kraftig ned ved mye kontantsalg.
+    if (BETALING.test(s(l.productNo))) continue;
     const oms = Number(l.invoicedAmountTotalDomestic) || 0, db = Number(l.grossProfitTotalDomestic) || 0;
     if (!oms && !db) continue;
     const selger = Number(((l.joinup_Order ?? {}) as Record<string, unknown>).sellerOrBuyer) || 0;
@@ -607,7 +613,7 @@ Deno.serve(async (req) => {
       // Salg per kategori (DG på vinduer, takplater …). Én gang i timen, eller med ?salg=1.
       let salg: string = "hoppet over";
       if (url.searchParams.get("salg") || new Date().getUTCMinutes() < 15) {
-        try { salg = await synkSalgKategorier(tok, b); }
+        try { salg = await synkSalgKategorier(tok, b, url.searchParams.get("salg") === "alle"); }
         catch (e) { salg = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
       }
       let avdeling: string = "hoppet over";
