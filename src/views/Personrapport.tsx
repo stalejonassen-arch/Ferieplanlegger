@@ -130,7 +130,8 @@ export function PersonrapporterLeder() {
 
   const publiser = async () => {
     const liste = kandidater.filter((a) => valgt.has(a.id));
-    if (!liste.length || !window.confirm(`Publisere ${liste.length} personlige rapporter for ${periodeNavn(periode)}? Hver ansatt får varsel og ser bare sin egen.`)) return;
+    const nye = liste.filter((a) => !finnes(a.id)?.publisert).length, oppdateres = liste.length - nye;
+    if (!liste.length || !window.confirm(`${[nye ? `Publisere ${nye} ${nye === 1 ? "ny" : "nye"}` : "", oppdateres ? `${nye ? "o" : "O"}ppdatere ${oppdateres} som allerede er publisert` : ""].filter(Boolean).join(" og ")} for ${periodeNavn(periode)}?\n\nTallene hentes på nytt. Hver ansatt ser bare sin egen rapport.`)) return;
     await kjor(() => api.lagrePersonrapporter(liste.map((a) => ({ ansatt_id: a.id, periode, innhold: innhold.get(a.id)!, kommentar: kommentar[a.id] ?? "", publiser: true }))), `${liste.length} rapporter er publisert`);
   };
 
@@ -151,7 +152,7 @@ export function PersonrapporterLeder() {
           return (
             <div key={a.id} className="item" style={{ flexWrap: "wrap" }}>
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0, flex: "1 1 240px" }}>
-                <input type="checkbox" style={{ width: "auto", flex: "none", marginTop: 4 }} checked={valgt.has(a.id)} disabled={!!f?.publisert}
+                <input type="checkbox" style={{ width: "auto", flex: "none", marginTop: 4 }} checked={valgt.has(a.id)}
                   onChange={(e) => { const n = new Set(valgt); if (e.target.checked) n.add(a.id); else n.delete(a.id); setValgt(n); }} />
                 <div style={{ minWidth: 0 }}>
                   <div className="t">{a.navn} <span className="small muted">{`· ${[i.timer ? "timer" : "", i.dg ? "salg og DG" : ""].filter(Boolean).join(" og ")}`}</span></div>
@@ -160,7 +161,7 @@ export function PersonrapporterLeder() {
                 </div>
               </label>
               <div className="acts"><button type="button" className="btn sm" onClick={() => setVis(vis === a.id ? null : a.id)}>{vis === a.id ? "Skjul" : "Vis"}</button></div>
-              {!f?.publisert && valgt.has(a.id) && (
+              {valgt.has(a.id) && (
                 <div className="full"><input type="text" placeholder={`Et par ord til ${a.navn.split(" ")[0]} (valgfritt)`} value={kommentar[a.id] ?? ""} maxLength={4000}
                   onChange={(e) => setKommentar({ ...kommentar, [a.id]: e.target.value })} aria-label={`Kommentar til ${a.navn}`} /></div>
               )}
@@ -170,7 +171,7 @@ export function PersonrapporterLeder() {
         })}
       </div>
       <div className="row">
-        <button className="btn primary" disabled={!kandidater.some((a) => valgt.has(a.id))} onClick={publiser}>Publiser for {kandidater.filter((a) => valgt.has(a.id)).length} valgte</button>
+        <button className="btn primary" disabled={!kandidater.some((a) => valgt.has(a.id))} onClick={publiser}>{kandidater.some((a) => valgt.has(a.id) && finnes(a.id)?.publisert) ? "Publiser / oppdater" : "Publiser"} for {kandidater.filter((a) => valgt.has(a.id)).length} valgte</button>
       </div>
       <DgRegler />
     </section>
