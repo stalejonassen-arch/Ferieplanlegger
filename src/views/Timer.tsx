@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { dagerUtenTimer, hhmm, lonnsdager, mandag, normaltid, sisteProsjekter, t2, ukenr, varighet, type Time } from "../lib/timer";
 import { InneNaa, Stempling } from "./Stempling";
+import { TimerOversikt } from "./TimerOversikt";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
@@ -95,6 +96,16 @@ export function Timer() {
         <div className="small" style={{ textAlign: "right" }}><a href="#syk">Syk i dag? Meld egenmelding</a></div>
       )}
       {leder && meSelv && <InneNaa />}
+      {leder && meSelv && <TimerOversikt onVelg={(id, fra) => {
+        const a = d.ansatte.find((x) => x.id === id);
+        setHvemId(id); setUke(mandag(fra)); if (a) setF(tom(a));
+        // Hopp til timene (ukeoversikten) for den ansatte
+        requestAnimationFrame(() => document.getElementById("timer-uke")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }} />}
+      {leder && !meSelv && (
+        <div className="banner"><span>Viser timene til <b>{hvem.navn}</b>.</span>
+          <button className="btn sm" onClick={() => { setHvemId(meg.id); setF(tom(meg)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>‹ Tilbake til oversikten</button></div>
+      )}
       {mangler.length > 0 && (
         <div className="banner"><span><b>Mangler timer</b> {meSelv ? "" : `for ${hvem.navn} `}denne uka: {mangler.map((x) => DAG[new Date(x + "T00:00:00Z").getUTCDay()].toLowerCase() + " " + kortDato(x)).join(", ").replace(/\.$/, "")}.</span>
           <button className="btn sm" onClick={() => { setManuell(true); sett({ dato: mangler[0] }); }}>Før for {kortDato(mangler[0])}</button></div>
@@ -158,9 +169,9 @@ export function Timer() {
         </form>
         )}
 
-        <section className="panel">
+        <section className="panel" id="timer-uke">
           <div className="cal-head">
-            <h2 style={{ margin: 0 }}>Uke {ukenr(uke)}</h2>
+            <h2 style={{ margin: 0 }}>{meSelv ? "" : `${hvem.navn.split(" ")[0]} · `}Uke {ukenr(uke)}</h2>
             <div className="cal-nav">
               <button className="btn sm" aria-label="Forrige uke" onClick={() => setUke(addDays(uke, -7))}>‹</button>
               <span className="small muted">{kortDato(uke)} – {kortDato(dager[6])}</span>

@@ -1494,3 +1494,22 @@ header.top select.temavalg option { color: #10162E; }
 .ukesjekk-liste li.ikke > span { background: var(--pending); color: var(--pending-ink); }
 .ukesjekk-liste a { text-decoration: none; color: inherit; display: grid; }
 .ukesjekk-liste a:hover > span:first-child { text-decoration: underline; }
+
+/* Leder: timer per ansatt */
+.timeoversikt-tbl tbody tr.klikkbar { cursor: pointer; }
+.timeoversikt-tbl tbody tr.klikkbar:hover, .timeoversikt-tbl tbody tr.klikkbar:focus-visible { background: var(--sunk); outline: none; }
+.timeoversikt-tbl tfoot th { color: var(--fg); border-top: 2px solid var(--line); border-bottom: 0; font-size: 14px; }
+.timeoversikt-tbl tfoot th.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.timeoversikt .seg { display: inline-flex; gap: 4px; }
+.timeoversikt-tbl .kort { display: none; }
+#timer-uke { scroll-margin-top: 90px; }
+@media (max-width: 560px) {
+  .timeoversikt-tbl th:nth-child(3), .timeoversikt-tbl td:nth-child(3),
+  .timeoversikt-tbl th:nth-child(4), .timeoversikt-tbl td:nth-child(4),
+  .timeoversikt-tbl th:nth-child(5), .timeoversikt-tbl td:nth-child(5) { display: none; }
+  .timeoversikt-tbl th, .timeoversikt-tbl td { padding: 9px 5px; }
+  .timeoversikt-tbl .lang { display: none; }
+  .timeoversikt-tbl .kort { display: inline; }
+  .timeoversikt-tbl td.n { font-size: 15px; }
+  .timeoversikt-tbl th { font-size: 12px; white-space: normal; }
+}
