@@ -1513,3 +1513,39 @@ header.top select.temavalg option { color: #10162E; }
   .timeoversikt-tbl td.n { font-size: 15px; }
   .timeoversikt-tbl th { font-size: 12px; white-space: normal; }
 }
+
+/* Månedsoversikt: rutenett med timer per ansatt og dag */
+.mnd-rutenett { overflow-x: auto; display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.mr-rad { display: grid; grid-template-columns: 118px repeat(var(--dager, 31), minmax(21px, 1fr)) 50px 40px; gap: 2px; align-items: stretch; min-width: max-content; }
+.mnd-rutenett .kort { display: none; }
+.mr-navn { position: sticky; left: 0; z-index: 1; background: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 4px; text-align: left; font-weight: 600; font-size: 14px; padding: 4px 6px 4px 0; border: 0; color: var(--fg); font-family: inherit; cursor: pointer; min-width: 0; }
+.mr-hode .mr-navn, .mr-fot .mr-navn { cursor: default; color: var(--muted); font-size: 12px; }
+button.mr-navn:hover { text-decoration: underline; }
+.mr-merke { display: inline-flex; gap: 2px; }
+.mr-merke .chip { padding: 0 5px; font-size: 11px; }
+.mr-dag { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--muted); line-height: 1.15; padding: 2px 0; }
+.mr-dag b { font-size: 13px; color: var(--fg); }
+.mr-dag.fri { opacity: .55; }
+.mr-dag.idag b { color: #FFFFFF; background: var(--bf-blue, #0A1EBE); border-radius: 6px; padding: 0 4px; }
+.mr-fot .mr-dag { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.mr-sum { display: flex; align-items: center; justify-content: flex-end; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 14px; padding-right: 4px; }
+.mr-hode .mr-sum { font-family: inherit; font-size: 12px; color: var(--muted); }
+.mr-rute { height: 30px; min-width: 0; border-radius: 6px; border: 1px solid transparent; background: var(--sunk); font: 600 12px/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--fg); padding: 0; display: grid; place-items: center; cursor: pointer; position: relative; }
+.mr-rute.timer { background: color-mix(in srgb, var(--approved, #1a7f37) 22%, var(--surface)); }
+.mr-rute.timer.apen::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--pending, #f5b800); }
+.mr-rute.mangler { background: color-mix(in srgb, var(--warn, #b42318) 14%, var(--surface)); border-color: color-mix(in srgb, var(--warn, #b42318) 55%, transparent); color: var(--warn, #b42318); }
+.mr-rute.ferie { background: color-mix(in srgb, var(--info, #2563eb) 18%, var(--surface)); color: var(--info, #2563eb); }
+.mr-rute.syk { background: color-mix(in srgb, #8b5cf6 18%, var(--surface)); color: #6d28d9; }
+.mr-rute.helg { background: transparent; cursor: default; }
+.mr-rute.tom { background: transparent; border-color: var(--line-soft); }
+.mr-rute:not(:disabled):hover { outline: 2px solid var(--fg); outline-offset: -2px; }
+.mr-forklaring { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 6px; }
+.mr-forklaring span { display: inline-flex; align-items: center; gap: 5px; }
+.mr-forklaring .mr-rute { width: 20px; height: 20px; font-size: 11px; cursor: default; }
+@media (max-width: 560px) {
+  .mr-rad { grid-template-columns: 76px repeat(var(--dager, 31), 28px) 46px 40px; }
+  .mnd-rutenett .lang { display: none; }
+  .mnd-rutenett .kort { display: inline; }
+  .mr-navn { font-size: 13px; }
+  .mr-rute { height: 30px; font-size: 11px; }
+}
