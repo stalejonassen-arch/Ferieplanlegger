@@ -98,7 +98,7 @@ export function Timer() {
       {leder && meSelv && <InneNaa />}
       {leder && meSelv && <TimerOversikt onVelg={(id, fra) => {
         const a = d.ansatte.find((x) => x.id === id);
-        setHvemId(id); setUke(mandag(fra)); if (a) setF(tom(a));
+        setHvemId(id); setUke(mandag(fra)); if (a) setF({ ...tom(a), dato: fra <= idag ? fra : idag }); setValgtDag(fra);
         // Hopp til timene (ukeoversikten) for den ansatte
         requestAnimationFrame(() => document.getElementById("timer-uke")?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }} />}

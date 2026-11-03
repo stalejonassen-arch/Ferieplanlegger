@@ -1,5 +1,5 @@
 // Leder: totaloversikt over timer per ansatt for en uke eller måned. Trykk på en ansatt for å gå inn på timene hans.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../App";
 import { addDays, helligdag, kortDato, sorterAnsatte } from "../lib/ferie";
 import { dagerUtenTimer, lonnsdager, mandag, t2, ukenr } from "../lib/timer";
@@ -15,8 +15,8 @@ export interface OversiktRad {
 
 export function TimerOversikt({ onVelg }: { onVelg: (ansattId: string, dato: string) => void }) {
   const { d, idag } = useApp();
-  const [visning, setVisning] = useState<"uke" | "mnd">("uke");
-  const [start, setStart] = useState(() => mandag(idag));
+  const [visning, setVisning] = useState<"uke" | "mnd">("mnd");
+  const [start, setStart] = useState(() => mndStart(idag));
   const fra = visning === "uke" ? start : mndStart(start);
   const til = visning === "uke" ? addDays(start, 6) : mndSlutt(start);
   const bytt = (v: "uke" | "mnd") => { setVisning(v); setStart(v === "uke" ? mandag(idag) : mndStart(idag)); };
@@ -67,6 +67,7 @@ export function TimerOversikt({ onVelg }: { onVelg: (ansattId: string, dato: str
           </div>
         </div>
       </div>
+      {visning === "mnd" ? <MndRutenett fra={fra} til={til} onVelg={onVelg} /> : <>
       <p className="small muted" style={{ margin: 0 }}>{kortDato(fra)} – {kortDato(til).replace(/\.$/, "")}. Trykk på en ansatt for å se, rette og godkjenne timene.</p>
       <div className="scroll" style={{ border: 0 }}>
         <table className="tbl timeoversikt-tbl">
@@ -92,6 +93,90 @@ export function TimerOversikt({ onVelg }: { onVelg: (ansattId: string, dato: str
           </tr></tfoot>
         </table>
       </div>
+      </>}
     </section>
+  );
+}
+
+const UKEDAG = ["S", "M", "T", "O", "T", "F", "L"];
+type Celle = { dato: string; timer: number; type: "timer" | "mangler" | "helg" | "ferie" | "syk" | "tom"; apen: boolean; tekst: string };
+
+/** Måned som rutenett: én linje per ansatt, én rute per dag med timer. Rødt = mangler timer, F = ferie, S = syk. */
+function MndRutenett({ fra, til, onVelg }: { fra: string; til: string; onVelg: (ansattId: string, dato: string) => void }) {
+  const { d, idag } = useApp();
+  const dager: string[] = [];
+  for (let x = fra; x <= til; x = addDays(x, 1)) dager.push(x);
+  const rader = useMemo(() => sorterAnsatte(d).filter((a) => a.aktiv).map((a) => {
+    const forer = a.i_timerapport !== false;
+    const ferie = d.soknader.filter((s) => s.ansatt_id === a.id && s.status === "godkjent");
+    const fravaer = (d.fravaer ?? []).filter((x) => x.ansatt_id === a.id);
+    const celler: Celle[] = dager.map((dato) => {
+      const egne = d.timer.filter((t) => t.ansatt_id === a.id && t.dato === dato);
+      const timer = egne.reduce((n, t) => n + Number(t.timer), 0);
+      const apen = egne.some((t) => t.status !== "godkjent");
+      const wd = new Date(dato + "T00:00:00Z").getUTCDay(), hd = helligdag(dato);
+      const fri = wd === 0 || wd === 6 || !!hd;
+      if (timer) return { dato, timer, type: "timer", apen, tekst: `${t2(timer)} t${apen ? " – ikke godkjent" : ""}` };
+      if (ferie.some((s) => s.fra <= dato && s.til >= dato)) return { dato, timer, type: "ferie", apen, tekst: "Ferie" };
+      if (fravaer.some((x) => x.fra <= dato && x.til >= dato)) return { dato, timer, type: "syk", apen, tekst: "Syk" };
+      if (fri) return { dato, timer, type: "helg", apen, tekst: hd ?? "Helg" };
+      if (forer && dato < idag) return { dato, timer, type: "mangler", apen, tekst: "Mangler timer" };
+      return { dato, timer, type: "tom", apen, tekst: "" };
+    });
+    return { a, forer, celler, sum: celler.reduce((n, c) => n + c.timer, 0), mangler: celler.filter((c) => c.type === "mangler").length, apne: celler.filter((c) => c.apen).length };
+  }).filter((r) => r.forer || r.sum > 0), [d, fra, til, idag]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dagSum = dager.map((_, i) => rader.reduce((n, r) => n + r.celler[i]!.timer, 0));
+  // På smal skjerm: rull fram til dagens dato (eller slutten av måneden) så de siste dagene vises
+  const boks = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = boks.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    const dag = el.querySelector<HTMLElement>(".mr-dag.idag") ?? null;
+    el.scrollLeft = dag ? Math.max(0, dag.offsetLeft - el.clientWidth + 120) : el.scrollWidth;
+  }, [fra]);
+
+  return (
+    <>
+      <div ref={boks} className="mnd-rutenett" role="table" aria-label="Timer per dag" style={{ "--dager": dager.length } as React.CSSProperties}>
+        <div className="mr-rad mr-hode" role="row">
+          <div className="mr-navn" role="columnheader">Ansatt</div>
+          {dager.map((x) => { const wd = new Date(x + "T00:00:00Z").getUTCDay(); return (
+            <div key={x} role="columnheader" className={`mr-dag${wd === 0 || wd === 6 || helligdag(x) ? " fri" : ""}${x === idag ? " idag" : ""}`} title={kortDato(x)}>
+              <span>{UKEDAG[wd]}</span><b>{Number(x.slice(8))}</b></div>
+          ); })}
+          <div className="mr-sum" role="columnheader">Sum</div>
+          <div className="mr-sum" role="columnheader" title="Dager med timer som ikke er godkjent">Åpne</div>
+        </div>
+        {rader.map((r) => (
+          <div key={r.a.id} className="mr-rad" role="row">
+            <button type="button" className="mr-navn" role="rowheader" onClick={() => onVelg(r.a.id, r.celler.find((c) => c.apen)?.dato ?? [til, idag].sort()[0]!)} title={`Vis timene til ${r.a.navn}`}>
+              <span className="lang">{r.a.navn}</span><span className="kort">{r.a.navn.split(" ")[0]}</span>
+            </button>
+            {r.celler.map((c) => (
+              <button type="button" key={c.dato} role="cell" className={`mr-rute ${c.type}${c.apen ? " apen" : ""}`} title={`${r.a.navn} · ${kortDato(c.dato)}${c.tekst ? " · " + c.tekst : ""}`}
+                onClick={() => onVelg(r.a.id, c.dato)} disabled={c.type === "helg" && !c.timer}>
+                {c.type === "timer" ? t2(Math.round(c.timer * 2) / 2) : c.type === "ferie" ? "F" : c.type === "syk" ? "S" : c.type === "mangler" ? "!" : ""}
+              </button>
+            ))}
+            <div className="mr-sum" role="cell"><b>{r.sum ? t2(r.sum) : "–"}</b></div>
+            <div className="mr-sum" role="cell">{r.apne ? <span className="chip venter" title={`${r.apne} dager ikke godkjent`}>{r.apne}</span> : ""}</div>
+          </div>
+        ))}
+        <div className="mr-rad mr-fot" role="row">
+          <div className="mr-navn" role="rowheader">Totalt</div>
+          {dagSum.map((n, i) => <div key={i} role="cell" className="mr-dag">{n ? t2(Math.round(n)) : ""}</div>)}
+          <div className="mr-sum" role="cell"><b>{t2(dagSum.reduce((a, b) => a + b, 0))}</b></div>
+          <div className="mr-sum" role="cell" />
+        </div>
+      </div>
+      <div className="mr-forklaring small muted">
+        <span><i className="mr-rute timer" /> Timer ført</span>
+        <span><i className="mr-rute timer apen" /> Ikke godkjent</span>
+        <span><i className="mr-rute mangler">!</i> Mangler timer</span>
+        <span><i className="mr-rute ferie">F</i> Ferie</span>
+        <span><i className="mr-rute syk">S</i> Syk</span>
+        <span>Trykk på en dag for å gå rett til den.</span>
+      </div>
+    </>
   );
 }
