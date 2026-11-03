@@ -1,7 +1,8 @@
 // E-postvarsler for ByggLogg.
 // Kalles fra databasen (pg_net) med { id, hendelse } når en søknad sendes eller behandles,
 // når leder publiserer en månedsrapport (hendelse «rapport»), og når leder inviterer en ansatt
-// til appen (hendelse «invitasjon», id = raden i invitasjoner).
+// til appen (hendelse «invitasjon», id = raden i invitasjoner), og når en personlig månedsrapport
+// publiseres (hendelse «personrapport», id = raden i personrapporter; sendes bare til den ansatte).
 // Funksjonen stoler ikke på innholdet i kallet: den leser søknaden fra databasen, sjekker at
 // tilstanden stemmer, og logger hver sending slik at samme varsel aldri går ut to ganger.
 // Publiseres uten JWT-sjekk. Trenger hemmeligheten RESEND_API_KEY (og VARSEL_FRA, APP_URL).
@@ -111,9 +112,104 @@ function invitasjonTekst(sprak: "nb" | "pl" | "en" | "lt", navn: string, firma: 
   };
 }
 
+// ---------------------------------------------------------------- Personlig månedsrapport på e-post
+type Tall = { omsetning: number; db: number; dg: number | null };
+type DgDel = { id: string; navn: string; mnd: Tall; forrige: Tall; hittil: Tall; ifjor: Tall };
+type TimerDel = { kunde: number; ikkeFakturerbart: number; intern: number; sum: number; andelIntern: number;
+  forrige: { sum: number; andelIntern: number } | null; hittil: { sum: number; andelIntern: number }; snittAndelIntern: number | null };
+type Innhold = { navn: string; periode: string; timer?: TimerDel; dg?: DgDel[]; totalt?: DgDel; ikkeSelger?: boolean };
+
+const MND = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+const kr = (n: number) => `${Math.round(n).toLocaleString("nb-NO").replace(/ /g, " ")} kr`;
+const pst = (n: number | null | undefined) => (n == null ? "–" : `${n.toLocaleString("nb-NO", { maximumFractionDigits: 1 })} %`);
+const tt = (n: number) => (Math.round(n * 10) / 10).toLocaleString("nb-NO");
+const BLA = "#0A1EBE", GUL = "#FFCD00", GRONN = "#1A7F37", ROD = "#B42318", GRA = "#5B6275";
+
+function endring(fra: number | null | undefined, til: number | null | undefined, lavErBra = false) {
+  if (fra == null || til == null) return "";
+  const d = Math.round((til - fra) * 10) / 10;
+  if (Math.abs(d) < 0.1) return `<span style="color:${GRA}">som forrige måned</span>`;
+  const bra = lavErBra ? d < 0 : d > 0;
+  return `<span style="color:${bra ? GRONN : ROD};font-weight:700">${d > 0 ? "▲" : "▼"} ${Math.abs(d).toLocaleString("nb-NO")} %-poeng</span>`;
+}
+
+function nokkeltall(celler: [string, string, string?][]) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:6px 0;margin:0 -6px"><tr>${celler.map(([l, v, farge]) =>
+    `<td style="background:#F2F4FA;border-radius:10px;padding:12px 12px 10px;vertical-align:top"><div style="font-size:12px;color:${GRA};margin-bottom:4px">${l}</div><div style="font-size:22px;font-weight:800;color:${farge ?? "#111827"};white-space:nowrap">${v}</div></td>`).join("")}</tr></table>`;
+}
+
+function seksjon(tittel: string, innhold: string) {
+  return `<tr><td style="padding:18px 24px 4px"><div style="font-size:17px;font-weight:800;color:#111827;margin-bottom:10px">${tittel}</div>${innhold}</td></tr>`;
+}
+
+function rapportEpost(i: Innhold, kommentar: string, periode: string, firma: string, lenke: string) {
+  const mnd = MND[Number(periode.slice(5, 7)) - 1] ?? "", aar = periode.slice(0, 4);
+  const fornavn = esc((i.navn ?? "").split(" ")[0] ?? "");
+  const deler: string[] = [];
+  if (kommentar.trim()) {
+    deler.push(`<tr><td style="padding:18px 24px 0"><div style="background:#FFF8D6;border-left:4px solid ${GUL};border-radius:8px;padding:14px 16px">
+      <div style="font-size:12px;font-weight:700;color:#7A5B00;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Tilbakemelding på måneden</div>
+      <div style="font-size:15px;line-height:1.55;color:#1F2937">${esc(kommentar).replace(/\n/g, "<br>")}</div></div></td></tr>`);
+  }
+  const t = i.timer;
+  if (t) {
+    deler.push(seksjon("Timer på kunde og interntid", t.sum === 0 ? `<p style="color:${GRA};margin:0">Ingen timer ført denne måneden.</p>` :
+      nokkeltall([["På kunde", `${tt(t.kunde)} t`, GRONN], ["Interntid", `${tt(t.intern)} t`], ["Andel interntid", pst(t.andelIntern), t.snittAndelIntern != null && t.andelIntern <= t.snittAndelIntern ? GRONN : undefined]]) +
+      `<ul style="margin:12px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:#374151">
+        <li>${tt(t.sum)} timer i alt${t.ikkeFakturerbart ? `, hvorav ${tt(t.ikkeFakturerbart)} t på prosjekt som ikke faktureres` : ""}.</li>
+        ${t.forrige ? `<li>Forrige måned: ${pst(t.forrige.andelIntern)} interntid. ${endring(t.forrige.andelIntern, t.andelIntern, true)}</li>` : ""}
+        <li>Hittil i år: ${pst(t.hittil.andelIntern)} interntid av ${tt(t.hittil.sum)} timer.</li>
+        ${t.snittAndelIntern != null ? `<li>Snitt for snekkerne: ${pst(t.snittAndelIntern)}.${t.andelIntern <= t.snittAndelIntern ? ` <b style="color:${GRONN}">Bedre enn snittet – bra jobba!</b>` : ""}</li>` : ""}
+      </ul>`));
+  }
+  if (i.totalt || i.dg) {
+    if (i.ikkeSelger) deler.push(seksjon("Salg", `<p style="color:${GRA};margin:0">Fant deg ikke som selger i Visma, så salget er tomt.</p>`));
+    else {
+      const T = i.totalt;
+      if (T) deler.push(seksjon(`Ditt salg i ${mnd}`, nokkeltall([["Salg", kr(T.mnd.omsetning)], ["Dekningsbidrag", kr(T.mnd.db)], ["DG", pst(T.mnd.dg), BLA]]) +
+        `<ul style="margin:12px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:#374151">
+          <li>Forrige måned: ${pst(T.forrige.dg)} DG på ${kr(T.forrige.omsetning)}. ${endring(T.forrige.dg, T.mnd.dg)}</li>
+          <li>Hittil i år: <b>${pst(T.hittil.dg)}</b> DG på ${kr(T.hittil.omsetning)}.</li>
+          ${T.ifjor.omsetning ? `<li>Samme måned i fjor: ${pst(T.ifjor.dg)} DG på ${kr(T.ifjor.omsetning)}.</li>` : ""}
+        </ul>`));
+      if (i.dg?.length) {
+        const rad = (k: DgDel) => `<tr>
+          <td style="padding:9px 8px;border-bottom:1px solid #E5E7EB;font-weight:700">${esc(k.navn)}</td>
+          <td style="padding:9px 8px;border-bottom:1px solid #E5E7EB;text-align:right;white-space:nowrap">${k.mnd.omsetning ? kr(k.mnd.omsetning) : "–"}</td>
+          <td style="padding:9px 8px;border-bottom:1px solid #E5E7EB;text-align:right;font-weight:800;color:${BLA}">${pst(k.mnd.dg)}</td>
+          <td style="padding:9px 8px;border-bottom:1px solid #E5E7EB;text-align:right;color:${GRA};white-space:nowrap">${pst(k.hittil.dg)}</td></tr>`;
+        deler.push(seksjon("Vinduer, dører og takplater", `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;color:#111827">
+          <tr><th align="left" style="padding:6px 8px;font-size:12px;color:${GRA};border-bottom:2px solid #D1D5DB">Kategori</th><th align="right" style="padding:6px 8px;font-size:12px;color:${GRA};border-bottom:2px solid #D1D5DB">Salg</th><th align="right" style="padding:6px 8px;font-size:12px;color:${GRA};border-bottom:2px solid #D1D5DB">DG</th><th align="right" style="padding:6px 8px;font-size:12px;color:${GRA};border-bottom:2px solid #D1D5DB">Hittil i år</th></tr>
+          ${i.dg.map(rad).join("")}</table>
+          <p style="font-size:12px;color:${GRA};margin:8px 0 0">Kategoriene er med i totalen over. DG = dekningsbidrag delt på fakturert salg eks. mva, avstemt mot regnskapet.</p>`));
+      }
+    }
+  }
+  const html = `<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Månedsrapport</title></head>
+<body style="margin:0;padding:0;background:#E9ECF5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E9ECF5"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(10,30,190,.10)">
+  <tr><td style="background:${BLA};padding:22px 24px 18px;color:#FFFFFF">
+    <div style="font-size:13px;font-weight:700;color:${GUL};letter-spacing:.02em">${esc(firma)}</div>
+    <div style="font-size:26px;font-weight:900;margin-top:4px">Din månedsrapport</div>
+    <div style="font-size:16px;opacity:.9;margin-top:2px;text-transform:capitalize">${mnd} ${aar}</div>
+  </td></tr>
+  <tr><td style="height:6px;background:repeating-linear-gradient(90deg,${GUL} 0 18px,#E5B800 18px 20px)"></td></tr>
+  <tr><td style="padding:20px 24px 0;font-size:16px;line-height:1.5">Hei ${fornavn}! Her er tallene dine for ${mnd}.</td></tr>
+  ${deler.join("")}
+  <tr><td align="center" style="padding:24px">
+    <a href="${lenke}" style="display:inline-block;background:${GUL};color:#1A1400;font-weight:800;font-size:15px;text-decoration:none;padding:13px 22px;border-radius:10px">Åpne rapporten i ByggLogg</a>
+  </td></tr>
+  <tr><td style="padding:14px 24px 22px;border-top:1px solid #E5E7EB;font-size:12px;color:${GRA};line-height:1.5">
+    Rapporten er bare for deg. Leder ser når du har lest den i appen.<br>Sendt fra ByggLogg for ${esc(firma)}.
+  </td></tr>
+</table></td></tr></table></body></html>`;
+  return { emne: `Din månedsrapport for ${mnd} ${aar}`, html };
+}
+
 Deno.serve(async (req) => {
   const { id, hendelse } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["ny", "behandlet", "rapport", "invitasjon"].includes(hendelse)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["ny", "behandlet", "rapport", "invitasjon", "personrapport"].includes(hendelse)) return new Response("ugyldig", { status: 400 });
 
   if (hendelse === "invitasjon") {
     const { data: inv } = await sb.from("invitasjoner").select("id, bedrift_id, ansatt_id, epost, opprettet, levert").eq("id", id).maybeSingle();
@@ -130,6 +226,32 @@ Deno.serve(async (req) => {
     catch (e) {
       // Ikke sendt: fjern merket, så leder ser at det ikke gikk og kan prøve igjen
       await sb.from("invitasjoner").update({ levert: null }).eq("id", inv.id);
+      throw e;
+    }
+    return new Response("sendt");
+  }
+
+  if (hendelse === "personrapport") {
+    const { data: r } = await sb.from("personrapporter").select("id, bedrift_id, ansatt_id, periode, innhold, kommentar, publisert, epost_sendt").eq("id", id).maybeSingle();
+    if (!r?.publisert) return new Response("ikke publisert");
+    if (r.epost_sendt) return new Response("allerede sendt");
+    const { data: a } = await sb.from("ansatte").select("navn, epost, aktiv").eq("id", r.ansatt_id).maybeSingle();
+    const epost = String(a?.epost ?? "").trim();
+    if (!a?.aktiv || !epost) return new Response("mangler e-post");
+    // Merk som sendt først, så samme rapport ikke går ut to ganger om kallet gjentas
+    const { data: merket } = await sb.from("personrapporter").update({ epost_sendt: new Date().toISOString() }).eq("id", r.id).is("epost_sendt", null).select("id");
+    if (!merket?.length) return new Response("allerede sendt");
+    const { data: b } = await sb.from("bedrifter").select("navn").eq("id", r.bedrift_id).maybeSingle();
+    const p = rapportEpost(r.innhold as Innhold, String(r.kommentar ?? ""), String(r.periode), b?.navn ?? "", `${APP_URL}#rapporter`);
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: FRA, to: [epost], subject: p.emne, html: p.html }),
+      });
+      if (!res.ok) throw new Error(`Resend svarte ${res.status}: ${await res.text()}`);
+    } catch (e) {
+      await sb.from("personrapporter").update({ epost_sendt: null }).eq("id", r.id);
       throw e;
     }
     return new Response("sendt");
