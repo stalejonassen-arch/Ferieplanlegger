@@ -11,7 +11,9 @@ import type { Kompetanse } from "./kompetanse";
 import type { Lest, Melding } from "./chat";
 import type { Kobling, importRader } from "./svenn";
 import type { LeveranseStatus, NyLeveranse, NyOppgave, NyttMateriale, OppgaveStatus } from "./plan";
-import type { Bestilling, BestillingStatus, Bestillingslinje, Punkt, Risiko } from "./kvalitet";
+import type { Bestilling, BestillingStatus, Bestillingslinje, MalPunkt, Punkt, Risiko, SjekklisteMal, SjekklisteStatus } from "./kvalitet";
+/** Valg når en sjekkliste lages: kontrollplan (planlagt, ansvarlig, frist) og malens dokumentnummer/revisjon */
+export type NySjekklisteValg = { status?: "planlagt" | "pagaar"; ansvarlig_id?: string | null; frist?: string | null; dok_nr?: string; revisjon?: number | null };
 import { komprimer, type NyttAvvik, type Dagbok, type Tillegg } from "./hms";
 import type { NyReklamasjon, Reklamasjon } from "./reklamasjon";
 
@@ -121,9 +123,12 @@ export interface Api {
   settMaterialeLevert(id: string, levert: boolean): Promise<void>;
   flyttMaterialer(ider: string[], leveranseId: string | null): Promise<void>;
   /** Sjekklister (egenkontroll) */
-  nySjekkliste(prosjektId: string, navn: string, mal: string, punkter: string[]): Promise<string>;
-  lagreSjekkliste(id: string, x: { navn?: string; punkter?: Punkt[]; status?: "pagaar" | "signert" }): Promise<void>;
+  nySjekkliste(prosjektId: string, navn: string, mal: string, punkter: Punkt[], x?: NySjekklisteValg): Promise<string>;
+  lagreSjekkliste(id: string, x: { navn?: string; punkter?: Punkt[]; status?: SjekklisteStatus; ansvarlig_id?: string | null; frist?: string | null; godkjent_av?: string | null }): Promise<void>;
   slettSjekkliste(id: string): Promise<void>;
+  /** Bedriftens egne sjekklistemaler (leder, prosjektleder og faglig leder) */
+  lagreSjekklisteMal(m: { id?: string; navn: string; kategori: string; dok_nr: string; beskrivelse: string; punkter: MalPunkt[]; aktiv?: boolean }): Promise<string>;
+  slettSjekklisteMal(id: string): Promise<void>;
   /** SJA */
   lagreSja(x: { id?: string; prosjekt_id: string; dato: string; arbeid: string; risikoer: Risiko[]; verneutstyr: string; deltakere: string[] }): Promise<void>;
   kvitterSja(id: string): Promise<void>;
@@ -264,7 +269,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -297,6 +302,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("bestillinger").select("*").order("opprettet", { ascending: false }).order("id"), 20000),
         alle(() => sb.from("reklamasjoner").select("*").order("meldt_dato", { ascending: false }).order("id"), 10000),
         alle(() => sb.from("serviceoppdrag").select("*").order("opprettet", { ascending: false }).order("id"), 10000),
+        sb.from("sjekkliste_maler").select("*").order("navn").limit(1000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -324,6 +330,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         leveranser: leveranser.error ? [] : leveranser.data,
         materialer: materialer.error ? [] : (materialer.data as any[]).map((m) => ({ ...m, antall: Number(m.antall) })),
         sjekklister: sjekklister.error ? [] : sjekklister.data,
+        sjekklisteMaler: sjMaler.error ? [] : (sjMaler.data as SjekklisteMal[]),
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
         serviceoppdrag: service.error ? [] : (service.data as import("./service").Serviceoppdrag[]),
@@ -354,6 +361,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "leveranser" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "materialer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "sjekklister" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sjekkliste_maler" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "sja" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bestillinger" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "reklamasjoner" }, snart)
@@ -646,10 +654,18 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettMateriale(id) { ok(await sb.from("materialer").delete().eq("id", id)); },
     async settMaterialeLevert(id, levert) { ok(await sb.from("materialer").update({ levert }).eq("id", id)); },
     async flyttMaterialer(ider, leveranseId) { if (ider.length) ok(await sb.from("materialer").update({ leveranse_id: leveranseId }).in("id", ider)); },
-    async nySjekkliste(prosjekt_id, navn, mal, punkter) {
-      const r = await sb.from("sjekklister").insert({ prosjekt_id, navn: navn.trim(), mal, punkter: punkter.map((tekst) => ({ tekst, svar: null, kommentar: "" })) }).select("id").single();
+    async nySjekkliste(prosjekt_id, navn, mal, punkter, x = {}) {
+      // Bare valg som er satt sendes med (en vanlig sjekkliste trenger ingen av dem)
+      const valg = Object.fromEntries(Object.entries(x).filter(([, v]) => v != null && v !== "" && v !== "pagaar"));
+      const r = await sb.from("sjekklister").insert({ prosjekt_id, navn: navn.trim(), mal, punkter, ...valg }).select("id").single();
       return (ok(r) as { id: string }).id;
     },
+    async lagreSjekklisteMal(m) {
+      const { id, ...rad } = m;
+      const r = id ? await sb.from("sjekkliste_maler").update(rad).eq("id", id).select("id").single() : await sb.from("sjekkliste_maler").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettSjekklisteMal(id) { ok(await sb.from("sjekkliste_maler").delete().eq("id", id)); },
     async lagreSjekkliste(id, x) { ok(await sb.from("sjekklister").update(x).eq("id", id)); },
     async slettSjekkliste(id) { ok(await sb.from("sjekklister").delete().eq("id", id)); },
     async lagreSja(x) {

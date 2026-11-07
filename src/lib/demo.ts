@@ -1,7 +1,7 @@
 // Demomodus: samme oppførsel som databasen, men i minnet i nettleseren.
 // Brukes når appen kjøres uten Supabase-nøkler.
 import type { Leveranse, Materiale, Oppgave } from "./plan";
-import type { Bestilling, Sja, Sjekkliste } from "./kvalitet";
+import { BIBLIOTEK, type Bestilling, type Sja, type Sjekkliste } from "./kvalitet";
 import type { Api, FdvDok, FdvVare } from "./api";
 import type { Lest, Melding } from "./chat";
 import type { Ansatt, Data, Soknad } from "./ferie";
@@ -141,9 +141,14 @@ function demoKvalitet(m: string): Pick<Data, "sjekklister" | "sja" | "bestilling
       { tekst: "Fall mot sluk er kontrollert i dusjsonen", svar: "ok" },
       { tekst: "Sluk er montert etter produsentens anvisning, og klemring eller mansjett er tett", svar: "ok" },
       { tekst: "Alle rørgjennomføringer har mansjett", svar: "avvik", kommentar: "Mangler mansjett på varmtvann – bestilt" },
-      { tekst: "Membranen er påført i riktig tykkelse (målt)", svar: null },
+      { tekst: "Membrantykkelse", maal: "mm", verdi: "", svar: null },
       { tekst: "Tørketiden er overholdt før flislegging", svar: null },
     ],
+    ansvarlig_id: "snekker3", frist: addDays(m, 3), dok_nr: "", revisjon: null, godkjent_av: null, godkjent_tid: null,
+  }, {
+    id: "sk2", prosjekt_id: "p2", navn: "Sluttkontroll før overlevering", mal: "slutt", status: "planlagt", opprettet_av: "stale", opprettet: naa, endret: naa, signert_av: null, signert_tid: null,
+    punkter: BIBLIOTEK.find((x) => x.id === "slutt")!.punkter.map((x) => ({ ...x, svar: null, kommentar: "" })),
+    ansvarlig_id: "snekker3", frist: addDays(m, 14), dok_nr: "", revisjon: null, godkjent_av: null, godkjent_tid: null,
   }];
   const sja: Sja[] = [{
     id: "sja1", prosjekt_id: "p1", dato: addDays(m, 1), arbeid: "Demontere og montere vinduer i 2. etasje", verneutstyr: "Hjelm, vernebriller, hansker",
@@ -721,21 +726,58 @@ export function demoApi(): Api {
     },
     async slettMateriale(id) { if (!planlegger()) throw new Error("Bare leder og prosjektleder kan slette."); d.materialer = (d.materialer ?? []).filter((x) => x.id !== id); endret(); },
     async settMaterialeLevert(id, levert) { const m = (d.materialer ?? []).find((x) => x.id === id); if (m) { m.levert = levert; endret(); } },
-    async nySjekkliste(prosjekt_id, navn, mal, punkter) {
+    async nySjekkliste(prosjekt_id, navn, mal, punkter, x = {}) {
       const id = nyId(), naa = new Date().toISOString();
-      (d.sjekklister ??= []).push({ id, prosjekt_id, navn: navn.trim(), mal, punkter: punkter.map((tekst) => ({ tekst, svar: null, kommentar: "" })), status: "pagaar", opprettet_av: meg()?.id ?? null, opprettet: naa, endret: naa, signert_av: null, signert_tid: null });
+      const status = x.status === "planlagt" && planlegger() ? "planlagt" : "pagaar";
+      (d.sjekklister ??= []).push({ id, prosjekt_id, navn: navn.trim(), mal, punkter, status, opprettet_av: meg()?.id ?? null, opprettet: naa, endret: naa, signert_av: null, signert_tid: null,
+        ansvarlig_id: x.ansvarlig_id ?? (planlegger() ? null : meg()?.id ?? null), frist: x.frist ?? null, dok_nr: x.dok_nr ?? "", revisjon: x.revisjon ?? null, godkjent_av: null, godkjent_tid: null });
       endret(); return id;
     },
     async lagreSjekkliste(id, x) {
       const s = (d.sjekklister ?? []).find((y) => y.id === id);
       if (!s) return;
-      if (s.status === "signert" && !planlegger()) throw new Error("Sjekklisten er signert. Be leder eller prosjektleder åpne den igjen.");
+      const kontrollor = planlegger() || !!meg()?.faglig_leder;
+      if (s.status === "signert" && !kontrollor) throw new Error("Sjekklisten er signert. Be leder, prosjektleder eller faglig leder åpne den igjen.");
       if (x.status === "signert" && (x.punkter ?? s.punkter).some((p) => !p.svar)) throw new Error("Alle punktene må besvares før sjekklisten kan signeres.");
-      Object.assign(s, x, { endret: new Date().toISOString() });
-      if (x.status === "signert") { s.signert_av = meg()?.id ?? null; s.signert_tid = new Date().toISOString(); }
-      if (x.status === "pagaar") { s.signert_av = null; s.signert_tid = null; }
+      if (x.godkjent_av && !s.godkjent_av) {
+        if (!kontrollor) throw new Error("Bare faglig leder, leder eller prosjektleder kan godkjenne egenkontrollen.");
+        if (d.avvik.some((a) => a.sjekkliste_id === s.id && a.status !== "lukket")) throw new Error("Alle avvik fra sjekklisten må være lukket før den kan godkjennes.");
+      }
+      const naa = new Date().toISOString();
+      const punkter = (x.punkter ?? s.punkter).map((p, i) => {
+        const g = s.punkter[i];
+        const q = { ...p };
+        if ((p.svar ?? "") !== (g?.svar ?? "") || (p.verdi ?? "") !== (g?.verdi ?? "")) { q.av = meg()?.id; q.tid = naa; }
+        if (q.svar === "avvik" && !q.avvik_id) {
+          q.avvik_id = nyId();
+          d.avvik.unshift({ id: q.avvik_id, prosjekt_id: s.prosjekt_id, meldt_av: meg()?.id ?? "", type: "avvik", tittel: `Egenkontroll – ${s.navn}: ${p.tekst}`.slice(0, 200), beskrivelse: (p.kommentar ?? "").trim() || "Avvik registrert i sjekklisten.",
+            ansvarlig_id: null, frist: null, status: "apen", tiltak: "", lukket_av: null, lukket_tid: null, opprettet: naa, sjekkliste_id: s.id, sjekkliste_punkt: i });
+        }
+        return q;
+      });
+      Object.assign(s, x, { punkter, endret: naa });
+      if (s.status === "planlagt" && punkter.some((p) => p.tid === naa && (p.svar || p.verdi))) s.status = "pagaar";
+      if (x.status === "signert") { s.signert_av = meg()?.id ?? null; s.signert_tid = naa; }
+      if (x.status && x.status !== "signert") { s.signert_av = null; s.signert_tid = null; s.godkjent_av = null; s.godkjent_tid = null; }
+      if (x.godkjent_av) { s.godkjent_av = meg()?.id ?? null; s.godkjent_tid = naa; }
+      if (x.godkjent_av === null) s.godkjent_tid = null;
       endret();
     },
+    async lagreSjekklisteMal(m) {
+      if (!planlegger() && !meg()?.faglig_leder) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const liste = (d.sjekklisteMaler ??= []);
+      const g = m.id ? liste.find((x) => x.id === m.id) : undefined;
+      const naa = new Date().toISOString();
+      if (g) {
+        const ny = JSON.stringify(g.punkter) !== JSON.stringify(m.punkter) || g.navn !== m.navn;
+        Object.assign(g, m, { revisjon: g.revisjon + (ny ? 1 : 0), endret: naa, endret_av: meg()?.id ?? null });
+        endret(); return g.id;
+      }
+      const id = nyId();
+      liste.push({ id, aktiv: true, ...m, revisjon: 1, endret: naa, endret_av: meg()?.id ?? null });
+      endret(); return id;
+    },
+    async slettSjekklisteMal(id) { d.sjekklisteMaler = (d.sjekklisteMaler ?? []).filter((x) => x.id !== id); endret(); },
     async slettSjekkliste(id) { d.sjekklister = (d.sjekklister ?? []).filter((x) => x.id !== id); endret(); },
     async lagreSja(x) {
       const liste = (d.sja ??= []);

@@ -26,6 +26,8 @@ export interface Ansatt {
   ansattnr?: string | null;
   /** Kan planlegge, dele ut arbeid og styre materiell uten å være leder (f.eks. butikk/prosjektleder) */
   prosjektleder?: boolean;
+  /** Faglig leder (sentral godkjenning): kontrollerer og godkjenner egenkontrollen */
+  faglig_leder?: boolean;
   /** HMS-kort (byggekort) */
   hms_kort_nr?: string;
   hms_kort_gyldig?: string | null;
@@ -94,6 +96,8 @@ export interface Data {
   drakt?: import("./drakt").Drakt | null;
   /** Sjekklister, SJA og bestillinger */
   sjekklister?: import("./kvalitet").Sjekkliste[];
+  /** Bedriftens egne sjekklistemaler (egenkontroll) */
+  sjekklisteMaler?: import("./kvalitet").SjekklisteMal[];
   sja?: import("./kvalitet").Sja[];
   bestillinger?: import("./kvalitet").Bestilling[];
   /** Reklamasjoner og bedriftens faste reklamasjonsprosjekt */

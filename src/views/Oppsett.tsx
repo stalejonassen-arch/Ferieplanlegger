@@ -68,6 +68,7 @@ export function Oppsett() {
                   <span className="ansatt-merker">
                     {a.rolle === "leder" && <span className="chip godkjent">Leder</span>}
                     {a.rolle !== "leder" && a.prosjektleder && <span className="chip venter">Prosjektleder</span>}
+                    {a.faglig_leder && <span className="chip venter">Faglig leder</span>}
                     {!a.aktiv && <span className="chip demo">Sluttet</span>}
                     {merk.length > 0 && a.aktiv && <span className="small" style={{ color: "var(--warn)" }}>{merk.join(", ")}</span>}
                     {a.aktiv && a.epost && inn.size > 0 && !inn.get(a.id)?.innlogget && <span className="chip demo">{inn.get(a.id)?.invitert ? "Invitert" : "Ikke logget inn"}</span>}
@@ -188,6 +189,7 @@ function AnsattKort({ a, lagre, overfort, inn, oppdaterInn }: { a: Ansatt; lagre
             </select></label>
         </div>
         {a.rolle !== "leder" && hake("prosjektleder", "Prosjektleder", !!a.prosjektleder, "kan dele ut arbeid og styre materiell og bestillinger, men ser ikke lønn og oppsett")}
+        {hake("faglig_leder", "Faglig leder", !!a.faglig_leder, "sentral godkjenning: kontrollerer og godkjenner egenkontrollen og styrer sjekklistemalene")}
         {hake("aktiv", "Aktiv", a.aktiv, "ta bort haken når noen slutter. Historikken beholdes")}
         <Invitasjon a={a} inn={inn} oppdater={oppdaterInn} />
       </fieldset>

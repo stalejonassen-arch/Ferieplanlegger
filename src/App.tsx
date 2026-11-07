@@ -23,6 +23,7 @@ import { bruker, type Modul } from "./lib/moduler";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
+import { KvalitetFane, MineKontroller } from "./views/Egenkontroll";
 import { Rapporter, lesRapport } from "./views/Rapporter";
 import { Sykdom } from "./views/Sykdom";
 import { Utstyr } from "./views/Utstyr";
@@ -307,13 +308,15 @@ export function App() {
   // Hovedfaner. Ferie, kalender, søknader og regler er samlet under «Ferie».
   const FERIE: Fane[] = ["min", "syk", "kal", "sok", "regler"];
   const planlegger = leder || !!meg?.prosjektleder;
+  // Leder, prosjektleder og faglig leder styrer egenkontrollen (fanen heter «Kvalitet» for dem)
+  const kontrollor = bruker(d, "egenkontroll") && (planlegger || !!meg?.faglig_leder);
   const b = (m: Modul) => bruker(d, m);
   // Reklamasjoner som er gitt til meg og ikke er ferdige
   const mineReklamasjoner = b("reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => r.ansvarlig_id === meg.id && (r.status === "godkjent" || (r.status === "utbedret" && !r.signatur))).length : 0;
   const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling") || b("reklamasjon"))) || mineReklamasjoner > 0;
   const faner: [Fane, string][] = [["timer", "Timer"], ...(b("chat") ? [["chat", "Chat"] as [Fane, string]] : []), ["prosjekter", "Prosjekter"],
     ...(visPlanFane ? [["plan", planlegger ? "Butikk/prosjektleder" : "Plan"] as [Fane, string]] : []),
-    ...(b("avvik") ? [["avvik", "Avvik"] as [Fane, string]] : []),
+    ...(b("avvik") || kontrollor ? [["avvik", kontrollor ? "Kvalitet" : "Avvik"] as [Fane, string]] : []),
     ...(b("utstyr") ? [["utstyr", "Utstyr"] as [Fane, string]] : b("kurs") ? [["kurs", "Kurs og bevis"] as [Fane, string]] : []),
     ...(b("rapporter") ? [["rapporter", "Rapporter"] as [Fane, string]] : []),
     ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
@@ -403,10 +406,10 @@ export function App() {
           </nav>
         )}
 
-        {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}{b("service") && <MineServiceoppdrag />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
+        {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}{b("service") && <MineServiceoppdrag />}{b("egenkontroll") && <MineKontroller />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <>{b("service") && <ServiceOppdrag />}{b("tilbud") && <Tilbudsoppfolging />}<Prosjekter /></>}
-        {aktiv === "avvik" && <Avvik />}
+        {aktiv === "avvik" && (kontrollor ? <KvalitetFane medAvvik={b("avvik")} /> : <Avvik />)}
         {aktiv === "utstyr" && <Utstyr />}
         {aktiv === "kurs" && <Kompetanse />}
         {aktiv === "rapporter" && <Rapporter />}
