@@ -56,6 +56,8 @@ export interface Api {
   /** Leder: godta en dag uten lunsjtrekk */
   lunsjUnntak(id: string, unntak: boolean): Promise<void>;
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
+  /** Kunde laget i ByggLogg (ny eller endret) */
+  lagreKunde(k: Partial<import("./timer").Kunde> & { navn: string }): Promise<string>;
   /** Leder: slå et prosjekt laget i appen sammen med prosjektet fra Visma (alt flyttes, app-prosjektet slettes) */
   kobleProsjekt(fra: string, til: string): Promise<void>;
   /** Slår «fra» inn i «til»: alt flyttes, «fra» forsvinner fra listene */
@@ -323,6 +325,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         ordrer: ordrer.error ? [] : (ordrer.data as any[]).map((o) => ({ ...o, fakturert: Number(o.fakturert), kostnad: Number(o.kostnad), transaksjonstype: Number(o.transaksjonstype), ordretype: Number(o.ordretype), kunde_nr: o.kunde_nr == null ? null : Number(o.kunde_nr) })),
         egetKundenr: b0.eget_kundenr == null ? null : Number(b0.eget_kundenr),
         modulerAv: (b0.moduler_av as string[] | undefined) ?? [],
+        visma: b0.visma_firma_nr != null,
         logo: b0.logo ?? null, logoMork: b0.logo_mork ?? null, drakt: b0.drakt ?? null,
         timepris: b0.timepris == null ? null : Number(b0.timepris),
         fakturerteTimer: fakt.error ? [] : (fakt.data as any[]).map((x) => ({ ...x, antall: Number(x.antall), fakturert: Number(x.fakturert), ikke_fakturert: Number(x.ikke_fakturert), pris: Number(x.pris) })),
@@ -526,7 +529,8 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettFravaer(id) { ok(await sb.from("fravaer").delete().eq("id", id)); },
     async lagreUtstyr(u) {
       const { id, ...rad } = u;
-      for (const k of ["kilde", "visma_ordrenr", "kategori_manuell", "bilde_sti"] as const) delete (rad as Record<string, unknown>)[k];
+      // Kategorien som er valgt i skjemaet beholdes for nye, egne registreringer
+      for (const k of ["kilde", "visma_ordrenr", ...(id ? ["kategori_manuell"] : []), "bilde_sti"]) delete (rad as Record<string, unknown>)[k];
       const r = id ? await sb.from("utstyr").update(rad).eq("id", id).select("id").single() : await sb.from("utstyr").insert(rad).select("id").single();
       return (ok(r) as { id: string }).id;
     },
@@ -759,6 +763,11 @@ function supabaseApi(sb: SupabaseClient): Api {
     async settFastpris(id, fastpris) { ok(await sb.from("prosjekter").update({ fastpris }).eq("id", id)); },
     async kobleProsjekt(fra, til) { ok(await sb.rpc("koble_prosjekt", { fra, til })); },
     async slaaSammenProsjekter(fra, til) { ok(await sb.rpc("slaa_sammen_prosjekter", { fra, til })); },
+    async lagreKunde(k) {
+      const { id, visma_nr: _v, ...rad } = k; void _v;
+      const r = id ? await sb.from("kunder").update(rad).eq("id", id).select("id").single() : await sb.from("kunder").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
     async lagreProsjekt(p, nyKunde) {
       // Kunden røres bare hvis den er oppgitt (eller en ny kunde opprettes) – ellers beholdes den
       const kunde: { kunde_id?: string | null } = "kunde_id" in p ? { kunde_id: p.kunde_id ?? null } : {};

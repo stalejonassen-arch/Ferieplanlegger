@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { harVisma } from "../lib/visma";
 import { useApp } from "../App";
 import { api, nobbLenke } from "../lib/api";
 import { kortDato, langDato, sorterAnsatte } from "../lib/ferie";
@@ -79,7 +80,8 @@ export function Utstyr() {
           <Maaler navn="Forbruk" sum={sum.forbruk.sum} siste={sum.forbruk.siste} uttak={sum.forbruk.uttak} />
         </div>
         <p className="small muted" style={{ margin: 0 }}>
-          {konto ? <>Hentes fra utstyrskontoen i Visma: <b>{konto.visma_nr} {konto.navn}</b>. Nye uttak kommer inn innen en time. Beløp er utsalgspris eks. mva.</>
+          {!harVisma(d) ? <>Registrer utstyr som deles ut med «+ Registrer utstyr», gjerne med pris, så telles det mot kvotene.</>
+            : konto ? <>Hentes fra utstyrskontoen i Visma: <b>{konto.visma_nr} {konto.navn}</b>. Nye uttak kommer inn innen en time. Beløp er utsalgspris eks. mva.</>
             : <>{hvem.navn.split(" ")[0]} har ingen utstyrskonto i Visma ennå{leder ? " – velg den under Oppsett." : "."}</>}
 {" "}Verneutstyr (hansker, briller, hørselvern o.l.) gis etter behov – vernesko har kvote.
         </p>
@@ -93,7 +95,7 @@ export function Utstyr() {
             ))}
             <button type="button" aria-pressed={filter === "alle"} onClick={() => setFilter("alle")}>Alle ({egne.length})</button>
           </div>
-          <button className="btn sm" onClick={() => setNy((v) => !v)}>{ny ? "Lukk" : "+ Registrer eget verktøy"}</button>
+          <button className="btn sm" onClick={() => setNy((v) => !v)}>{ny ? "Lukk" : harVisma(d) ? "+ Registrer eget verktøy" : "+ Registrer utstyr"}</button>
         </div>
         {filter === "verktoy" && egne.some((x) => ["levert", "tapt"].includes(x.status)) && (
           <label className="row small"><input type="checkbox" checked={visLevert} onChange={(e) => setVisLevert(e.target.checked)} /> Vis også levert inn og tapt</label>
@@ -193,16 +195,16 @@ function Detaljer({ u, leder, kjor, lukk, url }: { u: U; leder: boolean; kjor: R
   );
 }
 
-/** Verktøy som ikke er tatt ut via Visma (eget, eldre eller kjøpt et annet sted) */
+/** Utstyr som ikke er tatt ut via Visma (eget, eldre, kjøpt et annet sted – eller alt, når bedriften ikke bruker Visma) */
 function NyttVerktoy({ ansattId, lukk }: { ansattId: string; lukk: () => void }) {
   const { kjor, idag } = useApp();
-  const [f, setF] = useState({ beskrivelse: "", nobb: "", serienr: "", kategori: "verktoy" as UtstyrKategori, dato: idag });
+  const [f, setF] = useState({ beskrivelse: "", nobb: "", serienr: "", kategori: "verktoy" as UtstyrKategori, dato: idag, pris: "" });
   const [bilde, setBilde] = useState<File | null>(null);
   const lagre = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.beskrivelse.trim()) return;
     const ok = await kjor(async () => {
-      const id = await api.lagreUtstyr({ ansatt_id: ansattId, beskrivelse: f.beskrivelse.trim(), nobb_nr: f.nobb.replace(/\D/g, ""), serienr: f.serienr.trim(), kategori: f.kategori, dato: f.dato });
+      const id = await api.lagreUtstyr({ ansatt_id: ansattId, beskrivelse: f.beskrivelse.trim(), nobb_nr: f.nobb.replace(/\D/g, ""), serienr: f.serienr.trim(), kategori: f.kategori, kategori_manuell: true, dato: f.dato, ...(Number(f.pris.replace(",", ".")) > 0 ? { pris: Number(f.pris.replace(",", ".")), antall: 1 } : {}) });
       if (bilde) await api.utstyrBilde(id, bilde, null);
     }, "Registrert");
     if (ok) lukk();
@@ -224,6 +226,8 @@ function NyttVerktoy({ ansattId, lukk }: { ansattId: string; lukk: () => void })
           </select></label>
         <label className="field kort"><span className="label">Fått dato</span>
           <input type="date" value={f.dato} onChange={(e) => setF({ ...f, dato: e.target.value })} /></label>
+        <label className="field kort"><span className="label">Pris eks. mva (valgfritt)</span>
+          <input type="text" inputMode="decimal" value={f.pris} onChange={(e) => setF({ ...f, pris: e.target.value })} /></label>
       </div>
       <label className="btn sm" style={{ alignSelf: "flex-start", cursor: "pointer" }}>
         {bilde ? `Bilde: ${bilde.name}` : "Ta bilde"}

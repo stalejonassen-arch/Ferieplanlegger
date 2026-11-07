@@ -48,7 +48,7 @@ export const LT_TEKST: Record<string, string> = {
   "Fjernet fra lista": "Pašalinta iš sąrašo",
   "Tilbudet er åpent igjen": "Pasiūlymas vėl atviras",
   "Tilbudsoppfølging": "Pasiūlymų sekimas",
-  "Åpne tilbud fra Visma som bør følges opp med en telefon – med påminnelse og treffprosent": "Atviri pasiūlymai iš Visma, dėl kurių verta paskambinti – su priminimais ir sėkmės rodikliu",
+  "Tilbud som bør følges opp med en telefon – fra Visma eller registrert i appen, med påminnelse og treffprosent": "Pasiūlymai, dėl kurių verta paskambinti – iš Visma arba užregistruoti programėlėje, su priminimais ir sėkmės rodikliu",
   "Personvern – slik behandler vi opplysningene dine": "Privatumas – kaip tvarkome jūsų duomenis",
   "Skjul personvern": "Slėpti privatumo pranešimą",
   "Skjul avtalevilkår": "Slėpti sutarties sąlygas",

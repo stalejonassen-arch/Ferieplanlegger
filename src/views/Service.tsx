@@ -3,6 +3,7 @@
 // den ansvarlige fører timer og materiell, melder ferdig og kan få kunden til å kvittere.
 // Ferdige oppdrag ligger i «Til fakturering» til de er merket fakturert med ordrenummer fra Visma.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { harVisma } from "../lib/visma";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kortDato, sorterAnsatte } from "../lib/ferie";
@@ -78,13 +79,13 @@ function KundeVelger({ kundeId, navn, onVelg }: { kundeId: string | null; navn: 
   return (
     <div className="field" style={{ display: "grid", gap: 6 }}>
       <span className="label">Kunde</span>
-      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk på navn, telefon eller kundenr i Visma" />
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={harVisma(d) ? "Søk på navn, telefon eller kundenr i Visma" : "Søk på navn eller telefon"} />
       {treff.length > 0 && (
         <div className="kunde-treff">
           {treff.map((k) => <button type="button" key={k.id} className="btn sm" onClick={() => { onVelg(k, ""); setQ(""); }}>{k.navn}{k.telefon ? <span className="small muted"> · {k.telefon}</span> : null}</button>)}
         </div>
       )}
-      <label className="field" style={{ margin: 0 }}><span className="label small muted">…eller ny kunde (ikke i Visma ennå)</span>
+      <label className="field" style={{ margin: 0 }}><span className="label small muted">{harVisma(d) ? "…eller ny kunde (ikke i Visma ennå)" : "…eller ny kunde"}</span>
         <input value={navn} onChange={(e) => onVelg(null, e.target.value)} placeholder="Kundens navn" maxLength={200} /></label>
     </div>
   );
@@ -360,19 +361,20 @@ function Fakturering({ s }: { s: S }) {
   const { d, kjor } = useApp();
   const g = grunnlag(s, d.timer, d.timepris ?? null);
   const [nr, setNr] = useState(s.visma_ordrenr);
+  const visma = harVisma(d);
   return (
     <div className="panel" style={{ background: "var(--sunk)", display: "grid", gap: 8 }}>
       <b>{s.status === "fakturert" ? `Fakturert ${s.fakturert_tid ? kortDato(s.fakturert_tid.slice(0, 10)) : ""}${s.visma_ordrenr ? ` · ordre ${s.visma_ordrenr}` : ""}` : "Klar til fakturering"}</b>
       <div className="small">
-        Kunde: <b>{kundeNavn(s, d.kunder)}</b>{!s.kunde_id && <span style={{ color: "var(--warn)" }}> – koble til kunden i Visma (under «Endre oppdraget») før fakturering</span>}<br />
+        Kunde: <b>{kundeNavn(s, d.kunder)}</b>{!s.kunde_id && visma && <span style={{ color: "var(--warn)" }}> – koble til kunden i Visma (under «Endre oppdraget») før fakturering</span>}<br />
         Arbeid: {t2(g.timer)} t{g.arbeid != null ? ` × ${kr(d.timepris!)} = ${kr(g.arbeid)}` : " (sett timepris i Oppsett for å regne ut beløpet)"}<br />
-        Materiell: {g.materiell ? kr(g.materiell) : s.materiell.length ? "uten pris – hentes fra Visma" : "ingen"}<br />
+        Materiell: {g.materiell ? kr(g.materiell) : s.materiell.length ? (visma ? "uten pris – hentes fra Visma" : "uten pris") : "ingen"}<br />
         {g.sum > 0 && <b>Sum eks. mva: {kr(g.sum)}</b>}
       </div>
       {s.status === "ferdig" && (
         <div className="row" style={{ alignItems: "flex-end" }}>
-          <label className="field kort"><span className="label">Ordrenr i Visma</span><input value={nr} onChange={(e) => setNr(e.target.value)} maxLength={40} inputMode="numeric" /></label>
-          <button className="btn primary sm" disabled={!s.kunde_id} onClick={() => kjor(() => api.lagreService({ id: s.id, tittel: s.tittel, status: "fakturert", visma_ordrenr: nr.trim() }).then(() => {}), "Merket som fakturert")}>Merk fakturert</button>
+          <label className="field kort"><span className="label">{visma ? "Ordrenr i Visma" : "Faktura-/ordrenr"}</span><input value={nr} onChange={(e) => setNr(e.target.value)} maxLength={40} inputMode="numeric" /></label>
+          <button className="btn primary sm" disabled={visma && !s.kunde_id} onClick={() => kjor(() => api.lagreService({ id: s.id, tittel: s.tittel, status: "fakturert", visma_ordrenr: nr.trim() }).then(() => {}), "Merket som fakturert")}>Merk fakturert</button>
         </div>
       )}
     </div>

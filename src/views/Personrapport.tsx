@@ -3,6 +3,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { isoOf } from "../lib/ferie";
 import { periodeNavn } from "../lib/rapport";
+import { harVisma } from "../lib/visma";
 import { lagInnhold, rapportType, type DgDel, type Innhold } from "../lib/personrapport";
 import { kategoriFor, type DgKategori } from "../lib/dg";
 import { t2 } from "../lib/timer";
@@ -114,8 +115,8 @@ export function MinePersonrapporter() {
 export function PersonrapporterLeder() {
   const { d, meg, idag, kjor } = useApp();
   const [periode, setPeriode] = useState(forrigeMnd(idag));
-  const kandidater = d.ansatte.filter((a) => a.aktiv && (rapportType(a).timer || rapportType(a).dg))
-    .sort((a, b) => Number(a.id !== meg.id) - Number(b.id !== meg.id) || Number(rapportType(b).dg) - Number(rapportType(a).dg) || a.navn.localeCompare(b.navn, "nb"));
+  const kandidater = d.ansatte.filter((a) => a.aktiv && (rapportType(a, harVisma(d)).timer || rapportType(a, harVisma(d)).dg))
+    .sort((a, b) => Number(a.id !== meg.id) - Number(b.id !== meg.id) || Number(rapportType(b, harVisma(d)).dg) - Number(rapportType(a, harVisma(d)).dg) || a.navn.localeCompare(b.navn, "nb"));
   const finnes = (id: string) => (d.personrapporter ?? []).find((r) => r.ansatt_id === id && r.periode === periode);
   const [valgt, setValgt] = useState<Set<string>>(new Set());
   const [kommentar, setKommentar] = useState<Record<string, string>>({});
@@ -142,7 +143,7 @@ export function PersonrapporterLeder() {
         <label className="field kort"><span className="label">Måned</span>
           <input type="month" value={periode.slice(0, 7)} max={idag.slice(0, 7)} onChange={(e) => e.target.value && setPeriode(`${e.target.value}-01`)} /></label>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Hver ansatt får sin egen rapport og ser bare den. Snekkerne får timer på kunde mot interntid (lav interntid er bra). Butikk/prosjektleder, du og de som er merket «Salg i månedsrapporten» (f.eks. en snekker som står i butikken) får sitt eget salg fra Visma: totalt i måneden, og DG på vinduer, dører og takplater{salgOppdatert ? ` (oppdatert ${kl(salgOppdatert)})` : ""}. Skriv gjerne et par ord til hver før du publiserer.</p>
+      <p className="small muted" style={{ margin: 0 }}>Hver ansatt får sin egen rapport og ser bare den. Snekkerne får timer på kunde mot interntid (lav interntid er bra).{harVisma(d) ? <> Butikk/prosjektleder, du og de som er merket «Salg i månedsrapporten» (f.eks. en snekker som står i butikken) får sitt eget salg fra Visma: totalt i måneden, og DG på vinduer, dører og takplater{salgOppdatert ? ` (oppdatert ${kl(salgOppdatert)})` : ""}.</> : null} Skriv gjerne et par ord til hver før du publiserer.</p>
       <div className="list">
         {kandidater.map((a) => {
           const f = finnes(a.id), i = innhold.get(a.id)!;
@@ -173,7 +174,7 @@ export function PersonrapporterLeder() {
       <div className="row">
         <button className="btn primary" disabled={!kandidater.some((a) => valgt.has(a.id))} onClick={publiser}>{kandidater.some((a) => valgt.has(a.id) && finnes(a.id)?.publisert) ? "Publiser / oppdater" : "Publiser"} for {kandidater.filter((a) => valgt.has(a.id)).length} valgte</button>
       </div>
-      <DgRegler />
+      {harVisma(d) && <DgRegler />}
     </section>
   );
 }

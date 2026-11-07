@@ -98,6 +98,8 @@ export interface Data {
   drakt?: import("./drakt").Drakt | null;
   /** Sjekklister, SJA og bestillinger */
   sjekklister?: import("./kvalitet").Sjekkliste[];
+  /** Bedriften er koblet til Visma Business NXT (har firmanummer) */
+  visma?: boolean;
   /** Bedriftens egne sjekklistemaler (egenkontroll) */
   sjekklisteMaler?: import("./kvalitet").SjekklisteMal[];
   sja?: import("./kvalitet").Sja[];

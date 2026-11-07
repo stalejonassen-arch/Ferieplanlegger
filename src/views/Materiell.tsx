@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApp } from "../App";
 import { api, nobbLenke } from "../lib/api";
 import { kortDato } from "../lib/ferie";
+import { harVisma } from "../lib/visma";
 import { LEVERANSE_STATUS, grupperMateriell, nyeFraVisma, type Leveranse, type LeveranseStatus, type Materiale, type NyLeveranse } from "../lib/plan";
 import { t2, type Prosjekt } from "../lib/timer";
 import { usePlanlegger } from "./Plan";
@@ -182,7 +183,7 @@ export function Materialliste({ p }: { p: Prosjekt }) {
         : !skjema && (
           <div className="row" style={{ gap: 8 }}>
             <button className="btn primary" onClick={() => setSkjema({ prosjekt_id: p.id, navn: "", dato: null, leverandor: "", notat: "", rekkefolge: lev.length ? Math.max(...lev.map((x) => x.rekkefolge)) + 1 : 1 })}>+ Ny leveranse</button>
-            <button className="btn" disabled={henter} onClick={hentFraVisma}>{henter ? "Henter …" : "Hent varer fra Visma"}</button>
+            {harVisma(d) && <button className="btn" disabled={henter} onClick={hentFraVisma}>{henter ? "Henter …" : "Hent varer fra Visma"}</button>}
           </div>
         ))}
     </section>

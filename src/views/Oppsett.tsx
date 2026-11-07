@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { harVisma } from "../lib/visma";
 import { PROFIL } from "../lib/profil";
 import { useApp } from "../App";
 import { api } from "../lib/api";
@@ -217,7 +218,7 @@ function AnsattKort({ a, lagre, overfort, inn, oppdaterInn }: { a: Ansatt; lagre
         </div>
         {hake("lunsjtrekk", "Lunsjtrekk", !!a.lunsjtrekk, "lunsj trekkes på dager over 5,5 timer uten registrert lunsj")}
         {hake("i_timerapport", "Med i timerapporten", a.i_timerapport !== false, "telles i oversikten over kundetimer og interntid")}
-        {hake("i_salgsrapport", "Salg i månedsrapporten", a.i_salgsrapport ?? (!!a.prosjektleder || a.rolle === "leder"), "eget salg fra Visma (Selger på ordren) – for de som også står i butikken")}
+        {harVisma(d) && hake("i_salgsrapport", "Salg i månedsrapporten", a.i_salgsrapport ?? (!!a.prosjektleder || a.rolle === "leder"), "eget salg fra Visma (Selger på ordren) – for de som også står i butikken")}
       </fieldset>
       <fieldset><legend>Varsler</legend>
         {hake("varsel_prosjekt", "Varsel om nye prosjekter", a.varsel_prosjekt !== false)}
@@ -231,7 +232,7 @@ function AnsattKort({ a, lagre, overfort, inn, oppdaterInn }: { a: Ansatt; lagre
       {(bruker(d, "utstyr") || bruker(d, "sja")) && (
         <fieldset><legend>Utstyr og HMS-kort</legend>
           <div className="row">
-            {bruker(d, "utstyr") && (
+            {bruker(d, "utstyr") && harVisma(d) && (
               <label className="field"><span className="label">Utstyrskonto i Visma</span>
                 <select value={a.utstyr_prosjekt_id ?? ""} onChange={(e) => lagre(a, { utstyr_prosjekt_id: e.target.value || null })}>
                   <option value="">Ingen</option>
@@ -289,8 +290,8 @@ function ServiceOppsett() {
   return (
     <div className="oppsett-under" style={{ marginTop: 12 }} id="opp-service">
       <h3 style={{ margin: "0 0 4px" }}>Serviceoppdrag</h3>
-      <p className="small muted" style={{ margin: "0 0 8px" }}>Timer på serviceoppdrag føres på ett fast prosjekt i Visma (f.eks. «Service»), og hvert oppdrag faktureres på en egen ordre til kunden. Timene er fakturerbare.</p>
-      <ProsjektVelger label="Serviceprosjekt i Visma" tom="Ikke valgt" value={d.serviceProsjekt ?? ""} onChange={(id) => kjor(() => api.lagreServiceprosjekt(id || null), "Serviceprosjektet er lagret")}
+      <p className="small muted" style={{ margin: "0 0 8px" }}>{harVisma(d) ? "Timer på serviceoppdrag føres på ett fast prosjekt i Visma (f.eks. «Service»), og hvert oppdrag faktureres på en egen ordre til kunden." : "Timer på serviceoppdrag føres på ett fast prosjekt (f.eks. «Service»), og hvert oppdrag faktureres for seg til kunden."} Timene er fakturerbare.</p>
+      <ProsjektVelger label={harVisma(d) ? "Serviceprosjekt i Visma" : "Serviceprosjekt"} tom="Ikke valgt" value={d.serviceProsjekt ?? ""} onChange={(id) => kjor(() => api.lagreServiceprosjekt(id || null), "Serviceprosjektet er lagret")}
         prosjekter={d.prosjekter.filter((p) => p.aktiv && p.id !== d.reklamasjonProsjekt)} />
       {lenke && (
         <div className="small" style={{ marginTop: 10, display: "grid", gap: 6 }}>
@@ -357,7 +358,7 @@ function UtstyrOppsett() {
   return (
     <section className="panel" id="opp-utstyr">
       <h2>Utstyr: kvoter for arbeidstøy</h2>
-      <p className="small muted">Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy, verneutstyr eller forbruk. Kvotene gjelder per ansatt i en rullerende periode. Øvrig verneutstyr (hansker, briller, hørselvern) gis etter behov og har ingen kvote. Håndverktøy byttes nytt mot gammelt.</p>
+      <p className="small muted">{harVisma(d) ? "Hver ansatt har en utstyrskonto i Visma. Det som føres der, hentes inn i ByggLogg med dato og pris og sorteres som verktøy, arbeidstøy, verneutstyr eller forbruk." : "Utstyr som deles ut registreres på den ansatte under Utstyr, gjerne med pris."} Kvotene gjelder per ansatt i en rullerende periode. Øvrig verneutstyr (hansker, briller, hørselvern) gis etter behov og har ingen kvote. Håndverktøy byttes nytt mot gammelt.</p>
       <form onSubmit={(e) => { e.preventDefault(); kjor(() => api.settUtstyrKvoter(kv), "Kvotene er lagret"); }}>
         <div className="scroll" style={{ border: 0 }}>
           <table className="tbl">
@@ -376,7 +377,7 @@ function UtstyrOppsett() {
         </div>
         <div className="row"><button className="btn">Lagre kvoter</button><span className="small muted">0 = ingen kvote for det plagget.</span></div>
       </form>
-      <p className="small muted" style={{ margin: 0 }}>Utstyrskontoen velges på hver ansatt under «Ansatte». Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.</p>
+      {harVisma(d) && <p className="small muted" style={{ margin: 0 }}>Utstyrskontoen velges på hver ansatt under «Ansatte». Mangler en konto i lista? Opprett prosjektet i Visma med «utstyr» eller «arbeidsklær» i navnet, så dukker det opp her innen et kvarter.</p>}
     </section>
   );
 }

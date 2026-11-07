@@ -48,7 +48,7 @@ export const EN_TEKST: Record<string, string> = {
   "Fjernet fra lista": "Removed from the list",
   "Tilbudet er åpent igjen": "The quote is open again",
   "Tilbudsoppfølging": "Quote follow-up",
-  "Åpne tilbud fra Visma som bør følges opp med en telefon – med påminnelse og treffprosent": "Open quotes from Visma that should be followed up with a call – with reminders and win rate",
+  "Tilbud som bør følges opp med en telefon – fra Visma eller registrert i appen, med påminnelse og treffprosent": "Quotes that should be followed up with a call – from Visma or registered in the app, with reminders and win rate",
   "Personvern – slik behandler vi opplysningene dine": "Privacy – how we handle your information",
   "Skjul personvern": "Hide privacy notice",
   "Skjul avtalevilkår": "Hide terms",
