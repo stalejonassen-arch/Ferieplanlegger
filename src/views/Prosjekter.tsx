@@ -16,7 +16,8 @@ import { PROFIL } from "../lib/profil";
 import { avstandTekst, telLenke } from "../lib/kart";
 import { useAvstander } from "../lib/useAvstander";
 
-export function Prosjekter() {
+/** etterListen: det som skal vises under prosjektlista (serviceoppdrag og tilbud) */
+export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = {}) {
   const { d, meg, leder, kjor } = useApp();
   const [sok, setSok] = useState("");
   const [visAvsluttet, setVisAvsluttet] = useState(false);
@@ -158,6 +159,7 @@ export function Prosjekter() {
           </div>
         ) : <div className="empty">{q ? "Ingen prosjekter passer søket." : "Ingen prosjekter ennå."}</div>}
       </section>
+      {etterListen}
       {leder && <Omsetning />}
       {leder && <Maal />}
       {leder && <Fordeling />}
