@@ -555,7 +555,7 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="fargerik"]) .seksjoner button .ikon { color: #A9B3FF; }
 }
-:root[data-tema="mork"] .seksjoner button .ikon { color: #A9B3FF; }
+:root[data-tema="mork"] .seksjoner button .ikon { color: #D0D0D0; }
 :root[data-tema="mork"] .seksjoner button[aria-pressed=true], :root[data-tema="mork"] .seksjoner button[aria-pressed=true] .ikon { color: var(--bf-yellow); }
 
 
@@ -1028,13 +1028,19 @@ header.top .hjelm { width: 46px; height: 38px; flex: none; fill: none; stroke: v
 
 /* ---------- Tema: mørk (uansett innstilling på telefonen) ---------- */
 :root[data-tema="mork"] {
-  --bg: #0A0E20; --surface: #141B38; --sunk: #1D2550; --fg: #F4F6FD; --muted: #B9C1E2; --line: #2E3872; --line-soft: #252E62;
-  --accent: #A9B3FF; --accent-ink: #0A0F2A; --sel: #FFCD00; --sel-ink: #1A1400;
-  --approved: #5ED394; --pending: #FFCD00; --pending-text: #FFCD00; --warn: #FF7A72; --info: #A9B3FF; --hatch: #2A335E;
-  --shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 30px -20px rgba(0,0,0,.9);
+  --bg: #050505; --surface: #121212; --sunk: #1B1B1B; --fg: #F5F5F5; --muted: #A8A8A8; --line: #2C2C2C; --line-soft: #222222;
+  --accent: #FFCD00; --accent-ink: #1A1400; --sel: #FFCD00; --sel-ink: #1A1400;
+  --approved: #5ED394; --pending: #FFCD00; --pending-text: #FFCD00; --warn: #FF7A72; --info: #D0D0D0; --hatch: #262626;
+  --navy: #000000; --navy-2: #161616;
+  --shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 30px -20px rgba(0,0,0,.95);
   color-scheme: dark;
 }
-:root[data-tema="mork"] body { background: radial-gradient(1200px 520px at 50% -220px, #1A2356, transparent), var(--bg); background-attachment: fixed; }
+:root[data-tema="mork"] body { background: radial-gradient(1200px 520px at 50% -220px, #1C1C1C, transparent), var(--bg); background-attachment: fixed; }
+/* Mørk: svart toppfelt og svarte flater, gult som eneste farge */
+:root[data-tema="mork"] .toppfelt { background: radial-gradient(700px 260px at 85% 0%, rgba(255, 205, 0, .14), transparent 60%), linear-gradient(135deg, #1A1A1A 0%, #0A0A0A 55%, #000000 100%);
+  box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .9), 0 0 0 1px #222222 inset; }
+:root[data-tema="mork"] .toppfelt .skyline { color: rgba(255, 255, 255, .12); }
+@media (max-width: 640px) { :root[data-tema="mork"] nav.tabs.hoved { background: rgba(5, 5, 5, .94); border-top: 1px solid #222222; } }
 
 /* ---------- Tema: fargerik (Kjøkken og Interiør) – hver fane, flis og boks får sin egen farge ---------- */
 :root[data-tema="fargerik"] {

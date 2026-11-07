@@ -222,7 +222,7 @@ export function App() {
     const vars = visTema === "skifer" ? draktVariabler(SKIFER) : visTema === "egen" && drakt ? draktVariabler(drakt) : {};
     for (const k of Array.from(rot.style)) if (k.startsWith("--")) rot.style.removeProperty(k);
     for (const [k, v] of Object.entries(vars)) rot.style.setProperty(k, v);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", visTema === "egen" || visTema === "skifer" ? (vars["--navy"] ?? "#0B1F5C") : visTema === "fargerik" ? "#D6409F" : visTema === "mork" ? "#0A0E20" : visTema === "byggfag" ? "#0B1F5C" : visTema === "bfportal" ? "#F8F9FA" : visTema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", visTema === "egen" || visTema === "skifer" ? (vars["--navy"] ?? "#0B1F5C") : visTema === "fargerik" ? "#D6409F" : visTema === "mork" ? "#000000" : visTema === "byggfag" ? "#0B1F5C" : visTema === "bfportal" ? "#F8F9FA" : visTema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
     if (PROFIL.id === "austnes") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
   }, [tema, visTema, drakt?.hoved, drakt?.aksent]);
 
