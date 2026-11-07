@@ -2,13 +2,16 @@
 // Et tilbud skal følges opp når det har ligget i en uke uten kontakt, eller når datoen for neste kontakt er nådd.
 
 export type TilbudStatus = "apen" | "vunnet" | "avsluttet" | "borte";
-export type TilbudHandling = "ringt" | "utsett" | "tapt" | "ikke_aktuelt" | "gjenapne" | "notat";
+export type TilbudHandling = "ringt" | "utsett" | "tapt" | "ikke_aktuelt" | "gjenapne" | "notat" | "vunnet";
 export interface TilbudLogg { dato: string; av: string | null; hva: TilbudHandling; notat: string }
 export interface Tilbud {
-  id: string; visma_ordrenr: number; tilbudsnr: number | null; dato: string | null; kunde: string; kunde_nr: number | null; referanse: string;
+  id: string; visma_ordrenr: number | null; tilbudsnr: number | null; dato: string | null; kunde: string; kunde_nr: number | null; referanse: string;
   belop: number; selger_nr: number | null; selger_navn: string; avdeling_nr: number | null; status: TilbudStatus; status_dato: string | null;
   utfall: "tapt" | "ikke_aktuelt" | null; sist_kontakt: string | null; neste_kontakt: string | null; notat: string; logg: TilbudLogg[];
+  /** Registrert i ByggLogg (ikke fra Visma): telefon og beskrivelse skrevet inn, vunnet merkes for hånd */
+  manuell?: boolean; telefon?: string; beskrivelse?: string; opprettet_av?: string | null;
 }
+export interface NyttTilbud { id?: string; kunde: string; telefon: string; referanse: string; beskrivelse: string; belop: number; dato: string | null; selger: string }
 
 /** Dager før et tilbud uten kontakt skal følges opp */
 export const FORSTE_OPPFOLGING = 7;

@@ -93,6 +93,9 @@ export interface Api {
   /** Tilbud fra Visma siste år (åpne og avgjorte), for oppfølging */
   tilbud(): Promise<import("./tilbud").Tilbud[]>;
   folgOppTilbud(id: string, handling: import("./tilbud").TilbudHandling, notat?: string, neste?: string | null): Promise<void>;
+  /** Tilbud registrert i ByggLogg (uten Visma) */
+  lagreTilbud(t: import("./tilbud").NyttTilbud): Promise<string>;
+  slettTilbud(id: string): Promise<void>;
   /** Leder: send (eller send på nytt) invitasjon til appen på e-post */
   sendInvitasjon(ansattId: string): Promise<void>;
   /** Leder: sist invitert og sist innlogget per ansatt */
@@ -658,10 +661,15 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async tilbud() {
       const fra = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
-      const r = await alle(() => sb.from("tilbud").select("id, visma_ordrenr, tilbudsnr, dato, kunde, kunde_nr, referanse, belop, selger_nr, selger_navn, avdeling_nr, status, status_dato, utfall, sist_kontakt, neste_kontakt, notat, logg").gte("dato", fra).order("visma_ordrenr"), 5000);
+      const r = await alle(() => sb.from("tilbud").select("*").gte("dato", fra).order("visma_ordrenr").order("id"), 5000);
       return r.error ? [] : (r.data as any[]).map((t) => ({ ...t, belop: Number(t.belop), logg: Array.isArray(t.logg) ? t.logg : [] }));
     },
     async folgOppTilbud(id, handling, notat = "", neste = null) { ok(await sb.rpc("folg_opp_tilbud", { t: id, handling, notat, neste })); },
+    async lagreTilbud(x) {
+      const r = await sb.rpc("lagre_tilbud", { t: x.id ?? null, kunde: x.kunde, telefon: x.telefon, referanse: x.referanse, beskrivelse: x.beskrivelse, belop: x.belop, dato: x.dato, selger: x.selger });
+      return ok(r) as string;
+    },
+    async slettTilbud(id) { ok(await sb.rpc("slett_tilbud", { t: id })); },
     async sendInvitasjon(a) { ok(await sb.rpc("send_invitasjon", { a })); },
     async ansatteInnlogging() { const r = await sb.rpc("ansatte_innlogging"); return r.error ? [] : (r.data as { ansatt_id: string; invitert: string | null; innlogget: string | null }[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },

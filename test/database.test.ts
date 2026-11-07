@@ -116,6 +116,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0075_personrapport_epost.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0076_egenkontroll.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0077_favorittprosjekter.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0078_tilbud_uten_visma.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1401,5 +1402,24 @@ describe("favorittprosjekter", () => {
     await expect(as(JIM, "select public.sett_favoritt(gen_random_uuid(), true)")).rejects.toThrow(/Ukjent/);
     await as(JIM, "select public.sett_favoritt($1, false)", [p.id]);
     expect(await fav(JIM)).toEqual([]);
+  });
+});
+
+describe("tilbud uten Visma", () => {
+  it("ansatte registrerer egne tilbud, merker dem vunnet, og kan ikke vinne Visma-tilbud", async () => {
+    const jimNavn = (await db.query<any>("select navn from public.ansatte where epost = $1", [JIM])).rows[0].navn;
+    const [{ lagre_tilbud: id }] = await as<any>(JIM, "select public.lagre_tilbud(null, ' Ola Kunde ', '900 00 000', 'Nytt tak', 'Skifer', 185000, null, 'Annen Selger')");
+    const [t] = await db.query<any>("select manuell, selger_navn, kunde, status, visma_ordrenr from public.tilbud where id = $1", [id]).then((r) => r.rows);
+    expect(t).toMatchObject({ manuell: true, selger_navn: jimNavn, kunde: "Ola Kunde", status: "apen", visma_ordrenr: null });
+    expect(await as(MADS, "select id from public.tilbud where id = $1", [id])).toHaveLength(0);
+    await as(JIM, "select public.lagre_tilbud($1, 'Ola Kunde', '', 'Nytt tak og takrenner', '', 199000, null, '')", [id]);
+    await as(JIM, "select public.folg_opp_tilbud($1, 'vunnet', 'Signert')", [id]);
+    const [v] = await db.query<any>("select status, status_dato is not null d, belop::float b from public.tilbud where id = $1", [id]).then((r) => r.rows);
+    expect(v).toEqual({ status: "vunnet", d: true, b: 199000 });
+    const [visma] = await db.query<any>("insert into public.tilbud (bedrift_id, visma_ordrenr, dato, kunde, belop, selger_nr, selger_navn) values (1, 9999, current_date, 'Visma Kunde', 1000, 2, $1) returning id", [jimNavn]).then((r) => r.rows);
+    await expect(as(JIM, "select public.folg_opp_tilbud($1, 'vunnet')", [visma.id])).rejects.toThrow(/Visma/);
+    await expect(as(MADS, "select public.slett_tilbud($1)", [id])).rejects.toThrow(/Fant ikke/);
+    await as(JIM, "select public.slett_tilbud($1)", [id]);
+    expect(await db.query("select id from public.tilbud where id = $1", [id]).then((r) => r.rows)).toHaveLength(0);
   });
 });

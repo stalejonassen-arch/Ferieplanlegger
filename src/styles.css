@@ -1578,3 +1578,4 @@ button.mr-navn:hover { text-decoration: underline; }
 .pvelger-rad:has(.stjerne) { position: relative; padding-right: 42px; }
 .pvelger-rad .stjerne { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; }
 .mine-prosjekt { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
+.tilbud-skjema { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: var(--sunk); }
