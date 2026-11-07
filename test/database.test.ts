@@ -114,6 +114,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0073_salgsrapport.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0074_ordre_selger.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0075_personrapport_epost.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0076_egenkontroll.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1324,5 +1325,66 @@ describe("språk", () => {
       expect((await db.query<any>("select sprak from public.ansatte where epost = $1", [JIM])).rows[0].sprak).toBe(s);
     }
     await expect(as(JIM, "select public.sett_mitt_sprak('de')")).rejects.toThrow(/Ukjent/);
+  });
+});
+
+describe("egenkontroll: maler, kontrollplan, avvik og godkjenning", () => {
+  const q = async (sql: string, p: any[] = []) => (await db.query<any>(sql, p)).rows;
+  it("maler: bare kontrollører lager dem, og revisjonen øker når punktene endres", async () => {
+    await expect(as(JIM, "insert into public.sjekkliste_maler (navn) values ('Jims mal')")).rejects.toThrow();
+    const [m] = await as<any>(STALE, "insert into public.sjekkliste_maler (navn, dok_nr, punkter) values ('Reisverk', 'EK-01', '[{\"tekst\":\"Lodd\"}]'::jsonb) returning id, revisjon");
+    expect(m.revisjon).toBe(1);
+    await as(STALE, "update public.sjekkliste_maler set kategori = 'Tømrer' where id = $1", [m.id]);
+    expect((await q("select revisjon from public.sjekkliste_maler where id = $1", [m.id]))[0].revisjon).toBe(1);
+    await as(STALE, "update public.sjekkliste_maler set punkter = '[{\"tekst\":\"Lodd\"},{\"tekst\":\"Vater\"}]'::jsonb where id = $1", [m.id]);
+    expect((await q("select revisjon from public.sjekkliste_maler where id = $1", [m.id]))[0].revisjon).toBe(2);
+    expect(await as(JIM, "select id from public.sjekkliste_maler where id = $1", [m.id])).toHaveLength(1);
+    expect(await as(JIM, "update public.sjekkliste_maler set navn = 'x' where id = $1 returning id", [m.id])).toHaveLength(0);
+  });
+
+  it("kontrollplan, avvik fra punkt, signering og godkjenning av faglig leder", async () => {
+    const jim = await idOf("Jim Kato");
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Egenkontroll-prosjekt') returning id");
+    const punkter = JSON.stringify([{ tekst: "Membran" }, { tekst: "Fall mot sluk", maal: "mm/m" }]);
+    // Ansatte kan ikke planlegge, men leder kan
+    const [j] = await as<any>(JIM, "insert into public.sjekklister (prosjekt_id, navn, punkter, status) values ($1, 'Jim', $2::jsonb, 'planlagt') returning status, ansvarlig_id", [p.id, punkter]);
+    expect(j).toEqual({ status: "pagaar", ansvarlig_id: jim });
+    const [s] = await as<any>(STALE, "insert into public.sjekklister (prosjekt_id, navn, punkter, status, ansvarlig_id, frist) values ($1, 'Våtrom', $2::jsonb, 'planlagt', $3, '2026-12-01') returning id, status", [p.id, punkter, jim]);
+    expect(s.status).toBe("planlagt");
+    // Ansvarlig kan ikke flytte frist
+    await as(JIM, "update public.sjekklister set frist = '2027-01-01' where id = $1", [s.id]);
+    expect((await q("select frist::text f from public.sjekklister where id = $1", [s.id]))[0].f).toBe("2026-12-01");
+    // Svar gjør den påbegynt; avvik blir registrert i avviksregisteret
+    const svar = JSON.stringify([{ tekst: "Membran", svar: "avvik", kommentar: "For tynn" }, { tekst: "Fall mot sluk", maal: "mm/m", verdi: "10", svar: "ok" }]);
+    await as(JIM, "update public.sjekklister set punkter = $2::jsonb where id = $1", [s.id, svar]);
+    const [etter] = await q("select status, punkter from public.sjekklister where id = $1", [s.id]);
+    expect(etter.status).toBe("pagaar");
+    expect(etter.punkter[0].av).toBe(jim);
+    expect(etter.punkter[1].verdi).toBe("10");
+    const avvikId = etter.punkter[0].avvik_id;
+    const [a] = await q("select tittel, beskrivelse, sjekkliste_id, sjekkliste_punkt, meldt_av, status from public.avvik where id = $1", [avvikId]);
+    expect(a).toMatchObject({ beskrivelse: "For tynn", sjekkliste_id: s.id, sjekkliste_punkt: 0, meldt_av: jim, status: "apen" });
+    expect(a.tittel).toContain("Våtrom");
+    // Lagres på nytt: ingen nye avvik
+    await as(JIM, "update public.sjekklister set punkter = punkter where id = $1", [s.id]);
+    expect(await q("select id from public.avvik where sjekkliste_id = $1", [s.id])).toHaveLength(1);
+    await as(JIM, "update public.sjekklister set status = 'signert' where id = $1", [s.id]);
+    // Ansatte kan ikke godkjenne
+    await expect(as(JIM, "update public.sjekklister set godkjent_av = $2 where id = $1", [s.id, jim])).rejects.toThrow(/signert/);
+    // Faglig leder kan, men ikke før avviket er lukket
+    await as(STALE, "update public.ansatte set faglig_leder = true where epost = $1", [MADS]);
+    const mads = await idOf("Mads Kjerstad");
+    await expect(as(MADS, "update public.sjekklister set godkjent_av = $2 where id = $1", [s.id, mads])).rejects.toThrow(/lukket/);
+    await as(STALE, "update public.avvik set status = 'lukket', tiltak = 'Smurt på nytt' where id = $1", [avvikId]);
+    await as(MADS, "update public.sjekklister set godkjent_av = $2 where id = $1", [s.id, jim]);
+    const [g] = await q("select godkjent_av, godkjent_tid from public.sjekklister where id = $1", [s.id]);
+    expect(g.godkjent_av).toBe(mads);
+    expect(g.godkjent_tid).not.toBeNull();
+    // Åpnes den igjen, forsvinner signatur og godkjenning
+    await as(STALE, "update public.sjekklister set status = 'pagaar' where id = $1", [s.id]);
+    expect(await q("select signert_av, godkjent_av from public.sjekklister where id = $1", [s.id])).toEqual([{ signert_av: null, godkjent_av: null }]);
+    // Bare leder kan gjøre noen til faglig leder
+    await as(MADS, "update public.ansatte set faglig_leder = true where epost = $1", [JIM]);
+    expect((await q("select faglig_leder from public.ansatte where epost = $1", [JIM]))[0].faglig_leder).toBe(false);
   });
 });

@@ -109,7 +109,7 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
       egenkontroll: (d.sjekklister ?? []).filter((x) => x.prosjekt_id === p.id && x.status === "signert").map((x) => ({
         navn: x.navn,
         signert: `Signert av ${d.ansatte.find((a) => a.id === x.signert_av)?.navn ?? "ukjent"}${x.signert_tid ? `, ${langDato(x.signert_tid.slice(0, 10))}` : ""}`,
-        punkter: x.punkter.filter((pt) => pt.svar).map((pt) => ({ tekst: pt.tekst, svar: pt.svar!, kommentar: pt.kommentar || undefined })),
+        punkter: x.punkter.filter((pt) => pt.svar).map((pt) => ({ tekst: pt.tekst, svar: pt.svar!, kommentar: [pt.maal && (pt.verdi ?? "").trim() ? `Målt: ${pt.verdi} ${pt.maal}` : "", (pt.kommentar ?? "").trim()].filter(Boolean).join(" – ") || undefined })),
       })),
       vedlegg, boligmappa: true,
     });

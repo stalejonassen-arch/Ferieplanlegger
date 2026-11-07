@@ -24,12 +24,19 @@ import { BestillDel } from "./Bestilling";
 import { bruker, type Modul } from "../lib/moduler";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { Reklamasjoner } from "./Reklamasjon";
+import { taNesteDel } from "../lib/navigasjon";
 
 type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder, meg, chat } = useApp();
-  const [del, setDel] = useState<Del>("oversikt");
+  const [del, setDel] = useState<Del>(() => (taNesteDel(p.id) as Del | null) ?? "oversikt");
+  useEffect(() => {
+    const f = () => setTimeout(() => { const x = taNesteDel(p.id); if (x) { setDel(x as Del); setTimeout(() => document.querySelector(".seksjoner")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150); } }, 0);
+    f();
+    window.addEventListener("hashchange", f);
+    return () => window.removeEventListener("hashchange", f);
+  }, [p.id]);
   const k = d.kunder.find((x) => x.id === p.kunde_id);
   const adr = p.adresse || [k?.adresse, [k?.postnr, k?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const antall = {

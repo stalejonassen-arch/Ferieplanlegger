@@ -1303,6 +1303,12 @@ header.top select.temavalg option { color: #10162E; }
 .sk-knapp[aria-pressed="true"].na { background: var(--muted); border-color: var(--muted); color: #fff; }
 .sk-knapp:disabled { cursor: default; opacity: .85; }
 .sk-kommentar { flex-basis: 100%; }
+.sk-punkter li.sk-seksjon { background: none; border: 0; padding: 8px 2px 0; font-weight: 700; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; counter-increment: none; }
+.sk-maal { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.sk-maal input { width: 90px; }
+.sk-under { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.sk-kontroll { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line); }
+.sk-planlegg { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
 
 /* ---------- Deler av appen (oppsett) ---------- */
 .modul-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }

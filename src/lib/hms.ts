@@ -6,6 +6,8 @@ export interface Avvik {
   id: string; prosjekt_id: string | null; meldt_av: string; type: AvvikType; tittel: string; beskrivelse: string;
   ansvarlig_id: string | null; frist: string | null; status: AvvikStatus; tiltak: string;
   lukket_av: string | null; lukket_tid: string | null; opprettet: string;
+  /** Avvik fra et punkt i en sjekkliste (egenkontroll) */
+  sjekkliste_id?: string | null; sjekkliste_punkt?: number | null;
 }
 export interface Bilde { id: string; prosjekt_id: string | null; avvik_id: string | null; service_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; reklamasjon_id?: string | null; ansatt_id: string; sti: string; tekst: string; opprettet: string }
 

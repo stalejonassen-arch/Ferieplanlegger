@@ -5,6 +5,7 @@ import { kalkyle, prosjektTimer, sistAktiv, t2 } from "../lib/timer";
 import { timeStatus } from "../lib/timer";
 import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
+import { taNesteProsjekt } from "../lib/navigasjon";
 import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
 import { Omsetning } from "./Omsetning";
@@ -22,7 +23,12 @@ export function Prosjekter() {
   const [kundeId, setKundeId] = useState("");
   const [nyKunde, setNyKunde] = useState("");
   const [estimat, setEstimat] = useState("");
-  const [valgt, setValgt] = useState<string | null>(null);
+  const [valgt, setValgt] = useState<string | null>(() => taNesteProsjekt());
+  useEffect(() => {
+    const f = () => { const id = taNesteProsjekt(); if (id) setValgt(id); };
+    window.addEventListener("hashchange", f);
+    return () => window.removeEventListener("hashchange", f);
+  }, []);
   const [nyApen, setNyApen] = useState(false);
   const brukt = prosjektTimer(d);
   const fakt = leder && (d.fakturerteTimer ?? []).length ? prosjektFakturering(d) : null;
