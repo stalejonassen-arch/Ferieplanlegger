@@ -128,7 +128,8 @@ begin
         endret_svar := true;
       end if;
     end if;
-    if p ->> 'svar' = 'avvik' and coalesce(p ->> 'avvik_id', '') = '' and meg is not null then
+    if p ->> 'svar' = 'avvik' and coalesce(p ->> 'avvik_id', '') = '' and meg is not null
+       and (tg_op = 'INSERT' or old.status <> 'signert') then
       insert into public.avvik (prosjekt_id, type, tittel, beskrivelse, sjekkliste_id, sjekkliste_punkt)
       values (new.prosjekt_id, 'avvik', left('Egenkontroll – ' || new.navn || ': ' || coalesce(p ->> 'tekst', ''), 200),
               coalesce(nullif(trim(p ->> 'kommentar'), ''), 'Avvik registrert i sjekklisten.'), new.id, i)
