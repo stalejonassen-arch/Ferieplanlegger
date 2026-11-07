@@ -38,7 +38,9 @@ const andel = (f: Pick<Fordeling, "intern" | "sum">) => (f.sum ? r1((f.intern / 
 const forrigeMnd = (periode: string) => { const a = Number(periode.slice(0, 4)), m = Number(periode.slice(5, 7)); return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, "0")}`; };
 
 /** Hvilke deler rapporten til en ansatt har */
-export function rapportType(a: Ansatt): { timer: boolean; dg: boolean } {
+export function rapportType(a: Ansatt, visma = true): { timer: boolean; dg: boolean } {
+  // Uten Visma finnes ikke salgstall: da får alle som fører timer (unntatt daglig leder) timerapporten
+  if (!visma) return { dg: false, timer: a.rolle !== "leder" && a.i_timerapport !== false };
   // Butikk/prosjektleder og daglig leder får salget sitt; snekkerne får timer.
   // En snekker som også selger i butikken (i_salgsrapport) får begge deler.
   const kontor = !!a.prosjektleder || a.rolle === "leder";
@@ -46,9 +48,9 @@ export function rapportType(a: Ansatt): { timer: boolean; dg: boolean } {
 }
 
 /** Lager innholdet i rapporten for én ansatt og én måned (periode = YYYY-MM-01) */
-export function lagInnhold(a: Ansatt, d: Pick<Data, "timer" | "ansatte"> & { salgKategorier?: SalgKategoriMnd[]; dgKategorier?: { id: string; navn: string }[] }, periode: string): Innhold {
+export function lagInnhold(a: Ansatt, d: Pick<Data, "timer" | "ansatte"> & { visma?: boolean } & { salgKategorier?: SalgKategoriMnd[]; dgKategorier?: { id: string; navn: string }[] }, periode: string): Innhold {
   const mnd = periode.slice(0, 7), aar = Number(periode.slice(0, 4)), m = Number(periode.slice(5, 7));
-  const type = rapportType(a);
+  const type = rapportType(a, d.visma !== false);
   const ut: Innhold = { navn: a.navn, periode };
   if (type.timer) {
     const denne = fordelingPerAnsatt(d.timer, mnd);
@@ -56,7 +58,7 @@ export function lagInnhold(a: Ansatt, d: Pick<Data, "timer" | "ansatte"> & { sal
     const fm = fordelingPerAnsatt(d.timer, forrigeMnd(periode)).get(a.id);
     const hittil = { intern: 0, sum: 0 };
     for (let i = 1; i <= m; i++) { const x = fordelingPerAnsatt(d.timer, `${aar}-${String(i).padStart(2, "0")}`).get(a.id); if (x) { hittil.intern += x.intern; hittil.sum += x.sum; } }
-    const iRapport = d.ansatte.filter((x) => x.aktiv && rapportType(x).timer && denne.get(x.id)?.sum);
+    const iRapport = d.ansatte.filter((x) => x.aktiv && rapportType(x, d.visma !== false).timer && denne.get(x.id)?.sum);
     const snitt = iRapport.length ? r1(iRapport.reduce((s, x) => s + andel(denne.get(x.id)!), 0) / iRapport.length) : null;
     ut.timer = {
       kunde: r1(f.fakturerbart), ikkeFakturerbart: r1(f.ikkeFakturerbart), intern: r1(f.intern), sum: r1(f.sum), andelIntern: andel(f),

@@ -117,6 +117,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0076_egenkontroll.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0077_favorittprosjekter.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0078_tilbud_uten_visma.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0079_kunder_uten_visma.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1421,5 +1422,17 @@ describe("tilbud uten Visma", () => {
     await expect(as(MADS, "select public.slett_tilbud($1)", [id])).rejects.toThrow(/Fant ikke/);
     await as(JIM, "select public.slett_tilbud($1)", [id]);
     expect(await db.query("select id from public.tilbud where id = $1", [id]).then((r) => r.rows)).toHaveLength(0);
+  });
+});
+
+describe("kunder uten Visma", () => {
+  it("prosjektleder retter kunder laget i appen, men ikke kunder fra Visma; ansatte kan ikke rette", async () => {
+    await db.query("update public.ansatte set prosjektleder = true where epost = $1", [MADS]);
+    const [egen] = await as<any>(JIM, "insert into public.kunder (navn) values ('Appkunde') returning id");
+    const [visma] = (await db.query<any>("insert into public.kunder (bedrift_id, navn, visma_nr) values (1, 'Vismakunde', 777) returning id")).rows;
+    expect(await as(JIM, "update public.kunder set telefon = '1' where id = $1 returning id", [egen.id])).toHaveLength(0);
+    expect(await as(MADS, "update public.kunder set telefon = '900' where id = $1 returning id", [egen.id])).toHaveLength(1);
+    expect(await as(MADS, "update public.kunder set telefon = '900' where id = $1 returning id", [visma.id])).toHaveLength(0);
+    await db.query("update public.ansatte set prosjektleder = false where epost = $1", [MADS]);
   });
 });

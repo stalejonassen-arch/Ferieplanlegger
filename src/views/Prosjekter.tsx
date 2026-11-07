@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { harVisma } from "../lib/visma";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kalkyle, prosjektTimer, sistAktiv, t2 } from "../lib/timer";
@@ -6,6 +7,8 @@ import { timeStatus } from "../lib/timer";
 import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
 import { taNesteProsjekt } from "../lib/navigasjon";
+import { Kunder } from "./Kunder";
+import { usePlanlegger } from "./Plan";
 import { favoritter, Stjerne } from "./Favoritt";
 import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
@@ -32,6 +35,7 @@ export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = 
     return () => window.removeEventListener("hashchange", f);
   }, []);
   const [nyApen, setNyApen] = useState(false);
+  const planlegger = usePlanlegger();
   const brukt = prosjektTimer(d);
   const fakt = leder && (d.fakturerteTimer ?? []).length ? prosjektFakturering(d) : null;
   const [visma, setVisma] = useState<{ tid: string; ok: boolean; melding: string } | null>(null);
@@ -47,7 +51,7 @@ export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = 
     .filter((p) => visAvsluttet || p.aktiv)
     .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q))
     .sort((a, b) => Number(favSet.has(b.id)) - Number(favSet.has(a.id)) || (sist.get(b.id) ?? "").localeCompare(sist.get(a.id) ?? "") || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
-  const fraVisma = d.prosjekter.some((p) => p.visma_nr);
+  const fraVisma = harVisma(d);
   // Adresse for utførelse, ellers kundens adresse
   const adresseFor = (p: (typeof d.prosjekter)[number]) => { const kk = d.kunder.find((x) => x.id === p.kunde_id); return p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", "); };
   const base = useFirmaPunkt(d.bedrift);
@@ -87,7 +91,7 @@ export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = 
             <label className="field kort"><span className="label">Estimert (timer)</span>
               <input type="text" inputMode="decimal" value={estimat} onChange={(e) => setEstimat(e.target.value)} placeholder="Valgfritt" /></label>
           </div>
-          <p className="small muted" style={{ margin: 0 }}>{leder ? "Når prosjektet er opprettet i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over." : "Prosjektet kan brukes med en gang. Leder kobler det til Visma-prosjektet senere, og da følger timer, bilder og dagbok med."}</p>
+          <p className="small muted" style={{ margin: 0 }}>{!fraVisma ? "Prosjektet kan brukes med en gang." : leder ? "Når prosjektet er opprettet i Visma og dukker opp her, åpner du dette prosjektet og velger «Koble til Visma-prosjekt», så flyttes alt over." : "Prosjektet kan brukes med en gang. Leder kobler det til Visma-prosjektet senere, og da følger timer, bilder og dagbok med."}</p>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn primary" disabled={!navn.trim()}>Legg til prosjekt</button>
             <button type="button" className="btn" onClick={() => setNyApen(false)}>Avbryt</button>
@@ -115,8 +119,8 @@ export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = 
             <label className="row small"><input type="checkbox" checked={visAvsluttet} onChange={(e) => setVisAvsluttet(e.target.checked)} /> Vis avsluttede</label>
           </div>
         </div>
-        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{" Stjernemerkede prosjekter (dine) står øverst, så de med aktivitet sist. Trykk på stjernen for å gjøre et prosjekt til ditt."}</p>
-        {leder && visma && (
+        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Lag prosjektene her med «+ Nytt prosjekt»."}{" Stjernemerkede prosjekter (dine) står øverst, så de med aktivitet sist. Trykk på stjernen for å gjøre et prosjekt til ditt."}</p>
+        {leder && fraVisma && visma && (
           <p className="small" style={{ color: visma.ok ? "var(--muted)" : "var(--warn)" }}>
             Sist hentet fra Visma {new Date(visma.tid).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" })}: {visma.ok ? "OK" : visma.melding.includes("VISMA_CLIENT_SECRET") ? "venter på nøkkel fra Visma Developer Portal" : visma.melding.slice(0, 160)}
           </p>
@@ -130,7 +134,7 @@ export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = 
                   const b = brukt.get(p.id) ?? 0, est = kalkyle(p);
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
-                      <td className="n">{p.visma_nr ?? (leder ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
+                      <td className="n">{p.visma_nr ?? (leder && fraVisma ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
                       <td style={{ whiteSpace: "normal" }}><span className="row" style={{ gap: 4, flexWrap: "nowrap", alignItems: "center" }}><Stjerne prosjektId={p.id} navn={p.navn} /><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button></span>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
                         {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id);
@@ -161,10 +165,11 @@ export function Prosjekter({ etterListen }: { etterListen?: React.ReactNode } = 
         ) : <div className="empty">{q ? "Ingen prosjekter passer søket." : "Ingen prosjekter ennå."}</div>}
       </section>
       {etterListen}
-      {leder && <Omsetning />}
+      {planlegger && <Kunder />}
+      {leder && fraVisma && <Omsetning />}
       {leder && <Maal />}
       {leder && <Fordeling />}
-      {leder && <Fakturering />}
+      {leder && fraVisma && <Fakturering />}
     </>
   );
 }

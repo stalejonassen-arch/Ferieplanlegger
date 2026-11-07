@@ -255,6 +255,8 @@ export function demoApi(): Api {
       await vent();
       const kopi = structuredClone(d);
       if (!leder()) kopi.utstyr = (kopi.utstyr ?? []).filter((x) => x.ansatt_id === meg()?.id);
+      // «?demo&utenvisma» viser appen slik den er for en bedrift uten Visma
+      if (typeof location !== "undefined" && new URLSearchParams(location.search).has("utenvisma")) kopi.visma = false;
       return kopi;
     },
     abonner(cb) { lyttere.add(cb); return () => lyttere.delete(cb); },
@@ -584,6 +586,14 @@ export function demoApi(): Api {
       if (["ringt", "utsett", "gjenapne"].includes(handling)) t.neste_kontakt = neste ?? om(7);
       if (notat.trim()) t.notat = notat.trim();
       t.logg = [...t.logg, { dato: idag, av: meg()?.id ?? null, hva: handling, notat: notat.trim() }];
+    },
+    async lagreKunde(k) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre kunder.");
+      const g = k.id ? d.kunder.find((x) => x.id === k.id) : undefined;
+      if (g) { if (g.visma_nr != null) throw new Error("Kunder fra Visma endres i Visma."); Object.assign(g, k); endret(); return g.id; }
+      const id = nyId();
+      d.kunder.push({ id, visma_nr: null, adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true, ...k });
+      d.kunder.sort((a, b) => a.navn.localeCompare(b.navn, "nb")); endret(); return id;
     },
     async lagreTilbud(x) {
       const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");

@@ -48,7 +48,7 @@ export const PL_TEKST: Record<string, string> = {
   "Fjernet fra lista": "Usunięto z listy",
   "Tilbudet er åpent igjen": "Oferta jest znów otwarta",
   "Tilbudsoppfølging": "Follow-up ofert",
-  "Åpne tilbud fra Visma som bør følges opp med en telefon – med påminnelse og treffprosent": "Otwarte oferty z Visma, do których warto zadzwonić – z przypomnieniem i skutecznością",
+  "Tilbud som bør følges opp med en telefon – fra Visma eller registrert i appen, med påminnelse og treffprosent": "Oferty, do których warto zadzwonić – z Visma lub zarejestrowane w aplikacji, z przypomnieniem i skutecznością",
   "Personvern – slik behandler vi opplysningene dine": "Ochrona danych – jak przetwarzamy Twoje dane",
   "Skjul personvern": "Ukryj ochronę danych",
   "Skjul avtalevilkår": "Ukryj warunki umowy",

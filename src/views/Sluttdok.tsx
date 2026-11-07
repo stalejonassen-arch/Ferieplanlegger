@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { harVisma } from "../lib/visma";
 import { useApp } from "../App";
 import { firma, orgnrVis } from "../lib/profil";
 import { api, nobbLenke, type FdvDok, type FdvVare } from "../lib/api";
@@ -158,10 +159,10 @@ export function Sluttdok({ p }: { p: Prosjekt }) {
 
       <section className="panel ikke-utskrift">
         <h3 style={{ margin: 0 }}>FDV-dokumentasjon</h3>
-        <p className="small muted" style={{ margin: 0 }}>Varene hentes fra ordrene på prosjektet i Visma. Hver vare får lenke til NOBB, der FDV, produktdatablad og monteringsanvisning ligger under «Dokumentasjon». Last opp egne FDV-dokumenter (PDF) for det som ikke ligger i NOBB.</p>
+        <p className="small muted" style={{ margin: 0 }}>{harVisma(d) ? "Varene hentes fra ordrene på prosjektet i Visma. Hver vare får lenke til NOBB, der FDV, produktdatablad og monteringsanvisning ligger under «Dokumentasjon». Last opp egne FDV-dokumenter (PDF) for det som ikke ligger i NOBB." : "Last opp FDV-dokumenter (PDF) for produktene som er brukt – produktdatablad, monteringsanvisning og vedlikehold."}</p>
         {!fdv ? <p className="small muted">Henter varer …</p> : (
           <>
-            {fdv.varer.length === 0 && <p className="small muted" style={{ margin: 0 }}>Ingen varer med NOBB-nummer på ordrene til dette prosjektet ennå.</p>}
+            {fdv.varer.length === 0 && harVisma(d) && <p className="small muted" style={{ margin: 0 }}>Ingen varer med NOBB-nummer på ordrene til dette prosjektet ennå.</p>}
             {fdv.varer.length > 0 && (
               <div style={{ overflowX: "auto" }}>
                 <table className="tbl"><thead><tr><th>Vare</th><th>Antall</th><th>FDV</th>{leder && <th></th>}</tr></thead><tbody>

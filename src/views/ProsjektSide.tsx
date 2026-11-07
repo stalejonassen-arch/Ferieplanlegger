@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { harVisma } from "../lib/visma";
 import { useApp } from "../App";
 import { api, type FdvVare } from "../lib/api";
 import { kortDato, langDato } from "../lib/ferie";
@@ -59,7 +60,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     ["avvik", "Avvik", antall.avvik],
     ["reklamasjon", "Reklamasjon", (d.reklamasjoner ?? []).filter((r) => r.prosjekt_id === p.id && (r.status === "ny" || r.status === "godkjent")).length || null],
     ["statistikk", "Statistikk", null],
-    ...(leder ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
+    ...(leder && harVisma(d) ? [["okonomi", "Økonomi", null] as [Del, string, number | null]] : []), ["sluttdok", "Sluttdokumentasjon", null],
   ];
   const deler = alleDeler.filter(([x]) => {
     // Deler leder har slått av for bedriften
@@ -594,7 +595,7 @@ function SlaaSammen({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   return (
     <div className="koble-visma" style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
       <p className="small muted" style={{ margin: 0 }}>
-        {app ? "Laget i appen, finnes ikke i Visma. Når prosjektet er opprettet i Visma, slår du det sammen med Visma-prosjektet. " : "Er dette og et annet prosjekt egentlig samme jobb, kan de slås sammen. "}
+        {app && harVisma(d) ? "Laget i appen, finnes ikke i Visma. Når prosjektet er opprettet i Visma, slår du det sammen med Visma-prosjektet. " : "Er dette og et annet prosjekt egentlig samme jobb, kan de slås sammen. "}
         Timer, stempling, dagbok, bilder, avvik, tillegg, dokumenter og chat flyttes til prosjektet du velger.
       </p>
       {!sikker ? (
