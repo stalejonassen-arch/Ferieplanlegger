@@ -792,6 +792,7 @@ export function demoApi(): Api {
       s.kvittert = { ...s.kvittert, [m.id]: new Date().toISOString() }; endret();
     },
     async slettSja(id) { d.sja = (d.sja ?? []).filter((x) => x.id !== id); endret(); },
+    async settFavoritt(prosjekt, pa) { const m = meg(); if (m) { m.favoritter = [...(m.favoritter ?? []).filter((x) => x !== prosjekt), ...(pa ? [prosjekt] : [])]; endret(); } },
     async lagreMittHmsKort(nr, gyldig) { const m = meg(); if (m) { m.hms_kort_nr = nr.trim(); m.hms_kort_gyldig = gyldig; endret(); } },
     async bestill(x) {
       const liste = (d.bestillinger ??= []);

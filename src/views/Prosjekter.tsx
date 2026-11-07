@@ -6,6 +6,7 @@ import { timeStatus } from "../lib/timer";
 import { kortDato } from "../lib/ferie";
 import { ProsjektSide } from "./ProsjektSide";
 import { taNesteProsjekt } from "../lib/navigasjon";
+import { favoritter, Stjerne } from "./Favoritt";
 import { Fordeling } from "./Fordeling";
 import { Maal } from "./Maal";
 import { Omsetning } from "./Omsetning";
@@ -38,11 +39,13 @@ export function Prosjekter() {
   const q = sok.trim().toLowerCase();
   // Prosjekter med aktivitet nylig først, så resten etter prosjektnummer (nyeste først)
   const sist = sistAktiv(d);
+  const fav = favoritter(d, meg.id);
+  const favSet = new Set(fav);
   const mine = new Set(d.timer.filter((t) => t.ansatt_id === meg.id && t.prosjekt_id).map((t) => t.prosjekt_id as string));
   const liste = d.prosjekter
     .filter((p) => visAvsluttet || p.aktiv)
     .filter((p) => !q || `${p.visma_nr ?? ""} ${p.navn} ${kunde(p.kunde_id)} ${p.adresse}`.toLowerCase().includes(q))
-    .sort((a, b) => (sist.get(b.id) ?? "").localeCompare(sist.get(a.id) ?? "") || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
+    .sort((a, b) => Number(favSet.has(b.id)) - Number(favSet.has(a.id)) || (sist.get(b.id) ?? "").localeCompare(sist.get(a.id) ?? "") || (b.visma_nr ?? 0) - (a.visma_nr ?? 0));
   const fraVisma = d.prosjekter.some((p) => p.visma_nr);
   // Adresse for utførelse, ellers kundens adresse
   const adresseFor = (p: (typeof d.prosjekter)[number]) => { const kk = d.kunder.find((x) => x.id === p.kunde_id); return p.adresse || [kk?.adresse, [kk?.postnr, kk?.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", "); };
@@ -89,6 +92,19 @@ export function Prosjekter() {
           </div>
         </form>
       )}
+      {fav.length > 0 && (
+        <section className="panel">
+          <h2 style={{ margin: 0 }}>Mine prosjekter</h2>
+          <div className="list">
+            {fav.map((id) => { const p = d.prosjekter.find((x) => x.id === id)!; const b = brukt.get(p.id) ?? 0, est = kalkyle(p); return (
+              <div key={id} className="item mine-prosjekt" role="button" tabIndex={0} onClick={() => setValgt(id)} onKeyDown={(e) => { if (e.key === "Enter") setValgt(id); }}>
+                <div style={{ minWidth: 0 }}><div className="t">{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</div>
+                  <div className="s">{[kunde(p.kunde_id), adresseFor(p), `${t2(b)}${est ? ` / ${t2(est)}` : ""} t`].filter(Boolean).join(" · ")}</div></div>
+                <Stjerne prosjektId={id} navn={p.navn} />
+              </div>); })}
+          </div>
+        </section>
+      )}
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Prosjekter</h2>
@@ -97,7 +113,7 @@ export function Prosjekter() {
             <label className="row small"><input type="checkbox" checked={visAvsluttet} onChange={(e) => setVisAvsluttet(e.target.checked)} /> Vis avsluttede</label>
           </div>
         </div>
-        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{" Prosjekter med aktivitet sist står øverst."}</p>
+        <p className="small muted">{fraVisma ? "Prosjekter og kunder hentes automatisk fra Visma Business NXT." : "Når koblingen til Visma Business NXT er på plass, hentes prosjekter og kunder automatisk derfra."}{" Stjernemerkede prosjekter (dine) står øverst, så de med aktivitet sist. Trykk på stjernen for å gjøre et prosjekt til ditt."}</p>
         {leder && visma && (
           <p className="small" style={{ color: visma.ok ? "var(--muted)" : "var(--warn)" }}>
             Sist hentet fra Visma {new Date(visma.tid).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" })}: {visma.ok ? "OK" : visma.melding.includes("VISMA_CLIENT_SECRET") ? "venter på nøkkel fra Visma Developer Portal" : visma.melding.slice(0, 160)}
@@ -113,7 +129,7 @@ export function Prosjekter() {
                   return (
                     <tr key={p.id} style={p.aktiv ? undefined : { color: "var(--muted)" }}>
                       <td className="n">{p.visma_nr ?? (leder ? <span className="chip venter" title="Laget i appen. Koble til Visma-prosjektet når det er opprettet.">Ikke i Visma</span> : "–")}</td>
-                      <td style={{ whiteSpace: "normal" }}><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button>
+                      <td style={{ whiteSpace: "normal" }}><span className="row" style={{ gap: 4, flexWrap: "nowrap", alignItems: "center" }}><Stjerne prosjektId={p.id} navn={p.navn} /><button className="linkbtn" onClick={() => setValgt(p.id)}>{p.navn}</button></span>
                         {kunde(p.kunde_id) && <div className="small muted">{kunde(p.kunde_id)}</div>}
                         {(() => { const kk = d.kunder.find((x) => x.id === p.kunde_id);
                           const navn = p.kontakt_navn ?? "", tlf = p.kontakt_telefon || (p.kontakt_navn ? "" : kk?.telefon ?? "");

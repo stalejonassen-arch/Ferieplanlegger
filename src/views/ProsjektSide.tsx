@@ -24,6 +24,7 @@ import { bruker, type Modul } from "../lib/moduler";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { Reklamasjoner } from "./Reklamasjon";
 import { taNesteDel } from "../lib/navigasjon";
+import { Stjerne } from "./Favoritt";
 
 type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
@@ -71,7 +72,10 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
     <>
       <div><button className="btn sm" onClick={tilbake}>‹ Alle prosjekter</button></div>
       <section className="panel prosjekthode">
-        <h2 style={{ margin: 0 }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</h2>
+        <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "nowrap" }}>
+          <h2 style={{ margin: 0, flex: 1 }}>{p.visma_nr ? `${p.visma_nr} · ` : ""}{p.navn}</h2>
+          <Stjerne prosjektId={p.id} navn={p.navn} />
+        </div>
         <div className="row small" style={{ gap: "4px 14px" }}>
           {k && <span><b>{k.navn}</b>{k.visma_nr ? <span className="muted"> · kundenr {k.visma_nr}</span> : null}</span>}
           {k?.epost && <a href={`mailto:${k.epost}`}>{k.epost}</a>}

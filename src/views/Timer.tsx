@@ -9,6 +9,7 @@ import { dagerUtenTimer, hhmm, lonnsdager, mandag, normaltid, sisteProsjekter, t
 import { InneNaa, Stempling } from "./Stempling";
 import { TimerOversikt } from "./TimerOversikt";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { favoritter, hurtigvalg } from "./Favoritt";
 import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
 import { ServiceValg } from "./Service";
@@ -42,7 +43,7 @@ export function Timer() {
   // Manuell føring er for det man glemte å logge; vises når man ber om det, endrer, eller leder fører for andre
   const [manuell, setManuell] = useState(false);
   const visSkjema = manuell || !!f.id || !meSelv;
-  const siste = sisteProsjekter(d.timer, hvem.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
+  const siste = hurtigvalg(favoritter(d, hvem.id), sisteProsjekter(d.timer, hvem.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv)));
   const mangler = dagerUtenTimer(hvem.id, d, mandag(idag), idag, helligdag);
 
   // Dagen som vises i dagsloggen følger datoen i skjemaet, og kan velges fra ukelista
@@ -134,7 +135,7 @@ export function Timer() {
           <ProsjektVelger value={f.prosjekt_id} onChange={velgProsjekt} prosjekter={aktive} tom="Internt arbeid (butikk, lager, verksted)"
             forslag={{ tittel: "Siste prosjekter", ider: siste }} />
           {siste.length > 0 && (
-            <div className="hurtig" aria-label="Siste prosjekter">
+            <div className="hurtig" aria-label="Mine og siste prosjekter">
               {siste.map((id) => { const p = d.prosjekter.find((x) => x.id === id)!; return (
                 <button type="button" key={id} aria-pressed={f.prosjekt_id === id} onClick={() => velgProsjekt(id)} title={prosjektNavn(id)}>{p.visma_nr ? `${p.visma_nr} ` : ""}{p.navn}</button>
               ); })}

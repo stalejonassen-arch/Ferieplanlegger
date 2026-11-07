@@ -135,6 +135,8 @@ export interface Api {
   slettSja(id: string): Promise<void>;
   /** HMS-kort: den ansatte selv */
   lagreMittHmsKort(nr: string, gyldig: string | null): Promise<void>;
+  /** Stjernemerk et prosjekt som mitt (eller fjern stjernen) */
+  settFavoritt(prosjektId: string, pa: boolean): Promise<void>;
   /** Bestilling fra byggeplassen */
   bestill(x: { id?: string; prosjekt_id: string; onsket_dato: string | null; merknad: string; linjer: Bestillingslinje[] }): Promise<void>;
   settBestillingStatus(id: string, status: BestillingStatus, svar?: string): Promise<void>;
@@ -675,6 +677,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async kvitterSja(id) { ok(await sb.rpc("kvitter_sja", { sja_id: id })); },
     async slettSja(id) { ok(await sb.from("sja").delete().eq("id", id)); },
     async lagreMittHmsKort(nr, gyldig) { ok(await sb.rpc("lagre_mitt_hms_kort", { nr, gyldig })); },
+    async settFavoritt(prosjekt, pa) { ok(await sb.rpc("sett_favoritt", { prosjekt, pa })); },
     async bestill(x) {
       const { id, ...rad } = x;
       ok(id ? await sb.from("bestillinger").update(rad).eq("id", id) : await sb.from("bestillinger").insert(rad));

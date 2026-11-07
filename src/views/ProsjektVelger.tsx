@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useApp } from "../App";
 import { prosjektTekst, sokProsjekter } from "../lib/prosjektsok";
 import type { Prosjekt } from "../lib/timer";
+import { favoritter, Stjerne } from "./Favoritt";
 
 export function ProsjektVelger({ value, onChange, prosjekter, tom, forslag, deaktivert, id, label = "Prosjekt", placeholder = "Velg prosjekt …", required }: {
   value: string; onChange: (id: string) => void; prosjekter: Prosjekt[];
@@ -13,7 +14,8 @@ export function ProsjektVelger({ value, onChange, prosjekter, tom, forslag, deak
   deaktivert?: (p: Prosjekt) => boolean;
   id?: string; label?: string; placeholder?: string; required?: boolean;
 }) {
-  const { d } = useApp();
+  const { d, meg } = useApp();
+  const fav = favoritter(d, meg.id).filter((id) => prosjekter.some((p) => p.id === id));
   const [aapen, setAapen] = useState(false);
   const [sok, setSok] = useState("");
   const [aktiv, setAktiv] = useState(0);
@@ -28,14 +30,17 @@ export function ProsjektVelger({ value, onChange, prosjekter, tom, forslag, deak
     const r = (p: Prosjekt, gruppe?: string): Rad => ({ id: p.id, tekst: prosjektTekst(p) + (p.aktiv ? "" : " (avsluttet)"), under: [kunde(p), p.adresse].filter(Boolean).join(" · "), gruppe, av: deaktivert?.(p) });
     const ut: Rad[] = [];
     if (tom !== undefined && !sok.trim()) ut.push({ id: "", tekst: tom });
-    if (!sok.trim() && forslag?.ider.length) {
-      const f = forslag.ider.map((x) => prosjekter.find((p) => p.id === x)).filter((p): p is Prosjekt => !!p);
-      f.forEach((p, i) => ut.push(r(p, i === 0 ? forslag.tittel : undefined)));
-      prosjekter.filter((p) => !forslag.ider.includes(p.id)).forEach((p, i) => ut.push(r(p, i === 0 ? "Alle" : undefined)));
+    if (!sok.trim() && (forslag?.ider.length || fav.length)) {
+      const finn = (ider: string[]) => ider.map((x) => prosjekter.find((p) => p.id === x)).filter((p): p is Prosjekt => !!p);
+      finn(fav).forEach((p, i) => ut.push(r(p, i === 0 ? "Mine prosjekter" : undefined)));
+      const sist = (forslag?.ider ?? []).filter((x) => !fav.includes(x));
+      finn(sist).forEach((p, i) => ut.push(r(p, i === 0 ? forslag!.tittel : undefined)));
+      const brukt = new Set([...fav, ...sist]);
+      prosjekter.filter((p) => !brukt.has(p.id)).forEach((p, i) => ut.push(r(p, i === 0 ? "Alle" : undefined)));
       return ut;
     }
     return [...ut, ...sokProsjekter(prosjekter, d.kunder, sok).map((p) => r(p))];
-  }, [sok, prosjekter, d.kunder, tom, forslag]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sok, prosjekter, d.kunder, tom, forslag, fav.join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!aapen) return;
@@ -80,6 +85,7 @@ export function ProsjektVelger({ value, onChange, prosjekter, tom, forslag, deak
                   onPointerMove={() => setAktiv(i)} onClick={() => velg(r)}>
                   <span>{r.tekst}</span>
                   {r.under && <span className="pvelger-under">{r.under}</span>}
+                  {r.id && <Stjerne prosjektId={r.id} />}
                 </div>
               </li>
             ))}

@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
 import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
 import { ProsjektVelger } from "./ProsjektVelger";
+import { favoritter, hurtigvalg } from "./Favoritt";
 import { TilleggValg, tilleggFor } from "./TilleggValg";
 import { ReklamasjonValg } from "./Reklamasjon";
 import { ServiceValg } from "./Service";
@@ -38,7 +39,7 @@ function Dagstokk({ okter, navn }: { okter: { fra: string; til: string; prosjekt
 export function Stempling() {
   const { d, meg, idag, kjor, kjorKo } = useApp();
   const s = d.stempling.find((x) => x.ansatt_id === meg.id);
-  const siste = sisteProsjekter(d.timer, meg.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv));
+  const siste = hurtigvalg(favoritter(d, meg.id), sisteProsjekter(d.timer, meg.id).filter((id) => d.prosjekter.some((p) => p.id === id && p.aktiv)));
   const [prosjekt, setProsjekt] = useState<string>(() => siste[0] ?? "");
   const [beskrivelse, setBeskrivelse] = useState("");
   // Reklamasjonsprosjektet: hvilken reklamasjon arbeidet gjelder

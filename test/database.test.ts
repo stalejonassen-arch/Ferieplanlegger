@@ -108,6 +108,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0069_ordre_selger.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0070_personrapport_epost.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0071_egenkontroll.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0072_favorittprosjekter.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1253,5 +1254,19 @@ describe("egenkontroll: maler, kontrollplan, avvik og godkjenning", () => {
     // Bare leder kan gjøre noen til faglig leder
     await as(MADS, "update public.ansatte set faglig_leder = true where epost = $1", [JIM]);
     expect((await q("select faglig_leder from public.ansatte where epost = $1", [JIM]))[0].faglig_leder).toBe(false);
+  });
+});
+
+describe("favorittprosjekter", () => {
+  it("hver ansatt stjernemerker sine egne prosjekter", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Favoritt-prosjekt') returning id");
+    await as(JIM, "select public.sett_favoritt($1, true)", [p.id]);
+    await as(JIM, "select public.sett_favoritt($1, true)", [p.id]);
+    const fav = async (e: string) => (await db.query<any>("select favoritter from public.ansatte where epost = $1", [e])).rows[0].favoritter;
+    expect(await fav(JIM)).toEqual([p.id]);
+    expect(await fav(MADS)).toEqual([]);
+    await expect(as(JIM, "select public.sett_favoritt(gen_random_uuid(), true)")).rejects.toThrow(/Ukjent/);
+    await as(JIM, "select public.sett_favoritt($1, false)", [p.id]);
+    expect(await fav(JIM)).toEqual([]);
   });
 });
