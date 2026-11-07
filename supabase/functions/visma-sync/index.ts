@@ -459,7 +459,8 @@ async function synkTilbud(tok: string, b: { id: number; visma_firma_nr: number }
   const tilbud = await alle(tok, b.visma_firma_nr, "order",
     ["orderNo", "orderType", ...velg(oFelt, ["orderDate", "name", "customerNo", "sellerOrBuyer", "orderSumNetDomestic", "quotationNo", "yourReference", "orgUnit1", "finishDate"])],
     `{ _and: [{ orderType: { _eq: 5 } }, { orderDate: { _gte: ${fra} } }] }`);
-  const { data: fins } = await sb.from("tilbud").select("visma_ordrenr, status, status_dato").eq("bedrift_id", b.id);
+  // Bare tilbud fra Visma (tilbud registrert i ByggLogg har ikke ordrenummer og røres ikke)
+  const { data: fins } = await sb.from("tilbud").select("visma_ordrenr, status, status_dato").eq("bedrift_id", b.id).not("visma_ordrenr", "is", null);
   const fra_db = new Map((fins ?? []).map((t) => [t.visma_ordrenr as number, t]));
   const naa = new Date().toISOString();
   const rader = tilbud

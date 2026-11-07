@@ -566,12 +566,26 @@ export function demoApi(): Api {
       const t = (demoTilbud ?? []).find((x) => x.id === id); if (!t) throw new Error("Fant ikke tilbudet.");
       const idag = new Date().toISOString().slice(0, 10), om = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
       if (handling === "tapt" || handling === "ikke_aktuelt") { t.utfall = handling; t.neste_kontakt = null; }
-      if (handling === "gjenapne") t.utfall = null;
+      if (handling === "gjenapne") { t.utfall = null; if (t.manuell) t.status = "apen"; }
+      if (handling === "vunnet") { if (!t.manuell) throw new Error("Tilbud fra Visma blir vunnet når de gjøres om til ordre i Visma."); t.status = "vunnet"; t.status_dato = idag; t.utfall = null; t.neste_kontakt = null; }
       if (handling === "ringt") t.sist_kontakt = idag;
       if (["ringt", "utsett", "gjenapne"].includes(handling)) t.neste_kontakt = neste ?? om(7);
       if (notat.trim()) t.notat = notat.trim();
       t.logg = [...t.logg, { dato: idag, av: meg()?.id ?? null, hva: handling, notat: notat.trim() }];
     },
+    async lagreTilbud(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      if (!x.kunde.trim()) throw new Error("Skriv inn kunden.");
+      const selger = planlegger() && x.selger.trim() ? x.selger.trim() : m.navn;
+      const g = x.id ? (demoTilbud ?? []).find((t) => t.id === x.id) : undefined;
+      const felt = { kunde: x.kunde.trim(), telefon: x.telefon.trim(), referanse: x.referanse.trim(), beskrivelse: x.beskrivelse.trim(), belop: x.belop, selger_navn: selger };
+      if (g) { Object.assign(g, felt, x.dato ? { dato: x.dato } : {}); return g.id; }
+      const id = `m${Date.now()}`;
+      (demoTilbud ??= []).push({ id, visma_ordrenr: null, tilbudsnr: null, dato: x.dato ?? new Date().toISOString().slice(0, 10), kunde_nr: null, selger_nr: null, avdeling_nr: null, status: "apen", status_dato: null,
+        utfall: null, sist_kontakt: null, neste_kontakt: null, notat: "", logg: [], manuell: true, opprettet_av: m.id, ...felt });
+      return id;
+    },
+    async slettTilbud(id) { demoTilbud = (demoTilbud ?? []).filter((t) => t.id !== id); },
     async ansatteMedPush() { return d.ansatte.filter((a) => a.aktiv).slice(0, 3).map((a) => a.id); },
     async lagreDgKategorier(k) { if (!leder()) throw new Error("Bare leder kan endre dette."); d.dgKategorier = k; endret(); },
     async markerLest(id) {
