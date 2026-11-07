@@ -16,17 +16,17 @@
 <style>
 /* ByggLogg forside.
    Det ene som skal huskes: arbeidsdagen lagt ut langs et målebånd (07–16), der hver hendelse er noe appen gjør.
-   Alt rundt er rolig: skifergrått, varm hvit, kobber bare der målebåndet og knappene er. */
+   Alt rundt er rolig: skoggrønt, varm hvit, messing bare der målebåndet og knappene er. */
 :root {
-  --natt: #1C2329; --dyp: #11161B; --kort: #252E36; --kortlinje: #3A4651; --gul: #D9822B; --gul-hover: #E6944A; --gul-ink: #1A1206; --aks2: #9DB4C0;
-  --gronn: #4E9A6F; --bla: #4F7CA8; --rod: #D2493F;
-  --bg: #FFFFFF; --flate: #F4F2EE; --fg: #16191D; --muted: #555E66; --linje: #E0DCD4;
-  --hfg: #FFFFFF; --hmuted: #AEB9C2;
+  --natt: #123029; --dyp: #0B201B; --kort: #1A3D35; --kortlinje: #2C5A4F; --gul: #D4B05A; --gul-hover: #E0C177; --gul-ink: #14130B; --aks2: #9FC7B8;
+  --gronn: #6FB38F; --bla: #4F7CA8; --rod: #D2493F;
+  --bg: #FFFFFF; --flate: #F3F1EB; --fg: #14211D; --muted: #4F5F59; --linje: #DDD8CC;
+  --hfg: #FFFFFF; --hmuted: #B5CCC4;
   --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --f-body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111519; --flate: #1A2026; --fg: #F1EEE8; --muted: #B3BAC0; --linje: #2E3740; color-scheme: dark } }
-:root[data-theme="dark"] { --bg: #111519; --flate: #1A2026; --fg: #F1EEE8; --muted: #B3BAC0; --linje: #2E3740; color-scheme: dark }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0C1714; --flate: #13241F; --fg: #EFF2EC; --muted: #B0C2BB; --linje: #24413A; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0C1714; --flate: #13241F; --fg: #EFF2EC; --muted: #B0C2BB; --linje: #24413A; color-scheme: dark }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -135,8 +135,8 @@ p { margin: 0; }
 /* Prosjektet */
 section { padding-block: clamp(64px, 9vw, 120px); }
 .prosjekt-rad { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; margin-top: 48px; align-items: start; }
-.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F4F2EE; box-shadow: 0 30px 60px -30px rgba(17,22,27,.45); }
-.telefon { border-radius: 30px; border: 7px solid #111519; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(17,22,27,.5); background: #111519; }
+.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F3F1EB; box-shadow: 0 30px 60px -30px rgba(11,32,27,.45); }
+.telefon { border-radius: 30px; border: 7px solid #0C1714; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(11,32,27,.5); background: #0C1714; }
 .deler { margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 32px; }
 .deler div b { display: block; font-family: var(--f-display); font-size: 22px; font-weight: 700; line-height: 1.1; }
 .deler div span { color: var(--muted); font-size: 16px; }
@@ -150,7 +150,7 @@ section { padding-block: clamp(64px, 9vw, 120px); }
 .tall-grid figure { margin: 0; }
 .tall-grid figcaption { margin-top: 16px; color: var(--hmuted); max-width: 52ch; }
 .tall-grid figcaption b { display: block; color: var(--hfg); font-family: var(--f-display); font-size: 26px; font-weight: 700; line-height: 1.05; margin-bottom: 4px; }
-.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F4F2EE; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
+.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F3F1EB; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
 .f-okonomi { grid-column: 1 / -1; }
 .f-okonomi .skjerm { padding: 6px 4px; }
 .f-omsetning { grid-column: 1 / span 7; }
