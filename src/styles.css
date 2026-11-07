@@ -1579,3 +1579,17 @@ button.mr-navn:hover { text-decoration: underline; }
 .pvelger-rad .stjerne { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; }
 .mine-prosjekt { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
 .tilbud-skjema { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: var(--sunk); }
+
+/* ---------- Tema: Skifer og kobber (ByggLoggs egne farger) ----------
+   Bygger på firmafarge-oppsettet («egen») med skifergrått og kobber, og en varm, nøytral bakgrunn. */
+:root[data-skifer] {
+  --bg: #F4F2EE; --surface: #FFFFFF; --sunk: #ECE8E1; --fg: #16191D; --muted: #555E66; --line: #DDD7CC; --line-soft: #E7E2D9;
+  --info: #4F7CA8; --hatch: #E2DDD3; --approved: #2F7D55;
+  --shadow: 0 1px 2px rgba(22, 25, 29, .05), 0 10px 26px -18px rgba(22, 25, 29, .35);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-skifer] {
+    --bg: #111519; --surface: #1A2026; --sunk: #232B33; --fg: #F1EEE8; --muted: #B3BAC0; --line: #34404A; --line-soft: #2B343C;
+    --accent: #E6944A; --info: #9DB4C0; --hatch: #2B343C; --approved: #6CC596;
+  }
+}
