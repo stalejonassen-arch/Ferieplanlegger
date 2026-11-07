@@ -1568,3 +1568,13 @@ button.mr-navn:hover { text-decoration: underline; }
   .mr-navn { font-size: 13px; }
   .mr-rute { height: 30px; font-size: 11px; }
 }
+
+/* ---------- Favorittprosjekter (stjerne) ---------- */
+.stjerne { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; color: var(--muted); }
+.stjerne svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.stjerne.pa { color: #e0a800; }
+.stjerne.pa svg { fill: currentColor; }
+.stjerne:hover { background: var(--sunk); }
+.pvelger-rad:has(.stjerne) { position: relative; padding-right: 42px; }
+.pvelger-rad .stjerne { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; }
+.mine-prosjekt { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }

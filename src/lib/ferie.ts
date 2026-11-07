@@ -28,6 +28,8 @@ export interface Ansatt {
   prosjektleder?: boolean;
   /** Faglig leder (sentral godkjenning): kontrollerer og godkjenner egenkontrollen */
   faglig_leder?: boolean;
+  /** Prosjekter den ansatte har stjernemerket som sine */
+  favoritter?: string[];
   /** HMS-kort (byggekort) */
   hms_kort_nr?: string;
   hms_kort_gyldig?: string | null;
