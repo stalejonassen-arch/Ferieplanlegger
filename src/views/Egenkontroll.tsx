@@ -364,7 +364,7 @@ export function SjekklisteMaler() {
 
 /** Egenkontrollen på alle aktive prosjekter: hva som venter på kontroll, hva som er over fristen og åpne avvik */
 export function EgenkontrollOversikt() {
-  const { d, idag, meg } = useApp();
+  const { d, idag, meg, leder } = useApp();
   const alle = d.sjekklister ?? [];
   const venter = alle.filter((s) => s.status === "signert" && !s.godkjent_av);
   const mine = alle.filter((s) => s.ansvarlig_id === meg.id && s.status !== "signert");
@@ -424,6 +424,7 @@ export function EgenkontrollOversikt() {
           </tbody>
         </table></div>
       ) : <p className="small muted" style={{ margin: 0 }}>Ingen aktive prosjekter.</p>}
+      {leder && <FagligeLedere />}
       {utenKontroll > 0 && <p className="small muted" style={{ margin: 0 }}>{utenKontroll} aktive prosjekter har ingen kontroller. For arbeid som krever ansvarsrett skal egenkontrollen dokumenteres – legg opp en kontrollplan på prosjektet.</p>}
     </section>
   );
@@ -464,5 +465,27 @@ export function KvalitetFane({ medAvvik }: { medAvvik: boolean }) {
       {vis === "egenkontroll" && <EgenkontrollOversikt />}
       {vis === "maler" && <SjekklisteMaler />}
     </>
+  );
+}
+
+/** Leder velger hvem som er faglig leder (sentral godkjenning) rett her, uten å gå via Oppsett */
+function FagligeLedere() {
+  const { d, kjor } = useApp();
+  const ansatte = sorterAnsatte(d).filter((a) => a.aktiv);
+  const valgte = ansatte.filter((a) => a.faglig_leder);
+  return (
+    <details className="sk-planlegg" open={!valgte.length}>
+      <summary className="small"><b>Faglige ledere:</b> {valgte.length ? valgte.map((a) => a.navn).join(", ") : <span style={{ color: "var(--warn)" }}>ingen valgt ennå</span>} <span className="muted">– endre</span></summary>
+      <p className="small muted" style={{ margin: "6px 0" }}>Faglig leder kontrollerer og godkjenner egenkontrollen og styrer sjekklistemalene.</p>
+      <div className="row" style={{ gap: "6px 14px" }}>
+        {ansatte.map((a) => (
+          <label key={a.id} className="row small" style={{ gap: 6 }}>
+            <input type="checkbox" checked={!!a.faglig_leder}
+              onChange={(e) => kjor(() => api.lagreAnsatt({ id: a.id, navn: a.navn, avdeling_id: a.avdeling_id, faglig_leder: e.target.checked }), e.target.checked ? `${a.navn} er faglig leder` : `${a.navn} er ikke lenger faglig leder`)} />
+            {a.navn}
+          </label>
+        ))}
+      </div>
+    </details>
   );
 }
