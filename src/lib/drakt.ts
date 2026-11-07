@@ -5,6 +5,9 @@
  */
 export interface Drakt { hoved: string; aksent: string }
 
+/** ByggLoggs egne farger «Skifer og kobber»: skifergrått med kobber, på varm hvit bakgrunn */
+export const SKIFER: Drakt = { hoved: "#1C2329", aksent: "#D9822B" };
+
 export type Rgb = [number, number, number];
 
 const BYGGLOGG_GUL = "#FFCD00";
