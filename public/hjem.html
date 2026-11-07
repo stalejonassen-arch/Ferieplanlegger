@@ -16,17 +16,17 @@
 <style>
 /* ByggLogg forside.
    Det ene som skal huskes: arbeidsdagen lagt ut langs et målebånd (07–16), der hver hendelse er noe appen gjør.
-   Alt rundt er rolig: nattblått, hvitt, gult bare der målebåndet og knappene er. */
+   Alt rundt er rolig: skifergrått, varm hvit, kobber bare der målebåndet og knappene er. */
 :root {
-  --natt: #0B1F5C; --dyp: #050E33; --gul: #FFCD00; --gul-ink: #1A1400;
-  --gronn: #1E9E68; --bla: #2F6FE0; --rod: #E5484D;
-  --bg: #FFFFFF; --flate: #F1F3F8; --fg: #0E1430; --muted: #4A5372; --linje: #D9DEEA;
-  --hfg: #FFFFFF; --hmuted: #BFC8EC;
+  --natt: #1C2329; --dyp: #11161B; --kort: #252E36; --kortlinje: #3A4651; --gul: #D9822B; --gul-hover: #E6944A; --gul-ink: #1A1206; --aks2: #9DB4C0;
+  --gronn: #4E9A6F; --bla: #4F7CA8; --rod: #D2493F;
+  --bg: #FFFFFF; --flate: #F4F2EE; --fg: #16191D; --muted: #555E66; --linje: #E0DCD4;
+  --hfg: #FFFFFF; --hmuted: #AEB9C2;
   --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --f-body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0A0E20; --flate: #11183A; --fg: #F2F4FC; --muted: #B4BCDD; --linje: #27316A; color-scheme: dark } }
-:root[data-theme="dark"] { --bg: #0A0E20; --flate: #11183A; --fg: #F2F4FC; --muted: #B4BCDD; --linje: #27316A; color-scheme: dark }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111519; --flate: #1A2026; --fg: #F1EEE8; --muted: #B3BAC0; --linje: #2E3740; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #111519; --flate: #1A2026; --fg: #F1EEE8; --muted: #B3BAC0; --linje: #2E3740; color-scheme: dark }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -44,7 +44,7 @@ p { margin: 0; }
 
 .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 24px; border-radius: 8px; font-weight: 700; font-size: 17px; text-decoration: none; border: 2px solid transparent; cursor: pointer; font-family: inherit; }
 .btn.gul { background: var(--gul); color: var(--gul-ink); }
-.btn.gul:hover { background: #FFD933; }
+.btn.gul:hover { background: var(--gul-hover); }
 .btn.strek { border-color: currentColor; color: inherit; background: none; }
 
 /* Topplinje */
@@ -94,12 +94,12 @@ p { margin: 0; }
 .hendelse.opp::before { top: 100%; height: var(--stang, 40px); }
 .hendelse.ned { top: var(--y, 24px); z-index: var(--z, 1); }
 .hendelse.ned::before { bottom: 100%; height: var(--y, 24px); }
-.hendelse .kort { background: #13286F; border: 1px solid #2B4296; border-left: 4px solid var(--farge, var(--gul)); border-radius: 0 10px 10px 0; padding: 12px 14px 13px; }
+.hendelse .kort { background: var(--kort); border: 1px solid var(--kortlinje); border-left: 4px solid var(--farge, var(--gul)); border-radius: 0 10px 10px 0; padding: 12px 14px 13px; }
 .hendelse time { font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--hfg); }
 .hendelse .hvem { display: block; font-size: 13.5px; color: var(--hmuted); margin-top: 2px; }
 .hendelse p { font-size: 15.5px; line-height: 1.35; margin-top: 6px; color: var(--hfg); }
 .hendelse p b { font-weight: 700; }
-.snekker { --farge: var(--gul); } .leder { --farge: #8FA6FF; } .butikk { --farge: var(--gronn); } .kunde { --farge: #FF9F5A; } .kontor { --farge: #FFFFFF; }
+.snekker { --farge: var(--gul); } .leder { --farge: var(--aks2); } .butikk { --farge: var(--gronn); } .kunde { --farge: #E9C46A; } .kontor { --farge: #FFFFFF; }
 
 /* Ett orkestrert øyeblikk: markøren går langs dagen, og hendelsene dukker opp når den passerer */
 @media (prefers-reduced-motion: no-preference) {
@@ -135,8 +135,8 @@ p { margin: 0; }
 /* Prosjektet */
 section { padding-block: clamp(64px, 9vw, 120px); }
 .prosjekt-rad { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; margin-top: 48px; align-items: start; }
-.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F4F6FB; box-shadow: 0 30px 60px -30px rgba(5,14,51,.45); }
-.telefon { border-radius: 30px; border: 7px solid #0A0E20; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(5,14,51,.5); background: #0A0E20; }
+.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F4F2EE; box-shadow: 0 30px 60px -30px rgba(17,22,27,.45); }
+.telefon { border-radius: 30px; border: 7px solid #111519; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(17,22,27,.5); background: #111519; }
 .deler { margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 32px; }
 .deler div b { display: block; font-family: var(--f-display); font-size: 22px; font-weight: 700; line-height: 1.1; }
 .deler div span { color: var(--muted); font-size: 16px; }
@@ -150,14 +150,14 @@ section { padding-block: clamp(64px, 9vw, 120px); }
 .tall-grid figure { margin: 0; }
 .tall-grid figcaption { margin-top: 16px; color: var(--hmuted); max-width: 52ch; }
 .tall-grid figcaption b { display: block; color: var(--hfg); font-family: var(--f-display); font-size: 26px; font-weight: 700; line-height: 1.05; margin-bottom: 4px; }
-.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F4F6FB; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
+.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F4F2EE; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
 .f-okonomi { grid-column: 1 / -1; }
 .f-okonomi .skjerm { padding: 6px 4px; }
 .f-omsetning { grid-column: 1 / span 7; }
 .f-maal { grid-column: 8 / span 5; align-self: start; }
 .f-avdeling { grid-column: 1 / span 6; }
 .f-rapport { grid-column: 7 / span 6; align-self: center; }
-.rapportkort { background: #13286F; border: 1px solid #2B4296; border-radius: 14px; padding: 26px 28px; }
+.rapportkort { background: var(--kort); border: 1px solid var(--kortlinje); border-radius: 14px; padding: 26px 28px; }
 .rapportkort h3 { color: var(--gul); font-size: 30px; }
 .rapportkort p { color: var(--hmuted); margin-top: 10px; }
 .rapportkort ul { margin: 14px 0 0; padding-left: 20px; display: grid; gap: 6px; }
@@ -234,7 +234,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
 <header class="topp">
   <div class="wrap">
     <a class="merke" href="#">
-      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF" fill-opacity=".08"/><g transform="translate(64 64) scale(6)"><path d="M6 30 L32 9 L58 30" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 27 V55 H49 V27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/><path d="M23 41 L30 48 L42 35" fill="none" stroke="#FFCD00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF" fill-opacity=".08"/><g transform="translate(64 64) scale(6)"><path d="M6 30 L32 9 L58 30" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 27 V55 H49 V27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/><path d="M23 41 L30 48 L42 35" fill="none" stroke="var(--gul)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
       <b>ByggLogg</b>
     </a>
     <div class="hoyre">
