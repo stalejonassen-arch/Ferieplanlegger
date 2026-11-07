@@ -6,27 +6,27 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:title" content="ByggLogg – dagen på byggeplassen, ført mens den skjer">
-<meta property="og:description" content="Appen for byggefirma: snekkerne stempler, bestiller og dokumenterer på telefonen, leder ser hele uka, og timene går rett til faktura og lønn i Visma eller Tripletex.">
+<meta property="og:description" content="Appen for byggefirma: snekkerne stempler, bestiller og dokumenterer på telefonen, leder ser hele uka, og timene går rett til faktura og lønn – med Visma, Tripletex, andre systemer eller helt uten.">
 <meta property="og:image" content="https://bygglogg.app/skjerm/prosjekt-pc.webp">
 <meta property="og:image:alt" content="Prosjektsiden i ByggLogg">
 <title>ByggLogg</title>
-<meta name="description" content="Appen for byggefirma: snekkerne stempler, bestiller og dokumenterer på telefonen, leder ser hele uka, og timene går rett til faktura og lønn i Visma eller Tripletex.">
+<meta name="description" content="Appen for byggefirma: snekkerne stempler, bestiller og dokumenterer på telefonen, leder ser hele uka, og timene går rett til faktura og lønn – med Visma, Tripletex, andre systemer eller helt uten.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap">
 <style>
 /* ByggLogg forside.
    Det ene som skal huskes: arbeidsdagen lagt ut langs et målebånd (07–16), der hver hendelse er noe appen gjør.
-   Alt rundt er rolig: nattblått, hvitt, gult bare der målebåndet og knappene er. */
+   Alt rundt er rolig: skifergrått, varm hvit, kobber bare der målebåndet og knappene er. */
 :root {
-  --natt: #0B1F5C; --dyp: #050E33; --gul: #FFCD00; --gul-ink: #1A1400;
-  --gronn: #1E9E68; --bla: #2F6FE0; --rod: #E5484D;
-  --bg: #FFFFFF; --flate: #F1F3F8; --fg: #0E1430; --muted: #4A5372; --linje: #D9DEEA;
-  --hfg: #FFFFFF; --hmuted: #BFC8EC;
+  --natt: #1C2329; --dyp: #11161B; --kort: #252E36; --kortlinje: #3A4651; --gul: #D9822B; --gul-hover: #E6944A; --gul-ink: #1A1206; --aks2: #9DB4C0;
+  --gronn: #4E9A6F; --bla: #4F7CA8; --rod: #D2493F;
+  --bg: #FFFFFF; --flate: #F4F2EE; --fg: #16191D; --muted: #555E66; --linje: #E0DCD4;
+  --hfg: #FFFFFF; --hmuted: #AEB9C2;
   --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --f-body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0A0E20; --flate: #11183A; --fg: #F2F4FC; --muted: #B4BCDD; --linje: #27316A; color-scheme: dark } }
-:root[data-theme="dark"] { --bg: #0A0E20; --flate: #11183A; --fg: #F2F4FC; --muted: #B4BCDD; --linje: #27316A; color-scheme: dark }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111519; --flate: #1A2026; --fg: #F1EEE8; --muted: #B3BAC0; --linje: #2E3740; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #111519; --flate: #1A2026; --fg: #F1EEE8; --muted: #B3BAC0; --linje: #2E3740; color-scheme: dark }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -44,7 +44,7 @@ p { margin: 0; }
 
 .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 24px; border-radius: 8px; font-weight: 700; font-size: 17px; text-decoration: none; border: 2px solid transparent; cursor: pointer; font-family: inherit; }
 .btn.gul { background: var(--gul); color: var(--gul-ink); }
-.btn.gul:hover { background: #FFD933; }
+.btn.gul:hover { background: var(--gul-hover); }
 .btn.strek { border-color: currentColor; color: inherit; background: none; }
 
 /* Topplinje */
@@ -94,12 +94,12 @@ p { margin: 0; }
 .hendelse.opp::before { top: 100%; height: var(--stang, 40px); }
 .hendelse.ned { top: var(--y, 24px); z-index: var(--z, 1); }
 .hendelse.ned::before { bottom: 100%; height: var(--y, 24px); }
-.hendelse .kort { background: #13286F; border: 1px solid #2B4296; border-left: 4px solid var(--farge, var(--gul)); border-radius: 0 10px 10px 0; padding: 12px 14px 13px; }
+.hendelse .kort { background: var(--kort); border: 1px solid var(--kortlinje); border-left: 4px solid var(--farge, var(--gul)); border-radius: 0 10px 10px 0; padding: 12px 14px 13px; }
 .hendelse time { font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--hfg); }
 .hendelse .hvem { display: block; font-size: 13.5px; color: var(--hmuted); margin-top: 2px; }
 .hendelse p { font-size: 15.5px; line-height: 1.35; margin-top: 6px; color: var(--hfg); }
 .hendelse p b { font-weight: 700; }
-.snekker { --farge: var(--gul); } .leder { --farge: #8FA6FF; } .butikk { --farge: var(--gronn); } .kunde { --farge: #FF9F5A; } .kontor { --farge: #FFFFFF; }
+.snekker { --farge: var(--gul); } .leder { --farge: var(--aks2); } .butikk { --farge: var(--gronn); } .kunde { --farge: #E9C46A; } .kontor { --farge: #FFFFFF; }
 
 /* Ett orkestrert øyeblikk: markøren går langs dagen, og hendelsene dukker opp når den passerer */
 @media (prefers-reduced-motion: no-preference) {
@@ -135,8 +135,8 @@ p { margin: 0; }
 /* Prosjektet */
 section { padding-block: clamp(64px, 9vw, 120px); }
 .prosjekt-rad { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; margin-top: 48px; align-items: start; }
-.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F4F6FB; box-shadow: 0 30px 60px -30px rgba(5,14,51,.45); }
-.telefon { border-radius: 30px; border: 7px solid #0A0E20; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(5,14,51,.5); background: #0A0E20; }
+.vindu { border-radius: 14px; overflow: hidden; border: 1px solid var(--linje); background: #F4F2EE; box-shadow: 0 30px 60px -30px rgba(17,22,27,.45); }
+.telefon { border-radius: 30px; border: 7px solid #111519; overflow: hidden; box-shadow: 0 24px 44px -20px rgba(17,22,27,.5); background: #111519; }
 .deler { margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 32px; }
 .deler div b { display: block; font-family: var(--f-display); font-size: 22px; font-weight: 700; line-height: 1.1; }
 .deler div span { color: var(--muted); font-size: 16px; }
@@ -150,14 +150,14 @@ section { padding-block: clamp(64px, 9vw, 120px); }
 .tall-grid figure { margin: 0; }
 .tall-grid figcaption { margin-top: 16px; color: var(--hmuted); max-width: 52ch; }
 .tall-grid figcaption b { display: block; color: var(--hfg); font-family: var(--f-display); font-size: 26px; font-weight: 700; line-height: 1.05; margin-bottom: 4px; }
-.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F4F6FB; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
+.tall-grid .skjerm { border-radius: 14px; overflow: hidden; background: #F4F2EE; box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
 .f-okonomi { grid-column: 1 / -1; }
 .f-okonomi .skjerm { padding: 6px 4px; }
 .f-omsetning { grid-column: 1 / span 7; }
 .f-maal { grid-column: 8 / span 5; align-self: start; }
 .f-avdeling { grid-column: 1 / span 6; }
 .f-rapport { grid-column: 7 / span 6; align-self: center; }
-.rapportkort { background: #13286F; border: 1px solid #2B4296; border-radius: 14px; padding: 26px 28px; }
+.rapportkort { background: var(--kort); border: 1px solid var(--kortlinje); border-radius: 14px; padding: 26px 28px; }
 .rapportkort h3 { color: var(--gul); font-size: 30px; }
 .rapportkort p { color: var(--hmuted); margin-top: 10px; }
 .rapportkort ul { margin: 14px 0 0; padding-left: 20px; display: grid; gap: 6px; }
@@ -234,7 +234,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
 <header class="topp">
   <div class="wrap">
     <a class="merke" href="#">
-      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF" fill-opacity=".08"/><g transform="translate(64 64) scale(6)"><path d="M6 30 L32 9 L58 30" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 27 V55 H49 V27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/><path d="M23 41 L30 48 L42 35" fill="none" stroke="#FFCD00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF" fill-opacity=".08"/><g transform="translate(64 64) scale(6)"><path d="M6 30 L32 9 L58 30" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 27 V55 H49 V27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/><path d="M23 41 L30 48 L42 35" fill="none" stroke="var(--gul)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
       <b>ByggLogg</b>
     </a>
     <div class="hoyre">
@@ -258,7 +258,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     <div class="hero-tekst">
       <h1>Dagen på byggeplassen. <span>Ført mens den skjer.</span></h1>
       <div class="hero-side">
-        <p>Snekkerne stempler, bestiller og tar bilder på telefonen. Leder ser hele uka. Timene går rett til faktura og lønn i Visma eller Tripletex.</p>
+        <p>Snekkerne stempler, bestiller og tar bilder på telefonen. Leder ser hele uka. Timene går rett til faktura og lønn – med Visma, Tripletex, andre systemer eller helt uten.</p>
         <div class="knapper">
           <a class="btn gul" href="/?demo" target="_blank" rel="noopener">Prøv demoen</a>
           <a class="btn strek" href="#kontakt">Snakk med oss</a>
@@ -345,17 +345,20 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
   <div class="wrap rad">
     <div>
       <h2>Ingen dobbeltføring.</h2>
-      <p class="ingress">ByggLogg henter prosjekter og kunder fra regnskapssystemet dere allerede bruker. Det som registreres ute, går tilbake som grunnlag for faktura og lønn.</p>
+      <p class="ingress">ByggLogg kobles til systemet dere allerede bruker – eller brukes helt uten regnskapssystem. Det som registreres ute, går tilbake som grunnlag for faktura og lønn.</p>
       <div class="systemer">
         <div class="system"><b>Visma Business NXT</b><span>Prosjekter, kunder, materiell, tilbud og fakturerte timer</span></div>
         <div class="system"><b>Tripletex</b><span>Prosjekter, kunder og ansatte inn. Godkjente timer og lønnsgrunnlag ut.</span></div>
         <div class="system"><b>Visma Lønn</b><span>Timer, overtid, kjøring, ferie og fravær som importfil</span></div>
+        <div class="system"><b>Andre lønnssystemer</b><span>Lønnsgrunnlaget som regneark med deres egne lønnsarter. Passer alle lønnssystemer.</span></div>
+        <div class="system"><b>Helt uten</b><span>Prosjekter, kunder og tilbud lages rett i appen. Alt annet virker likt.</span></div>
       </div>
+      <p class="merk" style="margin-top:14px;color:var(--muted)">Bruker dere et annet system? Si fra, så ser vi på koblingen sammen med dere.</p>
     </div>
     <ol class="flyt">
       <li><div><h3>Prosjektet opprettes</h3><p>Kontoret lager ordren i Visma, eller snekkeren oppretter prosjektet i appen når jobben starter før papirene er klare.</p></div></li>
       <li><div><h3>Jobben gjøres</h3><p>Timer, bilder, avvik og materiell registreres på prosjektet. Prosjekter laget i appen kobles til regnskapet når de kommer dit.</p></div></li>
-      <li><div><h3>Grunnlaget er klart</h3><p>Timene ligger klare til fakturering, og lønnsgrunnlaget går til Tripletex eller Visma Lønn på bedriftens egne lønnsarter.</p></div></li>
+      <li><div><h3>Grunnlaget er klart</h3><p>Timene ligger klare til fakturering, og lønnsgrunnlaget går til Tripletex, Visma Lønn eller som regneark på bedriftens egne lønnsarter.</p></div></li>
     </ol>
   </div>
 </section>
@@ -381,13 +384,14 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
           <div><dt>Materiell og bestilling</dt><dd>Materialliste i leveranser. Snekkeren bestiller, butikken plukker.</dd></div>
           <div><dt>Tilleggsarbeid</dt><dd>Eget underprosjekt som kunden signerer på telefonen.</dd></div>
           <div><dt>Serviceoppdrag</dt><dd>Små betalte jobber på en dag eller to, med hastegrad og skjema for kunden.</dd></div>
+          <div><dt>Mine prosjekter <span class="ny">Nyhet</span></dt><dd>Hver ansatt stjernemerker sine prosjekter, så de ligger øverst og er ett trykk unna.</dd></div>
         </dl>
       </div>
       <div class="gruppe">
         <h3>Dokumentasjon og HMS</h3>
         <dl>
           <div><dt>Dagbok og bilder</dt><dd>Alt lagres på prosjektet mens jobben pågår.</dd></div>
-          <div><dt>Egenkontroll og SJA</dt><dd>Sjekklister for våtrom, tetting, vinduer og brann. Mannskapsliste med HMS-kort.</dd></div>
+          <div><dt>Egenkontroll og SJA <span class="ny">Nyhet</span></dt><dd>Kontrollplan, sjekklister med målinger og bilder, og kontroll av faglig leder. Klar for sentral godkjenning.</dd></div>
           <div><dt>Avvik og reklamasjon</dt><dd>Meldes med bilde, får ansvarlig og frist.</dd></div>
           <div><dt>Sluttdokumentasjon</dt><dd>Sluttrapport og FDV til kunden, klar for Boligmappa.</dd></div>
         </dl>
@@ -395,7 +399,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       <div class="gruppe">
         <h3>Salg og oppfølging</h3>
         <dl>
-          <div><dt>Tilbudsoppfølging <span class="ny">Nyhet</span></dt><dd>Åpne tilbud fra Visma kommer på lista til selgeren etter en uke uten kontakt.</dd></div>
+          <div><dt>Tilbudsoppfølging <span class="ny">Nyhet</span></dt><dd>Tilbud fra Visma eller registrert i appen kommer på lista til selgeren etter en uke uten kontakt.</dd></div>
           <div><dt>Ukesjekk for leder <span class="ny">Nyhet</span></dt><dd>Fredag kommer det som trenger deg før helgen.</dd></div>
           <div><dt>Salg per avdeling</dt><dd>Antall salg, omsetning og DG per avdeling, rett fra Visma.</dd></div>
           <div><dt>Lønnsomhet</dt><dd>Timer og materiell mot kalkyle på hvert prosjekt.</dd></div>
@@ -433,14 +437,14 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <p class="merk">Eks. mva. Minst 5 brukere.</p>
         <div class="tillegg">
           <b>490 kr i måneden</b>
-          <p class="merk">for kobling til Visma Business NXT eller Tripletex, per bedrift. 2 500 kr i oppstart. Eks. mva.</p>
+          <p class="merk">for kobling til Visma Business NXT eller Tripletex, per bedrift. 2 500 kr i oppstart. Eks. mva. Uten kobling koster det ingenting ekstra.</p>
         </div>
       </div>
       <div class="oppsett">
         <h3>Vi setter det opp for dere</h3>
         <ul>
           <li><b>Oppsett og import</b><span>Ansatte, satser, regler for overtid og tillegg, prosjekter og kunder.</span></li>
-          <li><b>Kobling til regnskapet</b><span>Godkjenn ByggLogg i Visma, eller lim inn nøkkelen fra Tripletex. Resten går av seg selv.</span></li>
+          <li><b>Kobling til regnskapet</b><span>Godkjenn ByggLogg i Visma, eller lim inn nøkkelen fra Tripletex. Resten går av seg selv. Uten regnskapssystem hopper vi over dette.</span></li>
           <li><b>Invitasjon og opplæring</b><span>De ansatte får invitasjon på sitt språk, med veiledning for iPhone og Android.</span></li>
           <li><b>Brukerstøtte</b><span>Svar fra folk som kjenner byggebransjen. Feil rettes fortløpende.</span></li>
         </ul>
