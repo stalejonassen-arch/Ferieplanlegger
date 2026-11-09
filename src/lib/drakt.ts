@@ -7,6 +7,8 @@ export interface Drakt { hoved: string; aksent: string }
 
 /** ByggLoggs egne farger «Skifer og kobber»: skifergrått med kobber, på varm hvit bakgrunn */
 export const SKIFER: Drakt = { hoved: "#1C2329", aksent: "#D9822B" };
+/** ByggLoggs profilfarger «Skog og messing»: dyp skoggrønn med messing, som på bygglogg.app */
+export const SKOG: Drakt = { hoved: "#123029", aksent: "#D4B05A" };
 
 export type Rgb = [number, number, number];
 

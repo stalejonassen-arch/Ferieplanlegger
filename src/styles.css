@@ -1599,3 +1599,17 @@ button.mr-navn:hover { text-decoration: underline; }
     --accent: #E6944A; --info: #9DB4C0; --hatch: #2B343C; --approved: #6CC596;
   }
 }
+
+/* ---------- Tema: Skog og messing (ByggLoggs profilfarger, som bygglogg.app) ----------
+   Bygger på firmafarge-oppsettet («egen») med skoggrønt og messing, og en lys, varm sandbakgrunn. */
+:root[data-skog] {
+  --bg: #F3F1EB; --surface: #FFFFFF; --sunk: #EAE6DC; --fg: #14211D; --muted: #4F5F59; --line: #DDD8CC; --line-soft: #E6E2D8;
+  --info: #3F7A6B; --hatch: #E1DCCF; --approved: #2F7D55;
+  --shadow: 0 1px 2px rgba(18, 48, 41, .06), 0 10px 26px -18px rgba(18, 48, 41, .38);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-skog] {
+    --bg: #0C1714; --surface: #13241F; --sunk: #1A3D35; --fg: #EEF2EF; --muted: #B5CCC4; --line: #2C5A4F; --line-soft: #22463D;
+    --accent: #D4B05A; --info: #9FC7B8; --hatch: #22463D; --approved: #6CC596;
+  }
+}

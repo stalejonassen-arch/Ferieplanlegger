@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, feiltekst } from "./lib/api";
 import { isoOf, type Ansatt, type Data, type Tema } from "./lib/ferie";
 import { SPRAK, SPRAKENE, settSprak, type Sprak } from "./lib/sprak";
-import { draktVariabler, SKIFER } from "./lib/drakt";
+import { draktVariabler, SKIFER, SKOG } from "./lib/drakt";
 import { Innlogging } from "./views/Innlogging";
 import { MinFerie } from "./views/MinFerie";
 import { Kalender } from "./views/Kalender";
@@ -209,21 +209,23 @@ export function App() {
   useEffect(() => { if (meg?.id) fornyPush(); }, [meg?.id]);
   // Den ansattes språk følger med fra databasen
   useEffect(() => { if (meg?.sprak) settSprak(meg.sprak); }, [meg?.sprak]);
-  const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id === "thaugland") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "skifer"; } catch { return "skifer"; } });
+  const [tema, settTema] = useState<Tema>(() => { if (PROFIL.id === "thaugland") return PROFIL.tema; try { return (localStorage.getItem("tema") as Tema) || "skog"; } catch { return "skog"; } });
   // Egen fargevalg vinner; ellers bedriftens standardfarger
   useEffect(() => { const t = meg?.tema ?? d?.bedrift?.tema; if (t) settTema(t); }, [meg?.tema, d?.bedrift?.tema]);
   const drakt = d?.drakt ?? null;
   // Firmafarger uten lagret drakt (fjernet av leder) blir ByggLogg-blå
-  const visTema: Tema = tema === "egen" && !drakt && d ? "skifer" : tema;
+  const visTema: Tema = tema === "egen" && !drakt && d ? "skog" : tema;
   useEffect(() => {
     const rot = document.documentElement;
-    // «Skifer og kobber» er firmafarge-oppsettet med ByggLoggs egne farger og en varm, nøytral bakgrunn
-    rot.dataset.tema = visTema === "skifer" ? "egen" : visTema;
+    // «Skog og messing» og «Skifer og kobber» er firmafarge-oppsettet med ByggLoggs egne farger og egen bakgrunn
+    const egne = visTema === "skifer" ? SKIFER : visTema === "skog" ? SKOG : null;
+    rot.dataset.tema = egne ? "egen" : visTema;
     if (visTema === "skifer") rot.dataset.skifer = ""; else delete rot.dataset.skifer;
-    const vars = visTema === "skifer" ? draktVariabler(SKIFER) : visTema === "egen" && drakt ? draktVariabler(drakt) : {};
+    if (visTema === "skog") rot.dataset.skog = ""; else delete rot.dataset.skog;
+    const vars = egne ? draktVariabler(egne) : visTema === "egen" && drakt ? draktVariabler(drakt) : {};
     for (const k of Array.from(rot.style)) if (k.startsWith("--")) rot.style.removeProperty(k);
     for (const [k, v] of Object.entries(vars)) rot.style.setProperty(k, v);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", visTema === "egen" || visTema === "skifer" ? (vars["--navy"] ?? "#0B1F5C") : visTema === "fargerik" ? "#D6409F" : visTema === "mork" ? "#000000" : visTema === "byggfag" ? "#0B1F5C" : visTema === "bfportal" ? "#F8F9FA" : visTema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", visTema === "egen" || egne ? (vars["--navy"] ?? "#0B1F5C") : visTema === "fargerik" ? "#D6409F" : visTema === "mork" ? "#000000" : visTema === "byggfag" ? "#0B1F5C" : visTema === "bfportal" ? "#F8F9FA" : visTema === "thaugland" ? "#1D1D1B" : "#F6F2EB");
     if (PROFIL.id !== "thaugland") try { localStorage.setItem("tema", tema); } catch { /* privat modus */ }
   }, [tema, visTema, drakt?.hoved, drakt?.aksent]);
 
@@ -359,7 +361,7 @@ export function App() {
             </select>
             <select aria-label="Farger" className="temavalg" value={visTema}
               onChange={(e) => { const t = e.target.value as Tema; settTema(t); kjor(() => api.settMittTema(t)); }}>
-              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}{drakt && <option value="egen">Firmafarger</option>}<option value="skifer">Skifer og kobber</option><option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
+              {(PROFIL.id === "thaugland" || d.bedrift?.tema === "thaugland") && <option value="thaugland">{PROFIL.id === "thaugland" ? "Thaugland" : "Rød og grå"}</option>}{drakt && <option value="egen">Firmafarger</option>}<option value="skog">Skog og messing</option><option value="skifer">Skifer og kobber</option><option value="byggfag">ByggLogg-blå</option><option value="bfportal">Lys blå</option><option value="standard">Skandinavisk</option><option value="fargerik">Fargerik</option><option value="mork">Mørk</option>
             </select>
             <button className="btn sm" onClick={() => api.loggUt()}>Logg ut</button>
           </div>

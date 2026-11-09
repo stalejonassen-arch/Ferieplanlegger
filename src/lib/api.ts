@@ -384,7 +384,7 @@ function supabaseApi(sb: SupabaseClient): Api {
           id: Number(b0.id), navn: b0.navn ?? "", undertittel: b0.undertittel ?? "", orgnr: b0.orgnr ?? "", adresse: b0.adresse ?? "", postnr: b0.postnr ?? "",
           poststed: b0.poststed ?? "", telefon: b0.telefon ?? "", epost: b0.epost ?? "", sted_navn: b0.sted_navn ?? "",
           sted_lat: b0.sted_lat == null ? null : Number(b0.sted_lat), sted_lon: b0.sted_lon == null ? null : Number(b0.sted_lon),
-          tema: (b0.tema ?? "skifer") as Tema, kjede: b0.kjede ?? "", kampanje_tittel: b0.kampanje_tittel ?? "Kampanje fra Byggfag",
+          tema: (b0.tema ?? "skog") as Tema, kjede: b0.kjede ?? "", kampanje_tittel: b0.kampanje_tittel ?? "Kampanje fra Byggfag",
         },
         kampanjer: kampanjer.error ? [] : kampanjer.data,
         // Tomme lister hvis databasen ikke har arbeidsplanen ennå
