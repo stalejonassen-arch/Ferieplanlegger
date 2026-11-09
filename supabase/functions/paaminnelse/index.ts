@@ -6,7 +6,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const APP_URL = Deno.env.get("APP_URL") ?? "";
-const FRA = Deno.env.get("VARSEL_FRA") ?? "Ferieplanlegger <ferie@austnes.no>";
+// Avsendernavnet er alltid «ByggLogg»; adressen hentes fra VARSEL_FRA
+const FRA_ADR = (Deno.env.get("VARSEL_FRA") ?? "ferie@austnes.no").match(/<([^>]+)>/)?.[1] ?? (Deno.env.get("VARSEL_FRA") ?? "ferie@austnes.no").trim();
+const FRA = `ByggLogg <${FRA_ADR}>`;
 const HOVEDFERIE = 15; // 3 uker mandag–fredag
 
 const pad = (n: number) => String(n).padStart(2, "0");
