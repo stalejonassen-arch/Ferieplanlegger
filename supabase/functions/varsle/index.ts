@@ -10,7 +10,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const APP_URL = Deno.env.get("APP_URL") ?? "";
-const FRA = Deno.env.get("VARSEL_FRA") ?? "ByggLogg <varsel@bygglogg.no>";
+// Avsendernavnet er alltid «ByggLogg»; adressen hentes fra VARSEL_FRA
+const FRA_ADR = (Deno.env.get("VARSEL_FRA") ?? "varsel@bygglogg.no").match(/<([^>]+)>/)?.[1] ?? (Deno.env.get("VARSEL_FRA") ?? "varsel@bygglogg.no").trim();
+const FRA = `ByggLogg <${FRA_ADR}>`;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const dato = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${d}.${m}.${y}`; };
