@@ -30,7 +30,7 @@ export function lagIcs(soknader: Soknad[], navn: string, stempel = new Date()): 
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//N L Austnes AS//Ferieplanlegger//NO",
+    "PRODID:-//N L Austnes AS//ByggLogg//NO",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     ...hendelser,
