@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
   const naa = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
   const linjer = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//N L Austnes AS//Ferieplanlegger//NO",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//N L Austnes AS//ByggLogg//NO",
     "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     `X-WR-CALNAME:${tekst(alle ? "Ferie N L Austnes" : `Ferie – ${meg.navn}`)}`,
     "X-WR-TIMEZONE:Europe/Oslo",

@@ -60,7 +60,7 @@ function tekst(sprak: string | null, fornavn: string, dager: number, y: number) 
       snart: "Pateikite prašymą netrukus, kad galėtume laiku suplanuoti vasarą.", lenke: "Prašyti atostogų programėlėje", hilsen: "Pagarbiai, N L Austnes AS" };
     default: return { emne: `Har du planlagt sommerferien ${y}?`, hei: `Hei ${fornavn}`,
       status: `Du har søkt om <b>${dager} av ${HOVEDFERIE}</b> dager hovedferie (1. juni–30. september) for ${y}.`,
-      snart: "Søk gjerne snart, så vi får lagt sommerplanen i god tid.", lenke: "Søk ferie i Ferieplanlegger", hilsen: "Hilsen N L Austnes AS" };
+      snart: "Søk gjerne snart, så vi får lagt sommerplanen i god tid.", lenke: "Søk ferie i ByggLogg", hilsen: "Hilsen N L Austnes AS" };
   }
 }
 
@@ -100,6 +100,6 @@ Deno.serve(async (req) => {
     : "<p>Alle har søkt om hovedferie.</p>";
   await send(ledere, `${tvungen ? "[TEST] " : ""}Sommerferie ${y}: ${mangler.length} har ikke søkt ferdig`,
     `<p>Status for hovedferie ${y} (minst ${HOVEDFERIE} dager mellom 1. juni og 30. september):</p>${liste}` +
-    `<p>Husk at de ansatte har krav på å få vite ferietidspunktet senest 2 måneder før.</p><p><a href="${APP_URL}">Åpne Ferieplanlegger</a></p>`);
+    `<p>Husk at de ansatte har krav på å få vite ferietidspunktet senest 2 måneder før.</p><p><a href="${APP_URL}">Åpne ByggLogg</a></p>`);
   return new Response(`sendt, ${mangler.length} mangler`);
 });
