@@ -269,9 +269,35 @@ async function ukesjekk(id: string) {
   return Response.json({ ...res, tall: n });
 }
 
+/** Dagbok-påminnelse kl. 15: jobbet på prosjekt i dag, men ingen dagbok skrevet. Databasen avgjør hvem (kallet kan ikke styre det) */
+async function dagbok(ansattId: string) {
+  const { data: rader } = await sb.rpc("mangler_dagbok");
+  const mine = ((rader ?? []) as { ansatt_id: string; prosjekt_id: string; navn: string }[]).filter((r) => r.ansatt_id === ansattId);
+  if (!mine.length) return new Response("ikke aktuelt");
+  const idag = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
+  const { error: finnes } = await sb.from("push_logg").insert({ type: `dagbok:${idag}`, id: ansattId });
+  if (finnes) return new Response("allerede sendt");
+  const { data: n } = await sb.from("push_noekler").select("offentlig, privat").eq("id", 1).maybeSingle();
+  if (!n) return new Response("mangler nøkler", { status: 500 });
+  webpush.setVapidDetails("mailto:stale.jonassen@austnes.no", n.offentlig, n.privat);
+  const { data: a } = await sb.from("ansatte").select("id, navn, sprak").eq("id", ansattId).maybeSingle();
+  if (!a) return new Response("finnes ikke", { status: 404 });
+  const navn = kort(mine.map((m) => m.navn).join(", "), 90);
+  const res = await send([a], (x) => ({
+    ...v(x, {
+      nb: { tittel: "Husk dagboka", tekst: `${navn}: skriv kort hva som ble gjort i dag, vær og eventuelle hindringer.` },
+      pl: { tittel: "Pamiętaj o dzienniku", tekst: `${navn}: napisz krótko, co zrobiono dzisiaj, pogodę i ewentualne przeszkody.` },
+      en: { tittel: "Remember the site diary", tekst: `${navn}: write briefly what was done today, the weather and any obstacles.` },
+      lt: { tittel: "Nepamirškite dienyno", tekst: `${navn}: trumpai parašykite, kas šiandien padaryta, orą ir kliūtis.` },
+    }),
+    url: `/#p/${mine[0]!.prosjekt_id}/dagbok`, tag: "dagbok",
+  }));
+  return Response.json(res);
+}
+
 Deno.serve(async (req) => {
   const { type, id } = await req.json().catch(() => ({}));
-  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon", "service", "ukesjekk"].includes(type)) return new Response("ugyldig", { status: 400 });
+  if (!UUID.test(id ?? "") || !["melding", "prosjekt", "stemplet", "oppgave", "bestilling", "personrapport", "reklamasjon", "service", "ukesjekk", "dagbok"].includes(type)) return new Response("ugyldig", { status: 400 });
 
   if (type === "stemplet") return stemplet(id);
   if (type === "oppgave") return oppgave(id);
@@ -280,6 +306,7 @@ Deno.serve(async (req) => {
   if (type === "reklamasjon") return reklamasjon(id);
   if (type === "service") return service(id);
   if (type === "ukesjekk") return ukesjekk(id);
+  if (type === "dagbok") return dagbok(id);
 
   // Bare én gang per melding/prosjekt
   const { error: finnes } = await sb.from("push_logg").insert({ type, id });
