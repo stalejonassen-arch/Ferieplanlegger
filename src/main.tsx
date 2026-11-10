@@ -1,3 +1,4 @@
+import "./lib/navigasjon"; // lenker fra push-varsler (#p/<prosjekt>/<del>)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";

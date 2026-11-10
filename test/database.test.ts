@@ -113,6 +113,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0074_kunder_uten_visma.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0075_tema_skifer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0076_tema_skog.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0077_dagbok_paaminnelse.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1303,5 +1304,18 @@ describe("kunder uten Visma", () => {
     expect(await as(MADS, "update public.kunder set telefon = '900' where id = $1 returning id", [egen.id])).toHaveLength(1);
     expect(await as(MADS, "update public.kunder set telefon = '900' where id = $1 returning id", [visma.id])).toHaveLength(0);
     await db.query("update public.ansatte set prosjektleder = false where epost = $1", [MADS]);
+  });
+});
+
+describe("dagbok-påminnelse", () => {
+  it("finner dem som har jobbet på prosjekt i dag uten dagbok, og slutter når noen har skrevet", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Dagbok-prosjekt') returning id");
+    const [jim] = (await db.query<any>("select id from public.ansatte where epost = $1", [JIM])).rows;
+    const idag = (await db.query<any>("select (now() at time zone 'Europe/Oslo')::date::text d")).rows[0].d;
+    await db.query("insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til) values ($1, $2, $3, '07:00', '11:00')", [jim.id, p.id, idag]);
+    const mangler = async () => (await db.query<any>("select * from public.mangler_dagbok() where prosjekt_id = $1", [p.id])).rows;
+    expect((await mangler()).map((r) => r.ansatt_id)).toEqual([jim.id]);
+    await db.query("insert into public.dagbok (prosjekt_id, ansatt_id, dato, tekst) values ($1, $2, $3, 'Satte inn vinduer')", [p.id, jim.id, idag]);
+    expect(await mangler()).toHaveLength(0);
   });
 });
