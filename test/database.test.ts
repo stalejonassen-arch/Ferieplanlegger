@@ -121,6 +121,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0080_tema_skifer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0081_tema_skog.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0082_dagbok_paaminnelse.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0083_dagbok_bare_fakturerbart.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1449,5 +1450,13 @@ describe("dagbok-påminnelse", () => {
     expect((await mangler()).map((r) => r.ansatt_id)).toEqual([jim.id]);
     await db.query("insert into public.dagbok (prosjekt_id, ansatt_id, dato, tekst) values ($1, $2, $3, 'Satte inn vinduer')", [p.id, jim.id, idag]);
     expect(await mangler()).toHaveLength(0);
+  });
+
+  it("interntid (ikke fakturerbare timer) gir ikke påminnelse", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Kostnader lastebil') returning id");
+    const [jim] = (await db.query<any>("select id from public.ansatte where epost = $1", [JIM])).rows;
+    const idag = (await db.query<any>("select (now() at time zone 'Europe/Oslo')::date::text d")).rows[0].d;
+    await db.query("insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, fakturerbar) values ($1, $2, $3, '12:00', '13:00', false)", [jim.id, p.id, idag]);
+    expect((await db.query<any>("select * from public.mangler_dagbok() where prosjekt_id = $1", [p.id])).rows).toHaveLength(0);
   });
 });
