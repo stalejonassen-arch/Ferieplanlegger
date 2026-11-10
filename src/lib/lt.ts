@@ -501,6 +501,8 @@ export const LT_TEKST: Record<string, string> = {
 "Sluttet kl.": "Baigiau",
 "– lunsj er alt ført i dag": "– pietūs šiandien jau įrašyti",
 "Logget ut – timene er lagret": "Darbas baigtas – valandos išsaugotos",
+"Kort om hva som ble gjort i dag, vær og eventuelle hindringer.": "Trumpai: kas šiandien padaryta, oras ir kliūtys.",
+"Skriv dagbok": "Rašyti dienyną",
 "Logg ut – dagen er ferdig": "Baigti darbą – diena baigta",
 "Ferdig her – bytt til et annet prosjekt": "Čia baigta – pereiti į kitą projektą",
 "Bytt til": "Pereiti į",
@@ -1250,6 +1252,7 @@ export const LT_TEKST: Record<string, string> = {
 "F.eks. Takk for oppdraget! Her er en oppsummering av arbeidet vi har utført.": "Pvz.: Ačiū už užsakymą! Štai mūsų atliktų darbų santrauka."
 };
 export const LT_MALER: [string, string][] = [
+["^Skriv dagbok for (.+)\\?$", "Rašyti dienyną projektui $1?"],
 ["^Ukesjekk · uke (\\d+)$", "Savaitės apžvalga · $1 sav."],
 ["^(\\d+) ting trenger deg$", "Jūsų laukia dalykų: $1"],
 ["^([\\d ,]+) fakturerbare timer denne uka$", "$1 apmokamų valandų šią savaitę"],

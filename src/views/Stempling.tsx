@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kortDato } from "../lib/ferie";
-import { kvarter, LUNSJGRENSE, sisteProsjekter } from "../lib/timer";
+import { kvarter, LUNSJGRENSE, sisteProsjekter, trengerDagbok } from "../lib/timer";
+import { apneProsjektDel } from "../lib/navigasjon";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { favoritter, hurtigvalg } from "./Favoritt";
 import { TilleggValg, tilleggFor } from "./TilleggValg";
@@ -80,15 +81,28 @@ export function Stempling() {
     ...(s && s.dato === idag ? [{ fra: s.fra, til: naaHHMM > s.fra ? naaHHMM : s.fra, prosjekt_id: s.prosjekt_id, pagar: true }] : []),
   ].sort((a, b) => a.fra.localeCompare(b.fra));
   const fornavn = meg.navn.split(" ")[0];
+  // Etter utlogging eller bytte: tilby å skrive dagbok for prosjektet man gikk fra, mens telefonen er i hånda
+  const [dagbokFor, setDagbokFor] = useState<string | null>(null);
   const kjorStempel = async (handling: "inn" | "bytt" | "ut", melding: string) => {
+    const fra = handling !== "inn" && s && !gammel && trengerDagbok(d, s.prosjekt_id, idag) ? s.prosjekt_id : null;
     setVenter(true);
     const ok = await kjorKo({ type: "stemple", handling, prosjekt: prosjekt || null, beskrivelse, lunsj: handling === "inn" ? 0 : lunsjMin, til: gammel ? til : undefined }, melding);
     // Reklamasjon velges etterpå (krever nett); uten nett kan den velges når man er tilbake på nett
     if (ok && handling !== "ut" && rp && prosjekt === rp && rekl && navigator.onLine) await kjor(() => api.stempleReklamasjon(rekl));
     if (ok && handling !== "ut" && sp && prosjekt === sp && serv && navigator.onLine) await kjor(() => api.stempleService(serv));
     setVenter(false);
-    if (ok) { setBeskrivelse(""); setTil(""); }
+    if (ok) { setBeskrivelse(""); setTil(""); setDagbokFor(fra); }
   };
+  const dagbokKort = dagbokFor && trengerDagbok(d, dagbokFor, idag) && (
+    <div className="dagbok-paaminnelse" role="status">
+      <div><b>{`Skriv dagbok for ${d.prosjekter.find((p) => p.id === dagbokFor)?.navn ?? "prosjektet"}?`}</b>
+        <div className="small">Kort om hva som ble gjort i dag, vær og eventuelle hindringer.</div></div>
+      <div className="row">
+        <button className="btn gul" onClick={() => { const id = dagbokFor; setDagbokFor(null); apneProsjektDel(id, "dagbok"); }}>Skriv dagbok</button>
+        <button className="btn lys" onClick={() => setDagbokFor(null)}>Ikke nå</button>
+      </div>
+    </div>
+  );
 
   const velger = (
     <>
@@ -110,6 +124,7 @@ export function Stempling() {
   if (!s) {
     return (
       <section className="stempel" style={{ flexDirection: "column", alignItems: "stretch" }}>
+        {dagbokKort}
         <div>
           <h2 style={{ margin: "0 0 4px" }}>{hilsen(naa.getHours())}, {fornavn}</h2>
           <div className="klokke">{kvarter(naa)}</div>
@@ -129,6 +144,7 @@ export function Stempling() {
   const kolleger = s.prosjekt_id ? d.stempling.filter((x) => x.ansatt_id !== meg.id && x.prosjekt_id === s.prosjekt_id).sort((a, b) => a.fra.localeCompare(b.fra)) : [];
   return (
     <section className="stempel inne" style={{ flexDirection: "column", alignItems: "stretch" }}>
+      {dagbokKort}
       <div>
         <div className="small dempet">Logget inn {gammel ? kortDato(s.dato) + " " : ""}kl. {s.fra}</div>
         {!gammel && <div className="klokke">{Math.floor(timer)}<small>t</small> {String(Math.floor((timer % 1) * 60)).padStart(2, "0")}<small>min</small></div>}

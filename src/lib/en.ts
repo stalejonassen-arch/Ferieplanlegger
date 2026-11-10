@@ -501,6 +501,8 @@ export const EN_TEKST: Record<string, string> = {
 "Sluttet kl.": "Finished at",
 "– lunsj er alt ført i dag": "– lunch already logged today",
 "Logget ut – timene er lagret": "Clocked out – hours saved",
+"Kort om hva som ble gjort i dag, vær og eventuelle hindringer.": "Briefly: what was done today, the weather and any obstacles.",
+"Skriv dagbok": "Write diary",
 "Logg ut – dagen er ferdig": "Clock out – done for the day",
 "Ferdig her – bytt til et annet prosjekt": "Done here – switch to another project",
 "Bytt til": "Switch to",
@@ -1250,6 +1252,7 @@ export const EN_TEKST: Record<string, string> = {
 "F.eks. Takk for oppdraget! Her er en oppsummering av arbeidet vi har utført.": "E.g. Thank you for the job! Here is a summary of the work we have done."
 };
 export const EN_MALER: [string, string][] = [
+["^Skriv dagbok for (.+)\\?$", "Write the site diary for $1?"],
 ["^Ukesjekk · uke (\\d+)$", "Weekly check · week $1"],
 ["^(\\d+) ting trenger deg$", "$1 things need you"],
 ["^([\\d ,]+) fakturerbare timer denne uka$", "$1 billable hours this week"],

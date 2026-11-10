@@ -222,3 +222,19 @@ export function timeStatus(brukt: number, ramme: number | null): { pct: number |
   if (pct >= 80) return { pct, status: "snart", tekst: `${Math.round(ramme - brukt)} t igjen` };
   return { pct, status: "ok", tekst: `${Math.round(ramme - brukt)} t igjen` };
 }
+
+/**
+ * Bør det skrives dagbok for prosjektet i dag? Nei for internt arbeid, interne prosjekter (bare ikke-fakturerbare
+ * timer siste 120 dager, f.eks. lastebil) og når noen alt har skrevet dagbok på prosjektet i dag.
+ * Samme regel som push-varselet kl. 15 (mangler_dagbok i databasen).
+ */
+export function trengerDagbok(d: Data, prosjektId: string | null, idag: string): boolean {
+  if (!prosjektId) return false;
+  const p = d.prosjekter.find((x) => x.id === prosjektId);
+  if (!p || !p.aktiv || /utstyr|arbeidskl|arbeidst/i.test(p.navn)) return false;
+  if (prosjektId === d.reklamasjonProsjekt || prosjektId === d.serviceProsjekt) return false;
+  if (d.dagbok.some((b) => b.prosjekt_id === prosjektId && b.dato === idag)) return false;
+  const fra = addDays(idag, -120);
+  const tidligere = d.timer.filter((t) => t.prosjekt_id === prosjektId && t.dato < idag && t.dato > fra);
+  return !(tidligere.length > 0 && tidligere.every((t) => t.fakturerbar === false));
+}

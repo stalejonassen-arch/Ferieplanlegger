@@ -480,6 +480,8 @@ export const PL_TEKST: Record<string, string> = {
 "Sluttet kl.": "Skończyłem o",
 "– lunsj er alt ført i dag": "– przerwa obiadowa już wpisana dzisiaj",
 "Logget ut – timene er lagret": "Wylogowano – godziny zapisane",
+"Kort om hva som ble gjort i dag, vær og eventuelle hindringer.": "Krótko: co zrobiono dzisiaj, pogoda i ewentualne przeszkody.",
+"Skriv dagbok": "Napisz dziennik",
 "Logg ut – dagen er ferdig": "Wyloguj – koniec dnia",
 "Ferdig her – bytt til et annet prosjekt": "Skończone tutaj – przejdź do innego projektu",
 "Bytt til": "Przełącz na",
@@ -1238,6 +1240,7 @@ export const PL_TEKST: Record<string, string> = {
 "Signert – venter på kontroll": "Podpisana – czeka na kontrolę",
 };
 export const PL_MALER: [string, string][] = [
+["^Skriv dagbok for (.+)\\?$", "Napisać dziennik dla $1?"],
 ["^Avvik: (.+)$", "Odchylenie: $1"],
 ["^Bilder \\((\\d+)\\)$", "Zdjęcia ($1)"],
 ["^(\\d+) målinger er ikke fylt inn$", "Nie wpisano pomiarów: $1"],
