@@ -126,3 +126,12 @@ create policy befaringer_slett on public.befaringer for delete to authenticated
   using (bedrift_id = public.min_bedrift() and (public.er_planlegger() or (utfort_av = public.mitt_ansatt_id() and signert_tid is null)));
 revoke all on public.befaringer from anon;
 grant select, insert, update, delete on public.befaringer to authenticated;
+
+-- Sanntid: nye og endrede befaringer vises hos de andre med en gang
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'befaringer') then
+    alter publication supabase_realtime add table public.befaringer;
+  end if;
+end $$;
