@@ -122,6 +122,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0081_tema_skog.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0082_dagbok_paaminnelse.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0083_dagbok_bare_fakturerbart.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/0084_befaring.sql", "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1458,5 +1459,34 @@ describe("dagbok-påminnelse", () => {
     const idag = (await db.query<any>("select (now() at time zone 'Europe/Oslo')::date::text d")).rows[0].d;
     await db.query("insert into public.timer (ansatt_id, prosjekt_id, dato, fra, til, fakturerbar) values ($1, $2, $3, '12:00', '13:00', false)", [jim.id, p.id, idag]);
     expect((await db.query<any>("select * from public.mangler_dagbok() where prosjekt_id = $1", [p.id])).rows).toHaveLength(0);
+  });
+});
+
+describe("befaring", () => {
+  it("befaring før tilbud uten prosjekt, overtakelse med avvik på prosjektet, og kundens signatur", async () => {
+    const [b] = await as<any>(JIM, "insert into public.befaringer (type, tittel, kunde_navn, punkter) values ('tilbud', 'Skifte vinduer', 'Kari Kunde', '[{\"tekst\":\"Mål\",\"svar\":\"avvik\"}]') returning id, utfort_av, status");
+    const [jim] = (await db.query<any>("select id from public.ansatte where epost = $1", [JIM])).rows;
+    expect(b.utfort_av).toBe(jim.id);
+    // Før tilbud: ingen prosjekt, så ingen avvik
+    expect((await db.query<any>("select count(*)::int n from public.avvik where befaring_id = $1", [b.id])).rows[0].n).toBe(0);
+    // Bilde på befaringen uten prosjekt er lov
+    await as(JIM, "insert into public.bilder (sti, befaring_id) values ('1/b-x/1.jpg', $1)", [b.id]);
+    // Andre ansatte kan ikke endre den
+    await expect(as(MADS, "update public.befaringer set notat = 'x' where id = $1", [b.id])).rejects.toThrow(/Bare den som/);
+
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Befaring-prosjekt') returning id");
+    const [o] = await as<any>(JIM, "insert into public.befaringer (type, tittel, prosjekt_id, punkter) values ('overtakelse', 'Nytt bad', $1, '[{\"tekst\":\"Fuger\",\"svar\":\"avvik\",\"merknad\":\"Sprekk ved dusj\"},{\"tekst\":\"Ryddet\",\"svar\":\"ok\"}]') returning id, punkter", [p.id]);
+    expect(o.punkter[0].avvik_id).toBeTruthy();
+    const [a] = (await db.query<any>("select tittel, beskrivelse, prosjekt_id from public.avvik where befaring_id = $1", [o.id])).rows;
+    expect(a.tittel).toBe("Overtakelse – Fuger");
+    expect(a.beskrivelse).toBe("Sprekk ved dusj");
+    // Lagres på nytt: ikke dobbelt avvik
+    await as(JIM, "update public.befaringer set notat = 'ok' where id = $1", [o.id]);
+    expect((await db.query<any>("select count(*)::int n from public.avvik where befaring_id = $1", [o.id])).rows[0].n).toBe(1);
+    // Kunden signerer: tidspunkt settes, og etterpå er den låst for snekkeren
+    await expect(as(JIM, "update public.befaringer set signatur = 'data:image/png;base64,x' where id = $1", [o.id])).rejects.toThrow(/kundens navn/);
+    const [s] = await as<any>(JIM, "update public.befaringer set signatur = 'data:image/png;base64,x', signert_navn = 'Kari', status = 'ferdig' where id = $1 returning signert_tid", [o.id]);
+    expect(s.signert_tid).toBeTruthy();
+    await expect(as(JIM, "update public.befaringer set notat = 'endret' where id = $1", [o.id])).rejects.toThrow(/signert av kunden/);
   });
 });

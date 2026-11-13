@@ -26,7 +26,7 @@ export type DokKategori = "fdv" | "sjekkliste" | "tegning" | "kontrakt" | "annet
 export interface FdvDok { id: string; navn: string; sti: string; storrelse: number | null; opprettet: string; kategori?: DokKategori; ansatt_id?: string }
 /** Lenke til varen hos NOBB. Fanen «Dokumentasjon» der har FDV, produktdatablad og monteringsanvisning. */
 export const nobbLenke = (nr: string) => `https://www.nobb.no/item/${nr}`;
-export type BildeMaal = { prosjekt_id?: string | null; avvik_id?: string | null; reklamasjon_id?: string | null; service_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
+export type BildeMaal = { befaring_id?: string | null; prosjekt_id?: string | null; avvik_id?: string | null; reklamasjon_id?: string | null; service_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; tekst?: string; svenn_id?: number; opprettet?: string };
 export type NySoknad = { id?: string; ansatt_id: string; fra: string; til: string; merknad: string };
 
 /** En kunde sett fra plattform-admin */
@@ -144,6 +144,9 @@ export interface Api {
   /** Bedriftens egne sjekklistemaler (leder, prosjektleder og faglig leder) */
   lagreSjekklisteMal(m: { id?: string; navn: string; kategori: string; dok_nr: string; beskrivelse: string; punkter: MalPunkt[]; aktiv?: boolean }): Promise<string>;
   slettSjekklisteMal(id: string): Promise<void>;
+  /** Befaring (før tilbud, underveis, overtakelse). Returnerer id. */
+  lagreBefaring(b: import("./befaring").NyBefaring): Promise<string>;
+  slettBefaring(id: string): Promise<void>;
   /** SJA */
   lagreSja(x: { id?: string; prosjekt_id: string; dato: string; arbeid: string; risikoer: Risiko[]; verneutstyr: string; deltakere: string[] }): Promise<void>;
   kvitterSja(id: string): Promise<void>;
@@ -324,7 +327,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler, befaringer] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -358,6 +361,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("reklamasjoner").select("*").order("meldt_dato", { ascending: false }).order("id"), 10000),
         alle(() => sb.from("serviceoppdrag").select("*").order("opprettet", { ascending: false }).order("id"), 10000),
         sb.from("sjekkliste_maler").select("*").order("navn").limit(1000),
+        alle(() => sb.from("befaringer").select("*").order("dato", { ascending: false }).order("id"), 5000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -393,6 +397,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         materialer: materialer.error ? [] : (materialer.data as any[]).map((m) => ({ ...m, antall: Number(m.antall) })),
         sjekklister: sjekklister.error ? [] : sjekklister.data,
         sjekklisteMaler: sjMaler.error ? [] : (sjMaler.data as SjekklisteMal[]),
+        befaringer: befaringer.error ? [] : (befaringer.data as import("./befaring").Befaring[]),
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
         serviceoppdrag: service.error ? [] : (service.data as import("./service").Serviceoppdrag[]),
@@ -423,6 +428,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "leveranser" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "materialer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "sjekklister" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "befaringer" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "sjekkliste_maler" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "sja" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "bestillinger" }, snart)
@@ -479,11 +485,11 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettAvvik(id) { ok(await sb.from("avvik").delete().eq("id", id)); },
     async lastOppBilde(fil, til) {
       const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
-      const mappe = til.prosjekt_id ? `p-${til.prosjekt_id}` : `a-${til.avvik_id}`;
+      const mappe = til.prosjekt_id ? `p-${til.prosjekt_id}` : til.befaring_id ? `b-${til.befaring_id}` : `a-${til.avvik_id}`;
       const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.jpg`;
       const data = await komprimer(fil);
       ok(await sb.storage.from("bilder").upload(sti, data, { contentType: data.type || "image/jpeg" }));
-      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ...(til.reklamasjon_id ? { reklamasjon_id: til.reklamasjon_id } : {}), ...(til.service_id ? { service_id: til.service_id } : {}), dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
+      const r = await sb.from("bilder").insert({ sti, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, ...(til.reklamasjon_id ? { reklamasjon_id: til.reklamasjon_id } : {}), ...(til.service_id ? { service_id: til.service_id } : {}), ...(til.befaring_id ? { befaring_id: til.befaring_id } : {}), dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, tekst: til.tekst ?? "",
         ...(til.sjekkliste_id ? { sjekkliste_id: til.sjekkliste_id, sjekkliste_punkt: til.sjekkliste_punkt ?? null } : {}),
         ...(til.svenn_id ? { svenn_id: til.svenn_id, opprettet: til.opprettet } : {}) });
       if (r.error) { await sb.storage.from("bilder").remove([sti]); throw r.error; }
@@ -674,6 +680,13 @@ function supabaseApi(sb: SupabaseClient): Api {
       return ok(r) as string;
     },
     async slettTilbud(id) { ok(await sb.rpc("slett_tilbud", { t: id })); },
+    async lagreBefaring(x) {
+      const { id, ...rad } = x as typeof x & Record<string, unknown>;
+      for (const k of ["utfort_av", "opprettet", "endret", "signert_tid"]) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("befaringer").update(rad).eq("id", id).select("id").single() : await sb.from("befaringer").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettBefaring(id) { ok(await sb.from("befaringer").delete().eq("id", id)); },
     async sendInvitasjon(a) { ok(await sb.rpc("send_invitasjon", { a })); },
     async ansatteInnlogging() { const r = await sb.rpc("ansatte_innlogging"); return r.error ? [] : (r.data as { ansatt_id: string; invitert: string | null; innlogget: string | null }[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },
