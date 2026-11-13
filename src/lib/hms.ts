@@ -8,8 +8,10 @@ export interface Avvik {
   lukket_av: string | null; lukket_tid: string | null; opprettet: string;
   /** Avvik fra et punkt i en sjekkliste (egenkontroll) */
   sjekkliste_id?: string | null; sjekkliste_punkt?: number | null;
+  /** Avvik fra et punkt på en befaring (overtakelse/underveis) */
+  befaring_id?: string | null;
 }
-export interface Bilde { id: string; prosjekt_id: string | null; avvik_id: string | null; service_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; reklamasjon_id?: string | null; ansatt_id: string; sti: string; tekst: string; opprettet: string }
+export interface Bilde { id: string; befaring_id?: string | null; prosjekt_id: string | null; avvik_id: string | null; service_id?: string | null; dagbok_id?: string | null; tillegg_id?: string | null; sjekkliste_id?: string | null; sjekkliste_punkt?: number | null; reklamasjon_id?: string | null; ansatt_id: string; sti: string; tekst: string; opprettet: string }
 
 export const AVVIK_TYPE: Record<AvvikType, string> = {
   avvik: "Avvik", ruh: "Uønsket hendelse (RUH)", skade: "Skade på person", forbedring: "Forbedringsforslag",

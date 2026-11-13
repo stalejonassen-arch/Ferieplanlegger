@@ -361,7 +361,7 @@ export function demoApi(): Api {
     },
     async lastOppBilde(fil, til) {
       const sti = URL.createObjectURL(fil);
-      d.bilder.unshift({ id: nyId(), service_id: til.service_id ?? null, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, reklamasjon_id: til.reklamasjon_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
+      d.bilder.unshift({ id: nyId(), befaring_id: til.befaring_id ?? null, service_id: til.service_id ?? null, prosjekt_id: til.prosjekt_id ?? null, avvik_id: til.avvik_id ?? null, dagbok_id: til.dagbok_id ?? null, tillegg_id: til.tillegg_id ?? null, sjekkliste_id: til.sjekkliste_id ?? null, sjekkliste_punkt: til.sjekkliste_punkt ?? null, reklamasjon_id: til.reklamasjon_id ?? null, ansatt_id: meg()!.id, sti, tekst: til.tekst ?? "", opprettet: til.opprettet ?? new Date().toISOString() });
       if (til.svenn_id) svennFiler.add(til.svenn_id);
       endret();
     },
@@ -680,6 +680,27 @@ export function demoApi(): Api {
       if (g) Object.assign(g, ny); else d.serviceoppdrag = [ny, ...(d.serviceoppdrag ?? [])];
       endret(); return ny.id;
     },
+    async lagreBefaring(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang.");
+      if (!x.tittel.trim()) throw new Error("Skriv hva befaringen gjelder.");
+      const liste = (d.befaringer ??= []);
+      const g = x.id ? liste.find((b) => b.id === x.id) : undefined;
+      if (g && !planlegger() && g.utfort_av !== m.id) throw new Error("Bare den som gjorde befaringen, leder eller prosjektleder kan endre den.");
+      if (g && g.status === "ferdig" && g.signert_tid && !planlegger()) throw new Error("Befaringen er signert av kunden. Be leder eller prosjektleder åpne den igjen.");
+      const naa = new Date().toISOString();
+      const ny = { ...(g ?? { id: nyId(), prosjekt_id: null, kunde_id: null, kunde_navn: "", telefon: "", epost: "", adresse: "", dato: isoOf(new Date()), deltakere: "", notat: "", punkter: [], status: "apen", utfort_av: m.id, tilbud_id: null, signert_navn: "", signatur: "", signert_tid: null, opprettet: naa }), ...x, endret: naa } as import("./befaring").Befaring;
+      if (x.signatur && x.signatur !== g?.signatur) { if (!ny.signert_navn.trim()) throw new Error("Skriv kundens navn."); ny.signert_tid = naa; }
+      ny.punkter = ny.punkter.map((p) => {
+        if (p.svar !== "avvik" || p.avvik_id || !ny.prosjekt_id || ny.type === "tilbud") return p;
+        const avvik_id = nyId();
+        d.avvik.unshift({ id: avvik_id, prosjekt_id: ny.prosjekt_id, meldt_av: m.id, type: "avvik", tittel: `${ny.type === "overtakelse" ? "Overtakelse" : "Befaring"} – ${p.tekst}`.slice(0, 200),
+          beskrivelse: (p.merknad ?? "").trim() || "Registrert på befaring.", ansvarlig_id: null, frist: null, status: "apen", tiltak: "", lukket_av: null, lukket_tid: null, opprettet: naa, befaring_id: ny.id });
+        return { ...p, avvik_id };
+      });
+      if (g) Object.assign(g, ny); else liste.unshift(ny);
+      endret(); return ny.id;
+    },
+    async slettBefaring(id) { d.befaringer = (d.befaringer ?? []).filter((b) => b.id !== id); d.bilder = d.bilder.filter((b) => b.befaring_id !== id); endret(); },
     async slettService(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.serviceoppdrag = (d.serviceoppdrag ?? []).filter((s) => s.id !== id); endret(); },
     async stempleService(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.service_id = id; endret(); },
     async lagreServiceprosjekt(id) { if (!leder()) throw new Error("Bare leder kan velge serviceprosjekt."); d.serviceProsjekt = id; endret(); },

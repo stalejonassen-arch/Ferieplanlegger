@@ -26,8 +26,9 @@ import { ProsjektVelger } from "./ProsjektVelger";
 import { Reklamasjoner } from "./Reklamasjon";
 import { taNesteDel } from "../lib/navigasjon";
 import { Stjerne } from "./Favoritt";
+import { Befaringer } from "./Befaring";
 
-type Del = "oversikt" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "befaring" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
   const { d, leder, meg, chat } = useApp();
@@ -50,6 +51,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
   const alleDeler: [Del, string, number | null][] = [
     ["oversikt", "Oversikt", null],
+    ["befaring", "Befaring", (d.befaringer ?? []).filter((b) => b.prosjekt_id === p.id && b.status === "apen").length || null],
     ["plan", "Plan", (d.oppgaver ?? []).filter((o) => o.prosjekt_id === p.id && o.status !== "ferdig").length || null],
     ["materiell", "Materiell", (d.leveranser ?? []).filter((l) => l.prosjekt_id === p.id && l.status !== "levert").length || null],
     ["egenkontroll", "Egenkontroll", (d.sjekklister ?? []).filter((s) => s.prosjekt_id === p.id && s.status !== "signert").length || null],
@@ -63,7 +65,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   ];
   const deler = alleDeler.filter(([x]) => {
     // Deler leder har slått av for bedriften
-    const m: Partial<Record<Del, Modul[]>> = { plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
+    const m: Partial<Record<Del, Modul[]>> = { befaring: ["befaring"], plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
       dagbok: ["dagbok"], tillegg: ["tillegg"], avvik: ["avvik"], reklamasjon: ["reklamasjon"], okonomi: ["okonomi"], sluttdok: ["sluttdok"] };
     return !m[x] || m[x]!.some((y) => bruker(d, y));
   });
@@ -96,6 +98,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         ))}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
+      {del === "befaring" && <Befaringer p={p} />}
       {del === "plan" && <ProsjektPlan p={p} />}
       {del === "materiell" && <>{bruker(d, "bestilling") && <BestillDel p={p} />}{bruker(d, "materiell") && <Materialliste p={p} />}</>}
       {del === "egenkontroll" && <Sjekklister p={p} />}
@@ -117,6 +120,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
 
 /** Strekikoner for delene av prosjektet */
 const DEL_IKON: Record<string, React.ReactNode> = {
+  befaring: <><path d="M9 4h6l1 2h3v14H5V6h3z" /><path d="M8.5 12.5l2 2 4.5-4.5" /></>,
   oversikt: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
   plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
   materiell: <><path d="M3 8l9-5 9 5-9 5-9-5z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>,

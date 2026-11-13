@@ -102,6 +102,8 @@ export interface Data {
   visma?: boolean;
   /** Bedriftens egne sjekklistemaler (egenkontroll) */
   sjekklisteMaler?: import("./kvalitet").SjekklisteMal[];
+  /** Befaringer (før tilbud, underveis og overtakelse) */
+  befaringer?: import("./befaring").Befaring[];
   sja?: import("./kvalitet").Sja[];
   bestillinger?: import("./kvalitet").Bestilling[];
   /** Reklamasjoner og bedriftens faste reklamasjonsprosjekt */

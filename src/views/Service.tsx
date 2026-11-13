@@ -62,7 +62,7 @@ export function ServiceOppdrag() {
 }
 
 /** Søk i kundene fra Visma, eller skriv inn en ny kunde */
-function KundeVelger({ kundeId, navn, onVelg }: { kundeId: string | null; navn: string; onVelg: (k: Kunde | null, navn: string) => void }) {
+export function KundeVelger({ kundeId, navn, onVelg }: { kundeId: string | null; navn: string; onVelg: (k: Kunde | null, navn: string) => void }) {
   const { d } = useApp();
   const [q, setQ] = useState("");
   const valgt = kundeId ? d.kunder.find((k) => k.id === kundeId) : null;
