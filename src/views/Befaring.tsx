@@ -13,6 +13,7 @@ import type { Prosjekt } from "../lib/timer";
 import { Bilder } from "./Bilder";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { KundeVelger } from "./Service";
+import { bildeTilKi, Snakk, useKi } from "./Ki";
 
 const fornavn = (navn?: string) => (navn ?? "").split(" ")[0] ?? "";
 
@@ -136,6 +137,38 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
   const t = befaringTall(e);
   const tilbudBruk = bruker(d, "tilbud");
 
+  // KI: fyll ut punkter, mål og notat fra det som er sagt og bildene
+  const ki = useKi();
+  const [tale, setTale] = useState("");
+  const [kiJobber, setKiJobber] = useState(false);
+  const [kiMelding, setKiMelding] = useState("");
+  const fyllMedKi = async () => {
+    setKiMelding(""); setKiJobber(true);
+    try {
+      const siste = bilder.slice(0, 6);
+      const urler = siste.length ? await api.bildeUrler(siste.map((x) => x.sti)) : {};
+      const b64 = (await Promise.all(siste.map((x) => bildeTilKi(urler[x.sti] ?? x.sti)))).filter((x): x is string => !!x);
+      type KiPunkt = { nr?: number; tekst?: string; svar?: string; maal?: string; merknad?: string };
+      const r = await api.ai<{ notat?: string; punkter?: KiPunkt[]; nye_punkter?: KiPunkt[]; tilbudstekst?: string }>("befaring",
+        { type: e.type, tittel: e.tittel, punkter: e.punkter.map((x) => ({ tekst: x.tekst })), tekst: tale, bilder: b64 });
+      const gyldig = (v?: string): BefaringSvar | "" => (v === "ok" || v === "avvik" || v === "na" ? v : "");
+      let antall = 0;
+      const punkter = e.punkter.map((x, i) => {
+        const k = (r.punkter ?? []).find((y) => y.nr === i + 1);
+        if (!k) return x;
+        const ny = { ...x, svar: x.svar || gyldig(k.svar), maal: (x.maal ?? "").trim() || (k.maal ?? "").trim(), merknad: (x.merknad ?? "").trim() || (k.merknad ?? "").trim() };
+        if (ny.svar !== x.svar || ny.maal !== x.maal || ny.merknad !== x.merknad) antall++;
+        return ny;
+      });
+      const nye = (r.nye_punkter ?? []).filter((y) => (y.tekst ?? "").trim()).map((y) => ({ tekst: y.tekst!.trim().slice(0, 200), svar: gyldig(y.svar), maal: (y.maal ?? "").trim(), merknad: (y.merknad ?? "").trim() }));
+      const notat = [e.notat.trim(), (r.notat ?? "").trim(), (r.tilbudstekst ?? "").trim() ? `Forslag til tilbudstekst:\n${r.tilbudstekst!.trim()}` : ""].filter(Boolean).join("\n\n");
+      sett({ punkter: [...punkter, ...nye], notat: notat.slice(0, 10000) });
+      setTale("");
+      setKiMelding(`KI fylte ut ${antall} punkt${antall === 1 ? "" : "er"}${nye.length ? ` og la til ${nye.length} nye` : ""}. Se over, og trykk Lagre.`);
+    } catch (x) { setKiMelding(x instanceof Error ? x.message : String(x)); }
+    setKiJobber(false);
+  };
+
   const lagre = async (x: Partial<Befaring> = {}, melding = "Befaringen er lagret") => {
     const ny = { ...e, ...x };
     const ok = await kjor(() => api.lagreBefaring({
@@ -212,6 +245,16 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
               prosjekter={d.prosjekter.filter((x) => x.aktiv)} label="Prosjekt" />
           </div>
         </details>
+      )}
+
+      {ki && !laast && (
+        <div className="ki-boks">
+          <b>Fyll ut med KI</b>
+          <span className="small muted">Fortell hva du ser og hva kunden vil{bilder.length ? `, så ser KI også på ${Math.min(6, bilder.length)} av bildene` : " – ta gjerne bilder først (nederst)"}. KI fyller ut punkter, mål og notat{e.type === "tilbud" ? " og foreslår tilbudstekst" : ""}. Ingenting lagres før du trykker Lagre.</span>
+          <Snakk value={tale} onChange={setTale} rader={3} placeholder="F.eks. «Tre vinduer i stua, 120 ganger 140. Råte i nedre karm på det ene. Kunden vil ha hvite vinduer med lufteventil.»" />
+          <div className="row"><button type="button" className="btn" disabled={kiJobber || (!tale.trim() && !bilder.length)} onClick={fyllMedKi}>{kiJobber ? "Fyller ut …" : "Fyll ut befaringen"}</button></div>
+          {kiMelding && <p className="small" style={{ margin: 0 }}>{kiMelding}</p>}
+        </div>
       )}
 
       <h3 style={{ margin: "6px 0 0" }}>Punkter <span className="small muted">({t.besvart}/{t.antall}{t.avvik ? `, ${t.avvik} avvik` : ""})</span></h3>

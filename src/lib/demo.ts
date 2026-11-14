@@ -700,6 +700,17 @@ export function demoApi(): Api {
       if (g) Object.assign(g, ny); else liste.unshift(ny);
       endret(); return ny.id;
     },
+    async ai(oppgave, data = {}) {
+      await new Promise((r) => setTimeout(r, 900));
+      if (oppgave === "status") return { ok: true } as never;
+      const tekst = String(data.tekst ?? "").trim();
+      if (oppgave === "dagbok") {
+        if (tekst.length < 5) throw new Error("Si eller skriv litt mer om dagen først.");
+        return { tekst: `${tekst.charAt(0).toUpperCase()}${tekst.slice(1)}${/[.!?]$/.test(tekst) ? "" : "."}`, vaer: /regn/i.test(tekst) ? "Regn" : "", hindringer: /vent/i.test(tekst) ? "Ventet på levering." : "" } as never;
+      }
+      const punkter = (data.punkter as { tekst: string }[] | undefined) ?? [];
+      return { notat: tekst ? `Fra befaringen: ${tekst}` : "Vurdert ut fra bildene.", punkter: punkter.slice(0, 2).map((_, i) => ({ nr: i + 1, svar: "ok", maal: "", merknad: "" })), nye_punkter: [], tilbudstekst: tekst ? `Arbeid som avtalt: ${tekst}` : "" } as never;
+    },
     async slettBefaring(id) { d.befaringer = (d.befaringer ?? []).filter((b) => b.id !== id); d.bilder = d.bilder.filter((b) => b.befaring_id !== id); endret(); },
     async slettService(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.serviceoppdrag = (d.serviceoppdrag ?? []).filter((s) => s.id !== id); endret(); },
     async stempleService(id) { const s = d.stempling.find((x) => x.ansatt_id === meg()?.id); if (!s) throw new Error("Du er ikke logget inn."); s.service_id = id; endret(); },
