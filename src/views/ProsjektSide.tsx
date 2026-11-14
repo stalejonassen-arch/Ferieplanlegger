@@ -28,6 +28,7 @@ import { Reklamasjoner } from "./Reklamasjon";
 import { taNesteDel } from "../lib/navigasjon";
 import { Stjerne } from "./Favoritt";
 import { Befaringer } from "./Befaring";
+import { Snakk, useKi } from "./Ki";
 
 type Del = "oversikt" | "befaring" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
@@ -276,6 +277,20 @@ function DagbokDel({ p }: { p: Prosjekt }) {
   const [sender, setSender] = useState(false);
   const liste = d.dagbok.filter((x) => x.prosjekt_id === p.id);
   const navn = (id: string) => d.ansatte.find((a) => a.id === id)?.navn ?? "";
+  // KI: snakk inn dagen, få ferdig dagbok på norsk
+  const ki = useKi();
+  const [tale, setTale] = useState("");
+  const [kiJobber, setKiJobber] = useState(false);
+  const [kiFeil, setKiFeil] = useState("");
+  const lagMedKi = async () => {
+    setKiFeil(""); setKiJobber(true);
+    try {
+      const r = await api.ai<{ tekst: string; vaer: string; hindringer: string }>("dagbok", { tekst: tale, prosjekt: `${p.visma_nr ? `${p.visma_nr} ` : ""}${p.navn}`, dato: ny.dato });
+      setNy((x) => ({ ...x, tekst: r.tekst || x.tekst, vaer: r.vaer || x.vaer, hindringer: r.hindringer || x.hindringer }));
+      setTale("");
+    } catch (e) { setKiFeil(e instanceof Error ? e.message : String(e)); }
+    setKiJobber(false);
+  };
 
   const lagre = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,6 +308,15 @@ function DagbokDel({ p }: { p: Prosjekt }) {
     <>
       <form className="panel" onSubmit={lagre}>
         <h2 style={{ margin: 0 }}>Skriv i dagboken</h2>
+        {ki && (
+          <div className="ki-boks">
+            <b>Snakk inn dagen</b>
+            <span className="small muted">Fortell hva dere har gjort, hvordan været var og om noe stoppet dere. KI skriver dagboken på norsk – du ser over før du lagrer.</span>
+            <Snakk value={tale} onChange={setTale} rader={3} placeholder="F.eks. «Vi satte inn seks vinduer i andre etasje og beslo utvendig. Regn fra lunsj. Venter på terskler.»" />
+            <div className="row"><button type="button" className="btn" disabled={kiJobber || tale.trim().length < 5} onClick={lagMedKi}>{kiJobber ? "Skriver …" : "Lag dagbok"}</button></div>
+            {kiFeil && <p className="small" style={{ color: "var(--warn)", margin: 0 }}>{kiFeil}</p>}
+          </div>
+        )}
         <div className="row">
           <label className="field"><span className="label">Dato</span><input type="date" value={ny.dato} onChange={(e) => setNy({ ...ny, dato: e.target.value })} required /></label>
           <label className="field"><span className="label">Vær</span>

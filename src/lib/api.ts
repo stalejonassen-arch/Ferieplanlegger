@@ -144,6 +144,8 @@ export interface Api {
   /** Bedriftens egne sjekklistemaler (leder, prosjektleder og faglig leder) */
   lagreSjekklisteMal(m: { id?: string; navn: string; kategori: string; dok_nr: string; beskrivelse: string; punkter: MalPunkt[]; aktiv?: boolean }): Promise<string>;
   slettSjekklisteMal(id: string): Promise<void>;
+  /** KI-hjelp (edge-funksjonen «ai»): dagbok fra tale, befaring fra bilder og tale, eller om KI er satt opp */
+  ai<T = Record<string, unknown>>(oppgave: "status" | "dagbok" | "befaring", data?: Record<string, unknown>): Promise<T>;
   /** Befaring (før tilbud, underveis, overtakelse). Returnerer id. */
   lagreBefaring(b: import("./befaring").NyBefaring): Promise<string>;
   slettBefaring(id: string): Promise<void>;
@@ -687,6 +689,16 @@ function supabaseApi(sb: SupabaseClient): Api {
       return (ok(r) as { id: string }).id;
     },
     async slettBefaring(id) { ok(await sb.from("befaringer").delete().eq("id", id)); },
+    async ai(oppgave, data = {}) {
+      const r = await sb.functions.invoke("ai", { body: { oppgave, ...data } });
+      if (r.error) {
+        let melding = "KI-hjelpen svarte ikke. Prøv igjen.";
+        const ctx = (r.error as { context?: Response }).context;
+        try { const j = ctx ? await ctx.json() : null; if (j?.feil) melding = j.feil; } catch { /* ikke json */ }
+        throw new Error(melding);
+      }
+      return r.data as never;
+    },
     async sendInvitasjon(a) { ok(await sb.rpc("send_invitasjon", { a })); },
     async ansatteInnlogging() { const r = await sb.rpc("ansatte_innlogging"); return r.error ? [] : (r.data as { ansatt_id: string; invitert: string | null; innlogget: string | null }[]); },
     async lagreDrakt(logo, logo_mork, drakt, for_alle) { ok(await sb.rpc("lagre_drakt", { logo, logo_mork, drakt, for_alle })); },

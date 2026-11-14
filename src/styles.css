@@ -1617,3 +1617,10 @@ button.mr-navn:hover { text-decoration: underline; }
 /* Dagbok-påminnelse etter utlogging/bytte */
 .dagbok-paaminnelse { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--surface); color: var(--fg); border: 2px solid var(--accent); }
 .dagbok-paaminnelse .row { gap: 8px; }
+
+/* KI-hjelp: snakk inn tekst */
+.snakk { display: flex; flex-direction: column; gap: 6px; }
+.snakk textarea { width: 100%; }
+.btn.lytter { background: var(--warn); border-color: var(--warn); color: #fff; animation: lytter 1.4s ease-in-out infinite; }
+@keyframes lytter { 50% { opacity: .7; } }
+.ki-boks { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; border: 1px dashed var(--accent); background: var(--sunk); }
