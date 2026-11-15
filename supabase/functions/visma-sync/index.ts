@@ -8,6 +8,19 @@ const CLIENT_ID = Deno.env.get("VISMA_CLIENT_ID") ?? "isv_bygglogg";
 const SCOPE = "business-graphql-service-api:access-group-based-readonly";
 const GQL = "https://business.visma.net/api/graphql-service";
 
+/** Alle rader fra en spørring, side for side (databasen gir maks 1000 rader per kall). Spørringen må være sortert unikt. */
+// deno-lint-ignore no-explicit-any
+async function sider<T = Record<string, any>>(lag: () => any): Promise<T[]> {
+  const ut: T[] = [];
+  for (let fra = 0; fra < 200000; fra += 1000) {
+    const { data, error } = await lag().range(fra, fra + 999);
+    if (error) throw error;
+    ut.push(...((data ?? []) as T[]));
+    if (!data || data.length < 1000) break;
+  }
+  return ut;
+}
+
 async function token() {
   const secret = Deno.env.get("VISMA_CLIENT_SECRET");
   if (!secret) throw new Error("VISMA_CLIENT_SECRET mangler");
@@ -127,7 +140,7 @@ async function synkSalgKategorier(tok: string, b: { id: number; visma_firma_nr: 
   }
   // Selger satt i ByggLogg på ordrer som mangler selger i Visma (fakturerte ordrer kan ikke endres der)
   const overstyr = new Map<number, number>();
-  const { data: os } = await sb.from("ordre_selger").select("visma_ordrenr, selger_nr").eq("bedrift_id", b.id);
+  const os = await sider(() => sb.from("ordre_selger").select("visma_ordrenr, selger_nr").eq("bedrift_id", b.id).order("visma_ordrenr"));
   for (const x of os ?? []) overstyr.set(Number(x.visma_ordrenr), Number(x.selger_nr));
   type Sum = { omsetning: number; db: number; linjer: number; selger: number; eks: Map<string, { omsetning: number; db: number }> };
   const per = new Map<string, Sum>();
@@ -347,16 +360,16 @@ async function synkArbeid(tok: string, b: { id: number; visma_firma_nr: number }
       `joinup_Order { orderDate customerNo transactionType orderType finishDate ${pf} }`],
     `{ productNo: { _in: [${varenr.map((v) => JSON.stringify(v)).join(",")}] } }`);
   const pid = await prosjektKart(b.id);
-  const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
+  const kmap = await sider(() => sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null).order("id"));
   const kid = new Map((kmap ?? []).map((x) => [Number(x.visma_nr), x.id as string]));
   const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
   const n = (v: unknown) => Math.round((Number(v) || 0) * 100) / 100;
   const naa = new Date().toISOString();
   // Kalkyle per prosjekt: «Arbeid» på salgsordrene pluss åpne tilbud (ordretype 5 som ikke er avsluttet).
   // Ordrer og tilbud uten prosjekt i Visma telles på kundens prosjekt når kunden har nøyaktig ett aktivt prosjekt.
-  const { data: pr } = await sb.from("prosjekter").select("id, kunde_id, faktura_kunde_id, aktiv, start").eq("bedrift_id", b.id);
+  const pr = await sider(() => sb.from("prosjekter").select("id, kunde_id, faktura_kunde_id, aktiv, start").eq("bedrift_id", b.id).order("id"));
   // Når prosjektet startet: startdato i Visma, ellers første ordre på prosjektet. Uten start brukes ikke kundens løse ordrer.
-  const { data: po } = await sb.from("prosjekt_ordre").select("prosjekt_id, ordredato").eq("bedrift_id", b.id);
+  const po = await sider(() => sb.from("prosjekt_ordre").select("prosjekt_id, ordredato, visma_ordrenr").eq("bedrift_id", b.id).order("visma_ordrenr"));
   const startet = new Map<string, string>();
   for (const p of pr ?? []) if (p.start) startet.set(p.id as string, p.start as string);
   for (const o of po ?? []) {
@@ -460,7 +473,7 @@ async function synkTilbud(tok: string, b: { id: number; visma_firma_nr: number }
     ["orderNo", "orderType", ...velg(oFelt, ["orderDate", "name", "customerNo", "sellerOrBuyer", "orderSumNetDomestic", "quotationNo", "yourReference", "orgUnit1", "finishDate"])],
     `{ _and: [{ orderType: { _eq: 5 } }, { orderDate: { _gte: ${fra} } }] }`);
   // Bare tilbud fra Visma (tilbud registrert i ByggLogg har ikke ordrenummer og røres ikke)
-  const { data: fins } = await sb.from("tilbud").select("visma_ordrenr, status, status_dato").eq("bedrift_id", b.id).not("visma_ordrenr", "is", null);
+  const fins = await sider(() => sb.from("tilbud").select("visma_ordrenr, status, status_dato").eq("bedrift_id", b.id).not("visma_ordrenr", "is", null).order("visma_ordrenr"));
   const fra_db = new Map((fins ?? []).map((t) => [t.visma_ordrenr as number, t]));
   const naa = new Date().toISOString();
   const rader = tilbud
@@ -619,19 +632,25 @@ Deno.serve(async (req) => {
         const { error } = await sb.from("kunder").upsert(kunder.slice(i, i + 500), { onConflict: "bedrift_id,visma_nr" });
         if (error) throw error;
       }
-      const { data: kmap } = await sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null);
+      const kmap = await sider(() => sb.from("kunder").select("id, visma_nr").eq("bedrift_id", b.id).not("visma_nr", "is", null).order("id"));
       const kundeId = new Map((kmap ?? []).map((k) => [k.visma_nr, k.id]));
 
       // Bruk den første prosjektklassen som faktisk har prosjekter (f.eks. «Prosjekt» eller «Kundeprosjekt»)
       const kandidater = klasser.filter((k) => /prosjekt|project/i.test(k.navn));
       if (!kandidater.length) throw new Error(`Fant ingen organisatorisk enhet som heter Prosjekt (${klasser.map((k) => k.navn).filter(Boolean).join(", ")})`);
       let pk = kandidater[0], nrFelt = `orgUnit${pk.nr}No`, rader: Record<string, unknown>[] = [];
+      // Prosjektstatus i Visma (1 Planlegges, 2 Aktivt, 3 Avsluttet): feltet heter litt forskjellig, så det finnes ut fra skjemaet
+      let statusFelt: string | undefined;
       for (const k of kandidater) {
         const pf = await felt(tok, `OrgUnit${k.nr}`);
         const nf = [`orgUnit${k.nr}No`, "orgUnitNo", "no"].find((f) => pf.has(f)) ?? `orgUnit${k.nr}No`;
-        const r = await alle(tok, b.visma_firma_nr, `orgUnit${k.nr}`, [nf, ...velg(pf, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"])]);
-        if (r.some((p) => Number(p[nf]) > 0)) { pk = k; nrFelt = nf; rader = r; break; }
+        const sf = ["status", "orgUnitStatus", "projectStatus", "processingStatus"].find((f) => pf.has(f));
+        const r = await alle(tok, b.visma_firma_nr, `orgUnit${k.nr}`, [nf, ...velg(pf, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"]), ...(sf ? [sf] : [])]);
+        if (r.some((p) => Number(p[nf]) > 0)) { pk = k; nrFelt = nf; rader = r; statusFelt = sf; break; }
       }
+      // Bruk statusfeltet bare når verdiene ser ut som 1–3 (ellers kan et feil felt avslutte alle prosjektene)
+      const statuser = statusFelt ? rader.map((p) => Number(p[statusFelt!])).filter((x) => !Number.isNaN(x)) : [];
+      if (!statuser.length || statuser.some((x) => x < 0 || x > 3) || !statuser.some((x) => x === 2)) statusFelt = undefined;
       const prosjekter = rader
         .filter((p) => Number(p[nrFelt]) > 0)
         .map((p) => {
@@ -646,6 +665,9 @@ Deno.serve(async (req) => {
           if ("actualEndDate" in p) rad.slutt = dato(p.actualEndDate);
           const ferdig = p.inactive ?? p.blocked ?? p.finished ?? p.closed;
           if (ferdig !== undefined) rad.aktiv = !(ferdig === true || Number(ferdig) > 0);
+          // Avsluttet i Visma (status 3) er avsluttet i ByggLogg også. Aktive i Visma åpnes ikke igjen her,
+          // så prosjekter leder har avsluttet i ByggLogg forblir avsluttet.
+          if (statusFelt && Number(p[statusFelt]) === 3) rad.aktiv = false;
           return rad;
         });
       for (let i = 0; i < prosjekter.length; i += 500) {
@@ -725,7 +747,7 @@ Deno.serve(async (req) => {
       let tilbud: string;
       try { tilbud = await synkTilbud(tok, b); }
       catch (e) { tilbud = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, ansatte_i_visma: forslag, avdeling, tilbud, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, ansatte_i_visma: forslag, avdeling, tilbud, prosjektklasse: `${pk.nr} ${pk.navn}`, prosjektstatus: statusFelt ?? "ikke funnet" };
       await sb.from("bedrifter").update({ visma_status: `Hentet ${kunder.length} kunder og ${prosjekter.length} prosjekter.`, visma_sist: new Date().toISOString() }).eq("id", b.id);
      } catch (e) {
       const m = (e instanceof Error ? e.message : String(e)).slice(0, 300);

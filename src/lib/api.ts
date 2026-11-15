@@ -333,8 +333,9 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
-        sb.from("soknader").select("*").order("fra"),
-        sb.from("kunder").select("*").order("navn"),
+        alle(() => sb.from("soknader").select("*").order("fra").order("id"), 20000),
+        // Over 1000 kunder: hentes side for side (Supabase gir maks 1000 rader per kall)
+        alle(() => sb.from("kunder").select("*").order("navn").order("id"), 50000),
         alle(() => sb.from("prosjekter").select("*").order("visma_nr", { ascending: false, nullsFirst: true }).order("id")),
         alle(() => sb.from("timer").select("*").gte("dato", fraDato).order("dato").order("fra").order("id")),
         alle(() => sb.from("avvik").select("*").order("opprettet", { ascending: false }).order("id"), 5000),
