@@ -612,8 +612,9 @@ Deno.serve(async (req) => {
           if ("actualEndDate" in p) rad.slutt = dato(p.actualEndDate);
           const ferdig = p.inactive ?? p.blocked ?? p.finished ?? p.closed;
           if (ferdig !== undefined) rad.aktiv = !(ferdig === true || Number(ferdig) > 0);
-          // Avsluttet i Visma (status 3) er avsluttet i ByggLogg også
-          if (statusFelt) rad.aktiv = Number(p[statusFelt]) !== 3 && rad.aktiv !== false;
+          // Avsluttet i Visma (status 3) er avsluttet i ByggLogg også. Aktive i Visma åpnes ikke igjen her,
+          // så prosjekter leder har avsluttet i ByggLogg forblir avsluttet.
+          if (statusFelt && Number(p[statusFelt]) === 3) rad.aktiv = false;
           return rad;
         });
       for (let i = 0; i < prosjekter.length; i += 500) {
