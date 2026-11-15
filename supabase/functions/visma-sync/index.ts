@@ -586,12 +586,18 @@ Deno.serve(async (req) => {
       const kandidater = klasser.filter((k) => /prosjekt|project/i.test(k.navn));
       if (!kandidater.length) throw new Error(`Fant ingen organisatorisk enhet som heter Prosjekt (${klasser.map((k) => k.navn).filter(Boolean).join(", ")})`);
       let pk = kandidater[0], nrFelt = `orgUnit${pk.nr}No`, rader: Record<string, unknown>[] = [];
+      // Prosjektstatus i Visma (1 Planlegges, 2 Aktivt, 3 Avsluttet): feltet heter litt forskjellig, så det finnes ut fra skjemaet
+      let statusFelt: string | undefined;
       for (const k of kandidater) {
         const pf = await felt(tok, `OrgUnit${k.nr}`);
         const nf = [`orgUnit${k.nr}No`, "orgUnitNo", "no"].find((f) => pf.has(f)) ?? `orgUnit${k.nr}No`;
-        const r = await alle(tok, b.visma_firma_nr, `orgUnit${k.nr}`, [nf, ...velg(pf, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"])]);
-        if (r.some((p) => Number(p[nf]) > 0)) { pk = k; nrFelt = nf; rader = r; break; }
+        const sf = ["status", "orgUnitStatus", "projectStatus", "processingStatus"].find((f) => pf.has(f));
+        const r = await alle(tok, b.visma_firma_nr, `orgUnit${k.nr}`, [nf, ...velg(pf, ["name", "customerNo", "addressLine1", "postalArea", "actualStartDate", "actualEndDate", "inactive", "blocked", "finished", "closed"]), ...(sf ? [sf] : [])]);
+        if (r.some((p) => Number(p[nf]) > 0)) { pk = k; nrFelt = nf; rader = r; statusFelt = sf; break; }
       }
+      // Bruk statusfeltet bare når verdiene ser ut som 1–3 (ellers kan et feil felt avslutte alle prosjektene)
+      const statuser = statusFelt ? rader.map((p) => Number(p[statusFelt!])).filter((x) => !Number.isNaN(x)) : [];
+      if (!statuser.length || statuser.some((x) => x < 0 || x > 3) || !statuser.some((x) => x === 2)) statusFelt = undefined;
       const prosjekter = rader
         .filter((p) => Number(p[nrFelt]) > 0)
         .map((p) => {
@@ -606,6 +612,8 @@ Deno.serve(async (req) => {
           if ("actualEndDate" in p) rad.slutt = dato(p.actualEndDate);
           const ferdig = p.inactive ?? p.blocked ?? p.finished ?? p.closed;
           if (ferdig !== undefined) rad.aktiv = !(ferdig === true || Number(ferdig) > 0);
+          // Avsluttet i Visma (status 3) er avsluttet i ByggLogg også
+          if (statusFelt) rad.aktiv = Number(p[statusFelt]) !== 3 && rad.aktiv !== false;
           return rad;
         });
       for (let i = 0; i < prosjekter.length; i += 500) {
@@ -682,7 +690,7 @@ Deno.serve(async (req) => {
       let tilbud: string;
       try { tilbud = await synkTilbud(tok, b); }
       catch (e) { tilbud = `ikke hentet: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`; }
-      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, avdeling, tilbud, prosjektklasse: `${pk.nr} ${pk.navn}` };
+      rapport[`bedrift ${b.id}`] = { kunder: kunder.length, prosjekter: prosjekter.length, ordrer: ordreAntall, varer: vareAntall, utstyr: utstyrAntall, nye_utstyrskontoer: nyeKontoer, arbeid: arbeidAntall, omsetning, salg, avdeling, tilbud, prosjektklasse: `${pk.nr} ${pk.navn}`, prosjektstatus: statusFelt ?? "ikke funnet" };
     }
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
