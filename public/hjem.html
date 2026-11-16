@@ -144,6 +144,12 @@ section { padding-block: clamp(64px, 9vw, 120px); }
 @media (max-width: 560px) { .deler { grid-template-columns: 1fr; } }
 
 /* Tallene */
+.ki { background: var(--flate); }
+.ki-rad { display: grid; grid-template-columns: repeat(2, minmax(0, 300px)); gap: 48px; margin-top: 44px; }
+.ki-rad figure { margin: 0; }
+.ki-rad figcaption { margin-top: 18px; color: var(--muted); }
+.ki-rad figcaption b { display: block; color: var(--fg); font-family: var(--f-display); font-size: 24px; font-weight: 700; line-height: 1.1; margin-bottom: 4px; }
+@media (max-width: 700px) { .ki-rad { grid-template-columns: 1fr; max-width: 300px; } }
 .tall-seksjon { background: var(--natt); color: var(--hfg); }
 .tall-seksjon .ingress { color: var(--hmuted); }
 .tall-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 44px 36px; margin-top: 52px; }
@@ -240,6 +246,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     <div class="hoyre">
       <nav aria-label="Hovedmeny">
         <a href="#prosjektet">Prosjektet</a>
+        <a href="#befaring">Befaring og KI</a>
         <a href="#tall">Tallene</a>
         <a href="#regnskap">Regnskap</a>
         <a href="#alt">Alt som er med</a>
@@ -292,7 +299,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
     <h2>Alt om jobben på ett sted.</h2>
     <p class="ingress">Hvert prosjekt fra Visma eller Tripletex får sin egen side, med kunde, adresse, selger og snekker øverst, og timer brukt mot kalkyle. Snekkeren ser det samme på telefonen ute.</p>
     <div class="prosjekt-rad">
-      <div class="vindu"><img src="/skjerm/prosjekt-pc.webp" width="1952" height="1372" loading="lazy" alt="Prosjektsiden i ByggLogg med kunde, kontaktperson, adresse, timer mot kalkyle og alle delene av prosjektet"></div>
+      <div class="vindu"><img src="/skjerm/prosjekt-pc.webp" width="1952" height="1264" loading="lazy" alt="Prosjektsiden i ByggLogg med kunde, kontaktperson, adresse, timer mot kalkyle og alle delene av prosjektet"></div>
       <div class="telefon"><img src="/skjerm/prosjekt-mobil.webp" width="800" height="1720" loading="lazy" alt="Den samme prosjektsiden på telefonen"></div>
     </div>
     <div class="deler">
@@ -302,6 +309,20 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       <div><b>Tillegg og reklamasjon</b><span>Kunden signerer tilleggsarbeid på telefonen.</span></div>
       <div><b>Statistikk og økonomi</b><span>Timer per person, omsetning, dekningsbidrag og hva som gjenstår å fakturere.</span></div>
       <div><b>Sluttdokumentasjon</b><span>Sluttrapport og FDV til kunden, klar for Boligmappa.</span></div>
+      <div><b>Befaring</b><span>Før tilbud, underveis og ved overtakelse, med mål, bilder og kundens signatur.</span></div>
+      <div><b>KI-hjelp</b><span>Snakk inn dagen, så skriver appen dagboken. På alle fire språk.</span></div>
+      <div><b>Påminnelser</b><span>Varsel klokka 15 om dagbok på jobben du har vært på i dag.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="ki" id="befaring">
+  <div class="wrap">
+    <h2>Snakk inn dagen. Appen skriver.</h2>
+    <p class="ingress">Snekkeren trykker på mikrofonen og forteller hva som er gjort, på norsk, polsk, engelsk eller litauisk. KI-hjelpen lager dagboken på norsk. På befaringen fyller bildene og det som blir sagt ut punktene, mål og tilbudsteksten. Alt kan rettes før det lagres.</p>
+    <div class="ki-rad">
+      <figure><div class="telefon"><img src="/skjerm/ki-dagbok.webp" width="800" height="1720" loading="lazy" alt="Dagboken på telefonen: snekkeren har snakket inn dagen, og KI-hjelpen har skrevet hva som ble gjort, været og ventetiden"></div><figcaption><b>Dagbok på ett minutt</b>Si hva som ble gjort, hva som stoppet dere og hvordan været var. Teksten havner rett i dagboken på prosjektet.</figcaption></figure>
+      <figure><div class="telefon"><img src="/skjerm/befaring.webp" width="800" height="1720" loading="lazy" alt="Overtakelse på telefonen: KI-hjelpen har fylt ut punktene med OK, og avvik blir registrert på prosjektet"></div><figcaption><b>Befaring og overtakelse</b>Sjekkpunkter med OK, avvik og mål. Avvik går rett inn i avviksregisteret, og kunden signerer på telefonen. Rapporten blir en PDF.</figcaption></figure>
     </div>
   </div>
 </section>
@@ -384,13 +405,15 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
           <div><dt>Materiell og bestilling</dt><dd>Materialliste i leveranser. Snekkeren bestiller, butikken plukker.</dd></div>
           <div><dt>Tilleggsarbeid</dt><dd>Eget underprosjekt som kunden signerer på telefonen.</dd></div>
           <div><dt>Serviceoppdrag</dt><dd>Små betalte jobber på en dag eller to, med hastegrad og skjema for kunden.</dd></div>
-          <div><dt>Mine prosjekter <span class="ny">Nyhet</span></dt><dd>Hver ansatt stjernemerker sine prosjekter, så de ligger øverst og er ett trykk unna.</dd></div>
+          <div><dt>Mine prosjekter</dt><dd>Hver ansatt stjernemerker sine prosjekter, så de ligger øverst og er ett trykk unna.</dd></div>
         </dl>
       </div>
       <div class="gruppe">
         <h3>Dokumentasjon og HMS</h3>
         <dl>
-          <div><dt>Dagbok og bilder</dt><dd>Alt lagres på prosjektet mens jobben pågår.</dd></div>
+          <div><dt>Dagbok og bilder</dt><dd>Alt lagres på prosjektet mens jobben pågår. Påminnelse klokka 15 hvis dagboken mangler.</dd></div>
+          <div><dt>Befaring <span class="ny">Nyhet</span></dt><dd>Før tilbud, underveis og ved overtakelse. Avvik blir avvik på prosjektet, og kunden signerer.</dd></div>
+          <div><dt>KI-hjelp <span class="ny">Nyhet</span></dt><dd>Snakk inn dagen eller befaringen, så fyller appen ut teksten. Du ser over før det lagres.</dd></div>
           <div><dt>Egenkontroll og SJA <span class="ny">Nyhet</span></dt><dd>Kontrollplan, sjekklister med målinger og bilder, og kontroll av faglig leder. Klar for sentral godkjenning.</dd></div>
           <div><dt>Avvik og reklamasjon</dt><dd>Meldes med bilde, får ansvarlig og frist.</dd></div>
           <div><dt>Sluttdokumentasjon</dt><dd>Sluttrapport og FDV til kunden, klar for Boligmappa.</dd></div>
@@ -411,7 +434,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
           <div><dt>Chat og varsler</dt><dd>Felles chat, tråd per prosjekt og private meldinger, med push-varsel.</dd></div>
           <div><dt>Månedsrapport</dt><dd>Hver ansatt får sin egen, med det som er viktig i jobben deres.</dd></div>
           <div><dt>Kurs, utstyr og arbeidstøy</dt><dd>Kompetansebevis, verktøy og kvoter per ansatt.</dd></div>
-          <div><dt>Fire språk <span class="ny">Nyhet</span></dt><dd>Hver ansatt velger norsk, polsk, engelsk eller litauisk.</dd></div>
+          <div><dt>Fire språk</dt><dd>Hver ansatt velger norsk, polsk, engelsk eller litauisk.</dd></div>
         </dl>
       </div>
       <div class="gruppe">
