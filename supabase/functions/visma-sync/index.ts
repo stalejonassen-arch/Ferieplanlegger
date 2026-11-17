@@ -610,16 +610,22 @@ Deno.serve(async (req) => {
           const dato = (v: unknown) => { const x = s(v); return /^\d{8}$/.test(x) && x !== "00000000" ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : null; };
           if ("actualStartDate" in p) rad.start = dato(p.actualStartDate);
           if ("actualEndDate" in p) rad.slutt = dato(p.actualEndDate);
+          // Avsluttet i Visma (status 3 eller sperret/ferdig) er avsluttet i ByggLogg også. Aktive i Visma åpnes
+          // ikke igjen her, så prosjekter leder har avsluttet i ByggLogg forblir avsluttet.
           const ferdig = p.inactive ?? p.blocked ?? p.finished ?? p.closed;
-          if (ferdig !== undefined) rad.aktiv = !(ferdig === true || Number(ferdig) > 0);
-          // Avsluttet i Visma (status 3) er avsluttet i ByggLogg også. Aktive i Visma åpnes ikke igjen her,
-          // så prosjekter leder har avsluttet i ByggLogg forblir avsluttet.
+          if (ferdig === true || Number(ferdig) > 0) rad.aktiv = false;
           if (statusFelt && Number(p[statusFelt]) === 3) rad.aktiv = false;
           return rad;
         });
-      for (let i = 0; i < prosjekter.length; i += 500) {
-        const { error } = await sb.from("prosjekter").upsert(prosjekter.slice(i, i + 500), { onConflict: "bedrift_id,visma_nr" });
-        if (error) throw error;
+      // Én upsert per sett med kolonner: rader uten «aktiv» må ikke sendes sammen med rader som har den,
+      // ellers settes aktiv til null på de andre og hele hentingen stopper.
+      const grupper = new Map<string, Record<string, unknown>[]>();
+      for (const r of prosjekter) { const k = Object.keys(r).sort().join(","); grupper.set(k, [...(grupper.get(k) ?? []), r]); }
+      for (const gruppe of grupper.values()) {
+        for (let i = 0; i < gruppe.length; i += 500) {
+          const { error } = await sb.from("prosjekter").upsert(gruppe.slice(i, i + 500), { onConflict: "bedrift_id,visma_nr" });
+          if (error) throw new Error(`prosjekter: ${error.message}${error.details ? ` (${error.details})` : ""}`);
+        }
       }
       // Ordrer knyttet til prosjektene (materiell, salg og dekningsbidrag). Krever lesetilgang til ordretabellen.
       let ordreAntall: number | string = 0;
@@ -696,7 +702,8 @@ Deno.serve(async (req) => {
     await sb.from("visma_sync_logg").insert({ ok: true, melding: JSON.stringify(rapport) });
     return Response.json(rapport);
   } catch (e) {
-    const melding = e instanceof Error ? e.message : String(e);
+    const melding = e instanceof Error ? e.message
+      : e && typeof e === "object" ? JSON.stringify(e) : String(e);
     await sb.from("visma_sync_logg").insert({ ok: false, melding: melding.slice(0, 2000) });
     return new Response(melding, { status: 500 });
   }
