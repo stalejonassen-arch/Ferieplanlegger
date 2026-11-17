@@ -26,5 +26,5 @@ jobs:
         if: steps.sjekk.outputs.ok == 'true'
         run: |
           for f in kalender varsle paaminnelse visma-sync push ai; do
-            supabase functions deploy "$f" --project-ref xsetojjfpxyatmeozrzh --no-verify-jwt
+            supabase functions deploy "$f" --project-ref xsetojjfpxyatmeozrzh --no-verify-jwt --yes
           done
