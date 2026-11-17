@@ -411,7 +411,7 @@ export function App() {
           </nav>
         )}
 
-        {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}{b("service") && <MineServiceoppdrag />}{b("egenkontroll") && <MineKontroller />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}<Timer />{b("kampanjer") && <KampanjerAv />}</>}
+        {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}<Timer etter={<>{b("service") && <MineServiceoppdrag />}{b("egenkontroll") && <MineKontroller />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}</>} />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter etterListen={<>{b("befaring") && <Befaringer />}{b("service") && <ServiceOppdrag />}{b("tilbud") && <Tilbudsoppfolging />}</>} />}
         {aktiv === "avvik" && (kontrollor ? <KvalitetFane medAvvik={b("avvik")} /> : <Avvik />)}

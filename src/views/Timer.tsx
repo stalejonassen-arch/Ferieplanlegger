@@ -17,7 +17,8 @@ import { bruker } from "../lib/moduler";
 
 const DAG = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
 
-export function Timer() {
+/** etter: kort som vises rett under stemplingen (serviceoppdrag, kontroller, tilbud, vær, kampanje) */
+export function Timer({ etter }: { etter?: React.ReactNode } = {}) {
   const { d, meg, leder, idag, kjor, kjorKo } = useApp();
   const [hvemId, setHvemId] = useState(meg.id);
   const [uke, setUke] = useState(() => mandag(idag));
@@ -96,6 +97,7 @@ export function Timer() {
       {meSelv && !d.stempling.some((x) => x.ansatt_id === meg.id) && (
         <div className="small" style={{ textAlign: "right" }}><a href="#syk">Syk i dag? Meld egenmelding</a></div>
       )}
+      {etter}
       {leder && meSelv && <InneNaa />}
       {leder && meSelv && <TimerOversikt onVelg={(id, fra) => {
         const a = d.ansatte.find((x) => x.id === id);
