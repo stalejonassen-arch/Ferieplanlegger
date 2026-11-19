@@ -3,7 +3,7 @@
 import type { Data } from "./ferie";
 
 export type Modul =
-  | "chat" | "plan" | "materiell" | "bestilling" | "egenkontroll" | "sja" | "avvik" | "reklamasjon" | "service" | "befaring" | "ai" | "tilbud" | "dagbok" | "tillegg"
+  | "chat" | "plan" | "materiell" | "bestilling" | "egenkontroll" | "sja" | "avvik" | "hms" | "reklamasjon" | "service" | "befaring" | "ai" | "tilbud" | "dagbok" | "tillegg"
   | "utstyr" | "kurs" | "rapporter" | "kampanjer" | "vaer" | "okonomi" | "sluttdok";
 
 export const MODULER: { id: Modul; navn: string; hva: string }[] = [
@@ -14,6 +14,7 @@ export const MODULER: { id: Modul; navn: string; hva: string }[] = [
   { id: "egenkontroll", navn: "Egenkontroll", hva: "Sjekklister som fylles ut og signeres på prosjektet" },
   { id: "sja", navn: "SJA og mannskapsliste", hva: "Sikker jobbanalyse, mannskapsliste og HMS-kort" },
   { id: "avvik", navn: "Avvik og RUH", hva: "Melde og følge opp avvik og uønskede hendelser" },
+  { id: "hms", navn: "HMS-dokumenter og stoffkartotek", hva: "HMS-håndbok og rutiner som alle kvitterer for, og stoffkartotek med sikkerhetsdatablad" },
   { id: "service", navn: "Serviceoppdrag", hva: "Små betalte oppdrag hos kunden på en dag eller to – hastegrad, timer, materiell og fakturering" },
   { id: "befaring", navn: "Befaring", hva: "Befaring før tilbud, underveis og overtakelse med kunden – punkter, mål, bilder og kundens signatur" },
   { id: "ai", navn: "KI-hjelp", hva: "Snakk inn dagboken (også på polsk, engelsk og litauisk), og la KI fylle ut befaringen fra bilder og det som er sagt" },

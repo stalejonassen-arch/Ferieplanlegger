@@ -243,6 +243,26 @@ export function demoApi(): Api {
     );
   }
 
+  // HMS: eksempler på stoffkartotek og HMS-dokumenter
+  const naaIso = new Date().toISOString(), aar = new Date().getFullYear();
+  const stoff = (navn: string, leverandor: string, bruk: string, farer: string[], verneutstyr: string, dato: string | null, lenke = ""): import("./stoff").Stoff =>
+    ({ id: nyId(), navn, leverandor, nobb: "", bruk, plassering: "Lager / bilen", farer, verneutstyr, datablad_dato: dato, sti: null, filnavn: "", lenke, aktiv: true, lagt_inn_av: null, opprettet: naaIso, endret: naaIso });
+  const hmsDemo = {
+    stoffer: [
+      stoff("Fugemasse MS-polymer", "Eksempel AS", "Fuging av vinduer og beslag", ["GHS07"], "Hansker", `${aar - 1}-03-01`, "https://example.com/datablad.pdf"),
+      stoff("Byggskum (pistolskum)", "Eksempel AS", "Tetting rundt vinduer og dører", ["GHS02", "GHS07", "GHS08"], "Hansker, briller, god ventilasjon", `${aar - 4}-06-15`, "https://example.com/datablad.pdf"),
+      stoff("Rødsprit", "Eksempel AS", "Rengjøring", ["GHS02", "GHS07"], "Hansker", null),
+      stoff("Grunning til tre", "Eksempel AS", "Grunning av kledning", ["GHS09"], "Hansker", `${aar}-01-10`, "https://example.com/datablad.pdf"),
+    ] as import("./stoff").Stoff[],
+    dokumenter: [
+      { id: "hms1", tittel: "HMS-håndbok", kategori: "handbok", versjon: "3", gyldig_fra: `${aar}-01-01`, revideres: `${aar + 1}-01-01`, beskrivelse: "Mål, ansvar, rutiner og internkontroll for bedriften.", sti: null, filnavn: "", lenke: "https://example.com/hms.pdf", ma_leses: true, opprettet: naaIso, endret: naaIso },
+      { id: "hms2", tittel: "Beredskapsplan og førstehjelp", kategori: "beredskap", versjon: "1", gyldig_fra: `${aar - 1}-05-01`, revideres: `${aar}-05-01`, beskrivelse: "Hva gjør vi ved ulykke, brann og skade på byggeplassen.", sti: null, filnavn: "", lenke: "https://example.com/beredskap.pdf", ma_leses: true, opprettet: naaIso, endret: naaIso },
+      { id: "hms3", tittel: "Rutine for arbeid i høyden", kategori: "rutine", versjon: "2", gyldig_fra: `${aar}-02-01`, revideres: null, beskrivelse: "Stillas, lift og sikring ved takarbeid.", sti: null, filnavn: "", lenke: "https://example.com/hoyde.pdf", ma_leses: true, opprettet: naaIso, endret: naaIso },
+    ] as import("./stoff").HmsDokument[],
+    lest: [] as import("./stoff").HmsLest[],
+  };
+  hmsDemo.lest = d.ansatte.slice(0, 3).map((a) => ({ dokument_id: "hms1", ansatt_id: a.id, tid: naaIso }));
+
   return {
     modus: "demo",
     async epost() { return epost; },
@@ -465,6 +485,25 @@ export function demoApi(): Api {
       else liste.push({ id: nyId(), navn: "", utsteder: "", utstedt: null, gyldig_til: null, sti: null, filnavn: "", merknad: "", opprettet: new Date().toISOString(), ...k, ...fil2 });
       endret();
     },
+    async hms() { return { stoffer: hmsDemo.stoffer, dokumenter: hmsDemo.dokumenter, lest: hmsDemo.lest }; },
+    async lagreStoff(st, fil) {
+      const fil2 = fil ? { sti: URL.createObjectURL(fil), filnavn: fil.name } : {};
+      const x = st.id ? hmsDemo.stoffer.find((y) => y.id === st.id) : undefined;
+      if (x) Object.assign(x, st, fil2, { endret: new Date().toISOString() });
+      else hmsDemo.stoffer.push({ ...st, ...fil2, id: nyId(), lagt_inn_av: meg()?.id ?? null, opprettet: new Date().toISOString(), endret: new Date().toISOString() } as import("./stoff").Stoff);
+      endret();
+    },
+    async slettStoff(id) { hmsDemo.stoffer = hmsDemo.stoffer.filter((x) => x.id !== id); endret(); },
+    async lagreHmsDokument(dok, fil) {
+      if (!leder()) throw new Error("Bare leder kan legge inn HMS-dokumenter.");
+      const fil2 = fil ? { sti: URL.createObjectURL(fil), filnavn: fil.name } : {};
+      const x = dok.id ? hmsDemo.dokumenter.find((y) => y.id === dok.id) : undefined;
+      if (x) { if (x.versjon !== dok.versjon || fil) hmsDemo.lest = hmsDemo.lest.filter((l) => l.dokument_id !== x.id); Object.assign(x, dok, fil2, { endret: new Date().toISOString() }); }
+      else hmsDemo.dokumenter.push({ ...dok, ...fil2, id: nyId(), opprettet: new Date().toISOString(), endret: new Date().toISOString() } as import("./stoff").HmsDokument);
+      endret();
+    },
+    async slettHmsDokument(id) { hmsDemo.dokumenter = hmsDemo.dokumenter.filter((x) => x.id !== id); endret(); },
+    async markerHmsLest(id) { const m = meg(); if (m && !hmsDemo.lest.some((l) => l.dokument_id === id && l.ansatt_id === m.id)) hmsDemo.lest.push({ dokument_id: id, ansatt_id: m.id, tid: new Date().toISOString() }); endret(); },
     async slettKompetanse(id) { d.kompetanse = (d.kompetanse ?? []).filter((x) => x.id !== id); endret(); },
     async utstyrBilde(id, fil) { const u = d.utstyr?.find((x) => x.id === id); if (u) u.bilde_sti = URL.createObjectURL(fil); endret(); },
     async svennKoblinger() { return [...svennKob.values()]; },
@@ -539,6 +578,7 @@ export function demoApi(): Api {
       return d.ansatte.map((a, i) => ({ ansatt_id: a.id, invitert: demoInvitert.get(a.id) ?? null, innlogget: i % 4 === 3 ? null : new Date(Date.now() - (i + 1) * 36e5 * 7).toISOString() }));
     },
     async avdelingSalg() {
+      if (!leder()) return { avdelinger: [], salg: [] }; // som i den ekte appen: bare leder (og den som jobber på avdelingen) ser salget
       const y = new Date().getFullYear(), kunder = ["Hansen, Kari", "Olsen, Per", "Berg, Line", "Nilsen, Tor", "Lie, Anne", "Dahl, Ola", "Moen, Siri", "Vik, Lars"];
       const salg: import("./avdeling").AvdelingSalg[] = [];
       let nr = 9000;

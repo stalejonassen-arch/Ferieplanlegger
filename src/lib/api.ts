@@ -229,6 +229,13 @@ export interface Api {
   /** Kurs/kompetansebevis: lagre (ny eller endret), med kopi av beviset (bilde/PDF) */
   lagreKompetanse(k: Partial<Kompetanse> & { ansatt_id: string; type: string }, fil?: File | null): Promise<void>;
   slettKompetanse(id: string, sti: string | null): Promise<void>;
+  /** HMS: stoffkartotek, HMS-dokumenter og hvem som har lest dem */
+  hms(): Promise<{ stoffer: import("./stoff").Stoff[]; dokumenter: import("./stoff").HmsDokument[]; lest: import("./stoff").HmsLest[] }>;
+  lagreStoff(s: import("./stoff").NyttStoff, fil?: File | null): Promise<void>;
+  slettStoff(id: string, sti: string | null): Promise<void>;
+  lagreHmsDokument(d: import("./stoff").NyttHmsDokument, fil?: File | null): Promise<void>;
+  slettHmsDokument(id: string, sti: string | null): Promise<void>;
+  markerHmsLest(id: string): Promise<void>;
   /** Leder: grenser for arbeidstøy og verktøy (kr per ansatt per år, 0 = ingen) og måneder før samme vare igjen */
   settUtstyrGrenser(arbeidstoy: number, verktoy: number, sammeMnd: number): Promise<void>;
   /** Leder: kvoter på antall per plaggtype */
@@ -290,6 +297,18 @@ export function feiltekst(e: unknown): string {
 
 function supabaseApi(sb: SupabaseClient): Api {
   /** Brukes fila av et annet kurs/bevis? (felles kompetansebevis for flere klasser) */
+  /** PDF eller bilde til stoffkartotek/HMS-dokumenter (mappen «dokumenter», per bedrift) */
+  const lastOppHmsFil = async (fil: File, mappe: "stoff" | "hms") => {
+    if (fil.size > 25 * 1024 * 1024) throw new Error("Filen er større enn 25 MB.");
+    const ext = (fil.name.match(/\.(\w+)$/)?.[1] ?? "").toLowerCase();
+    const type = ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : /jpe?g/.test(ext) ? "image/jpeg" : fil.type;
+    if (!/^(application\/pdf|image\/(jpeg|png))$/.test(type)) throw new Error("Last opp som PDF eller bilde (JPG/PNG).");
+    const bedrift = (ok(await sb.rpc("min_bedrift")) as number) ?? 1;
+    const data = type.startsWith("image/") ? await komprimer(fil) : fil;
+    const sti = `${bedrift}/${mappe}/${crypto.randomUUID()}.${type === "application/pdf" ? "pdf" : "jpg"}`;
+    ok(await sb.storage.from("dokumenter").upload(sti, data, { contentType: type === "application/pdf" ? type : "image/jpeg" }));
+    return { sti, filnavn: fil.name };
+  };
   const stiIBruk = async (sti: string) => ((await sb.from("kompetanse").select("id").eq("sti", sti).limit(1)).data ?? []).length > 0;
   const ok = <T>(r: { data: T; error: unknown }) => { if (r.error) throw r.error; return r.data; };
   /** Supabase gir maks 1000 rader per kall: hent side for side til alt er med */
@@ -619,6 +638,41 @@ function supabaseApi(sb: SupabaseClient): Api {
         : await sb.from("kompetanse").insert({ ...rad, ...(sti ? { sti, filnavn } : {}) });
       if (r.error) { if (sti) await sb.storage.from("dokumenter").remove([sti]); throw r.error; }
       if (id && sti && k.sti && !(await stiIBruk(k.sti))) await sb.storage.from("dokumenter").remove([k.sti]);
+    },
+    async hms() {
+      const [s, d, l] = await Promise.all([
+        sb.from("stoffer").select("*").order("navn"),
+        sb.from("hms_dokumenter").select("*").order("kategori").order("tittel"),
+        sb.from("hms_lest").select("dokument_id, ansatt_id, tid"),
+      ]);
+      if ([s.error?.code, d.error?.code].some((c) => c === "42P01" || c === "PGRST205")) throw new Error("HMS-delen er ikke satt opp i databasen ennå.");
+      return { stoffer: ok(s) as import("./stoff").Stoff[], dokumenter: ok(d) as import("./stoff").HmsDokument[], lest: ok(l) as import("./stoff").HmsLest[] };
+    },
+    async lagreStoff(st, fil) {
+      const opp = fil ? await lastOppHmsFil(fil, "stoff") : null;
+      const { id, ...rad } = st;
+      const r = id ? await sb.from("stoffer").update({ ...rad, ...(opp ?? {}) }).eq("id", id) : await sb.from("stoffer").insert({ ...rad, ...(opp ?? {}) });
+      if (r.error) { if (opp) await sb.storage.from("dokumenter").remove([opp.sti]); throw r.error; }
+      if (id && opp && st.sti) await sb.storage.from("dokumenter").remove([st.sti]);
+    },
+    async slettStoff(id, sti) {
+      ok(await sb.from("stoffer").delete().eq("id", id));
+      if (sti) await sb.storage.from("dokumenter").remove([sti]);
+    },
+    async lagreHmsDokument(dok, fil) {
+      const opp = fil ? await lastOppHmsFil(fil, "hms") : null;
+      const { id, ...rad } = dok;
+      const r = id ? await sb.from("hms_dokumenter").update({ ...rad, ...(opp ?? {}) }).eq("id", id) : await sb.from("hms_dokumenter").insert({ ...rad, ...(opp ?? {}) });
+      if (r.error) { if (opp) await sb.storage.from("dokumenter").remove([opp.sti]); throw r.error; }
+      if (id && opp && dok.sti) await sb.storage.from("dokumenter").remove([dok.sti]);
+    },
+    async slettHmsDokument(id, sti) {
+      ok(await sb.from("hms_dokumenter").delete().eq("id", id));
+      if (sti) await sb.storage.from("dokumenter").remove([sti]);
+    },
+    async markerHmsLest(id) {
+      const r = await sb.from("hms_lest").insert({ dokument_id: id });
+      if (r.error && r.error.code !== "23505") throw r.error; // allerede lest
     },
     async slettKompetanse(id, sti) {
       ok(await sb.from("kompetanse").delete().eq("id", id));

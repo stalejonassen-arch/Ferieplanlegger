@@ -14,13 +14,23 @@ export const ARBEIDSUKER = 46;
 const addDager = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 const t1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString("nb-NO");
 
-export function ukesjekk(d: Data, idag: string, tilbud: Tilbud[], helligdag: (iso: string) => string | undefined): Sjekkpunkt[] {
+const kortDato = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("nb-NO", { day: "numeric", month: "short", timeZone: "UTC" });
+
+export function ukesjekk(d: Data, idag: string, tilbud: Tilbud[], helligdag: (iso: string) => string | undefined, megNavn = ""): Sjekkpunkt[] {
   const b = (m: Modul) => bruker(d, m);
   const man = mandag(idag);
   const ut: Sjekkpunkt[] = [];
 
   // Fører bedriften timer i ByggLogg? (ellers, f.eks. når timene føres i Svenn, er punkt 1–3 bare støy)
   const forer = new Set(d.timer.filter((t) => t.dato >= addDager(idag, -42)).map((t) => t.ansatt_id));
+
+  // Ansatte som fører timer i Svenn (bare Svenn-importerte timer de siste seks ukene): de vurderes bare
+  // fram til datoen Svenn-timene er importert til, så de ikke står som «mangler timer» før neste import.
+  const nylig = d.timer.filter((t) => t.dato >= addDager(idag, -42));
+  const svennDato = nylig.filter((t) => t.kilde === "svenn").reduce((m, t) => (t.dato > m ? t.dato : m), "");
+  const iByggLogg = new Set(nylig.filter((t) => t.kilde !== "svenn").map((t) => t.ansatt_id));
+  const iSvenn = new Set(nylig.filter((t) => t.kilde === "svenn" && !iByggLogg.has(t.ansatt_id)).map((t) => t.ansatt_id));
+  const svennGammel = iSvenn.size > 0 && svennDato < addDager(idag, -1);
 
   // 1. Fakturerbare timer denne uka mot ukemålet (forholdsmessig for dagene som har gått)
   const dager = Array.from({ length: 5 }, (_, i) => addDager(man, i)).filter((x) => x <= idag && !helligdag(x)).length;
@@ -29,12 +39,21 @@ export function ukesjekk(d: Data, idag: string, tilbud: Tilbud[], helligdag: (is
   if (forer.size) ut.push({
     id: "timer", ok: dager === 0 || fakt >= ukemaal * 0.9, lenke: "#prosjekter",
     tittel: `${t1(fakt)} fakturerbare timer denne uka`,
-    detalj: dager ? `Mål så langt i uka: ${Math.round(ukemaal)} t (${Math.round((fakt / (ukemaal || 1)) * 100)} %)` : "Uka har så vidt startet",
+    detalj: (dager ? `Mål så langt i uka: ${Math.round(ukemaal)} t (${Math.round((fakt / (ukemaal || 1)) * 100)} %)` : "Uka har så vidt startet")
+      + (svennGammel ? ` · Svenn-timer er bare med t.o.m. ${kortDato(svennDato)}` : ""),
+  });
+  if (svennGammel) ut.push({
+    id: "svenn", ok: false, lenke: "#oppsett",
+    tittel: `Timene fra Svenn er importert t.o.m. ${kortDato(svennDato)}`,
+    detalj: `${iSvenn.size} ${iSvenn.size === 1 ? "ansatt fører" : "ansatte fører"} fortsatt i Svenn. Importer timelista på nytt (Oppsett → Import fra Svenn) for riktige tall.`,
   });
 
   // 2. Ansatte som mangler timer på hverdager som har gått (bare de som fører timer)
   const mangler = d.ansatte.filter((a) => a.aktiv && forer.has(a.id))
-    .map((a) => ({ a, dager: dagerUtenTimer(a.id, d, man, idag, helligdag) })).filter((x) => x.dager.length);
+    .map((a) => {
+      const til = iSvenn.has(a.id) ? (svennDato < idag ? svennDato : idag) : idag;
+      return { a, dager: til < man ? [] : dagerUtenTimer(a.id, d, man, til, helligdag) };
+    }).filter((x) => x.dager.length);
   if (forer.size) ut.push({
     id: "mangler", ok: !mangler.length, lenke: "#timer",
     tittel: mangler.length ? `${mangler.length} mangler timer denne uka` : "Alle har ført timer",
@@ -70,10 +89,14 @@ export function ukesjekk(d: Data, idag: string, tilbud: Tilbud[], helligdag: (is
   if (b("bestilling") && best) ut.push({ id: "bestilling", ok: false, lenke: "#plan", tittel: `${best} ${best === 1 ? "bestilling er" : "bestillinger er"} ikke behandlet`, detalj: "" });
 
   // 9. Tilbud å følge opp
+  // Samme regel som kortet på startsiden (følg opp nå, over minstebeløpet); her for alle selgere, med dine egne i tillegg.
   const tb = tilbud.filter((t) => folgOppNaa(t, idag) && t.belop >= MIN_BELOP);
+  const egne = megNavn ? tb.filter((t) => t.selger_navn.toLowerCase() === megNavn.toLowerCase()) : [];
+  const krSum = (l: Tilbud[]) => `${Math.round(l.reduce((s, t) => s + t.belop, 0)).toLocaleString("nb-NO")} kr`;
   if (b("tilbud") && tb.length) ut.push({
     id: "tilbud", ok: false, lenke: "#prosjekter",
-    tittel: `${tb.length} tilbud å følge opp`, detalj: `${Math.round(tb.reduce((s, t) => s + t.belop, 0)).toLocaleString("nb-NO")} kr`,
+    tittel: `${tb.length} tilbud å følge opp (alle selgere)`,
+    detalj: `${krSum(tb)}${egne.length ? ` · ${egne.length} av dem er dine (${krSum(egne)})` : ""}`,
   });
 
   return ut;

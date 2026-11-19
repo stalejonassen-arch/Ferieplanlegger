@@ -24,7 +24,7 @@ import { bruker, type Modul } from "./lib/moduler";
 import { Timer } from "./views/Timer";
 import { Prosjekter } from "./views/Prosjekter";
 import { Avvik } from "./views/Avvik";
-import { KvalitetFane, MineKontroller } from "./views/Egenkontroll";
+import { AvvikOgHms, KvalitetFane, MineKontroller } from "./views/Egenkontroll";
 import { Rapporter, lesRapport } from "./views/Rapporter";
 import { Sykdom } from "./views/Sykdom";
 import { Utstyr } from "./views/Utstyr";
@@ -132,6 +132,7 @@ export function App() {
   const [ko, setKo] = useState<KoOp[]>([]);
   const koRef = useRef<KoOp[]>([]);
   const [utenNett, setUtenNett] = useState<string | null>(null);
+  const [merApen, setMerApen] = useState(false);
   const serverData = useRef<Data | null>(null);
   const megId = (x: Data | null) => x?.ansatte.find((a) => a.aktiv && a.epost?.toLowerCase() === epost?.toLowerCase())?.id;
   const settKo = (k: KoOp[]) => { koRef.current = k; setKo(k); if (epost) lagreKo(epost, k); };
@@ -322,7 +323,7 @@ export function App() {
   const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling") || b("reklamasjon"))) || mineReklamasjoner > 0;
   const faner: [Fane, string][] = [["timer", "Timer"], ...(b("chat") ? [["chat", "Chat"] as [Fane, string]] : []), ["prosjekter", "Prosjekter"],
     ...(visPlanFane ? [["plan", planlegger ? "Butikk/prosjektleder" : "Plan"] as [Fane, string]] : []),
-    ...(b("avvik") || kontrollor ? [["avvik", kontrollor ? "Kvalitet" : "Avvik"] as [Fane, string]] : []),
+    ...(b("avvik") || b("hms") || kontrollor ? [["avvik", kontrollor ? "Kvalitet" : b("hms") ? "HMS" : "Avvik"] as [Fane, string]] : []),
     ...(b("utstyr") ? [["utstyr", "Utstyr"] as [Fane, string]] : b("kurs") ? [["kurs", "Kurs og bevis"] as [Fane, string]] : []),
     ...(b("rapporter") ? [["rapporter", "Rapporter"] as [Fane, string]] : []),
     ["min", "Fravær"], ...(leder ? [["lonn", "Lønn"] as [Fane, string], ["oppsett", "Oppsett"] as [Fane, string]] : [])];
@@ -334,6 +335,9 @@ export function App() {
   const iUtstyr = aktiv === "utstyr" || aktiv === "kurs";
   const kursVarsel = trengerFornyelse((d.kompetanse ?? []).filter((k) => leder || k.ansatt_id === meg.id), idag).length;
   const velg = (f: Fane) => { history.replaceState(null, "", `#${f}`); setFane(f); };
+  /** Mobil: med mer enn fem faner vises de fire første, resten under «Mer» */
+  const mange = faner.length > 5;
+  const valgt = (f: Fane) => aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr);
   const y0 = Number(idag.slice(0, 4));
   // Butikk/prosjektleder: nye bestillinger. Alle andre: SJA de ikke har kvittert på.
   // Butikk/prosjektleder: også nye reklamasjoner som ikke er vurdert. Den som har fått en reklamasjon: den også.
@@ -342,6 +346,8 @@ export function App() {
     : (bruker(d, "sja") ? (d.sja ?? []).filter((s) => s.deltakere.includes(meg.id) && !s.kvittert[meg.id]).length : 0) + mineReklamasjoner);
   const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
+  const merke = (f: Fane) => f === "min" ? (leder ? venter : 0) : f === "chat" ? ulestChat : f === "avvik" ? aapneAvvik : f === "plan" ? planVarsel
+    : f === "utstyr" ? kursVarsel : f === "rapporter" ? nyeRapporter.length + nyePersonlige.length : 0;
 
   return (
     <AppCtx.Provider value={{ d, meg, leder, aar, idag, kjor, kjorKo, chat: { meldinger, lest, oppdater: lastChat, markerLest } }}>
@@ -368,19 +374,32 @@ export function App() {
           </div>
         </header>
         <nav className="tabs hoved" role="tablist">
-          {faner.map(([f, navn]) => (
-            <button key={f} role="tab" aria-selected={aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr)} onClick={() => velg(f)}
-              ref={(el) => { if (el && (aktiv === f || (f === "min" && iFerie) || (f === "utstyr" && iUtstyr))) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
+          {faner.map(([f, navn], i) => (
+            <button key={f} role="tab" className={mange && i >= 4 ? "ekstra" : undefined} aria-selected={valgt(f)} onClick={() => { setMerApen(false); velg(f); }}
+              ref={(el) => { if (el && valgt(f)) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
               <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{IKON[f]}</svg>
-              {f === "plan" && navn.length > 12 ? <><span className="fane-lang">{navn}</span><span className="fane-kort">Plan</span></> : navn}{f === "min" && leder && venter > 0 && <span className="badge">{venter}</span>}
-              {f === "chat" && ulestChat > 0 && <span className="badge">{ulestChat}</span>}
-              {f === "avvik" && aapneAvvik > 0 && <span className="badge">{aapneAvvik}</span>}
-              {f === "plan" && planVarsel > 0 && <span className="badge">{planVarsel}</span>}
-              {f === "utstyr" && kursVarsel > 0 && <span className="badge">{kursVarsel}</span>}
-              {f === "rapporter" && nyeRapporter.length + nyePersonlige.length > 0 && <span className="badge">{nyeRapporter.length + nyePersonlige.length}</span>}
+              {f === "plan" && navn.length > 12 ? <><span className="fane-lang">{navn}</span><span className="fane-kort">Plan</span></> : navn}{merke(f) > 0 && <span className="badge">{merke(f)}</span>}
             </button>
           ))}
+          {mange && (
+            <button className="mer" aria-expanded={merApen} aria-selected={!merApen && faner.slice(4).some(([f]) => valgt(f))} onClick={() => setMerApen(!merApen)}>
+              <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
+              Mer{faner.slice(4).reduce((s, [f]) => s + merke(f), 0) > 0 && <span className="badge">{faner.slice(4).reduce((s, [f]) => s + merke(f), 0)}</span>}
+            </button>
+          )}
         </nav>
+        {mange && merApen && (
+          <div className="mer-ark" role="menu" onClick={() => setMerApen(false)}>
+            <div className="mer-liste" onClick={(e) => e.stopPropagation()}>
+              {faner.slice(4).map(([f, navn]) => (
+                <button key={f} role="menuitem" aria-current={valgt(f) || undefined} onClick={() => { setMerApen(false); velg(f); }}>
+                  <svg className="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{IKON[f]}</svg>
+                  <span>{navn}</span>{merke(f) > 0 && <span className="badge">{merke(f)}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         </div>
 
         <LagreSomApp />
@@ -415,7 +434,7 @@ export function App() {
         {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}<Timer etter={<>{b("service") && <MineServiceoppdrag />}{b("egenkontroll") && <MineKontroller />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}</>} />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
         {aktiv === "prosjekter" && <Prosjekter etterListen={<>{b("befaring") && <Befaringer />}{b("service") && <ServiceOppdrag />}{b("tilbud") && <Tilbudsoppfolging />}</>} />}
-        {aktiv === "avvik" && (kontrollor ? <KvalitetFane medAvvik={b("avvik")} /> : <Avvik />)}
+        {aktiv === "avvik" && (kontrollor ? <KvalitetFane medAvvik={b("avvik")} medHms={b("hms")} /> : b("hms") ? <AvvikOgHms medAvvik={b("avvik")} /> : <Avvik />)}
         {aktiv === "utstyr" && <Utstyr />}
         {aktiv === "kurs" && <Kompetanse />}
         {aktiv === "rapporter" && <Rapporter />}

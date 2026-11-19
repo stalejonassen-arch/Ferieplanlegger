@@ -5,6 +5,7 @@ import { useApp } from "../App";
 import { api } from "../lib/api";
 import { kortDato, langDato, sorterAnsatte } from "../lib/ferie";
 import { AVVIK_STATUS } from "../lib/hms";
+import { HmsDokumenter, HmsFane, Stoffkartotek } from "./Hms";
 import {
   BIBLIOTEK, KONTROLL_STATUS, SVAR, avvikIListe, besvart, egenkontrollTall, forsinket, kontrollStatus, malTilTekst, nyePunkter, tekstTilMal,
   type MalPunkt, type Punkt, type Sjekkliste, type SjekklisteMal, type Svar,
@@ -452,18 +453,20 @@ export function MineKontroller() {
 }
 
 /** Fanen for leder, prosjektleder og faglig leder: avvik, egenkontroll på prosjektene og sjekklistemalene */
-export function KvalitetFane({ medAvvik }: { medAvvik: boolean }) {
-  const [vis, setVis] = useState<"avvik" | "egenkontroll" | "maler">(medAvvik ? "avvik" : "egenkontroll");
+export function KvalitetFane({ medAvvik, medHms = false }: { medAvvik: boolean; medHms?: boolean }) {
+  const [vis, setVis] = useState<"avvik" | "egenkontroll" | "maler" | "hms">(medAvvik ? "avvik" : "egenkontroll");
   return (
     <>
       <nav className="tabs undertabs" role="tablist">
         {medAvvik && <button role="tab" aria-selected={vis === "avvik"} onClick={() => setVis("avvik")}>Avvik</button>}
         <button role="tab" aria-selected={vis === "egenkontroll"} onClick={() => setVis("egenkontroll")}>Egenkontroll</button>
         <button role="tab" aria-selected={vis === "maler"} onClick={() => setVis("maler")}>Sjekklistemaler</button>
+        {medHms && <button role="tab" aria-selected={vis === "hms"} onClick={() => setVis("hms")}>HMS og stoffkartotek</button>}
       </nav>
       {vis === "avvik" && <Avvik />}
       {vis === "egenkontroll" && <EgenkontrollOversikt />}
       {vis === "maler" && <SjekklisteMaler />}
+      {vis === "hms" && <HmsFane />}
     </>
   );
 }
@@ -487,5 +490,22 @@ function FagligeLedere() {
         ))}
       </div>
     </details>
+  );
+}
+
+/** Avvik-fanen for ansatte som ikke styrer egenkontrollen: avvik, HMS-dokumenter og stoffkartotek */
+export function AvvikOgHms({ medAvvik }: { medAvvik: boolean }) {
+  const [vis, setVis] = useState<"avvik" | "dok" | "stoff">(medAvvik ? "avvik" : "dok");
+  return (
+    <>
+      <nav className="tabs undertabs" role="tablist">
+        {medAvvik && <button role="tab" aria-selected={vis === "avvik"} onClick={() => setVis("avvik")}>Avvik</button>}
+        <button role="tab" aria-selected={vis === "dok"} onClick={() => setVis("dok")}>HMS-dokumenter</button>
+        <button role="tab" aria-selected={vis === "stoff"} onClick={() => setVis("stoff")}>Stoffkartotek</button>
+      </nav>
+      {vis === "avvik" && <Avvik />}
+      {vis === "dok" && <HmsDokumenter />}
+      {vis === "stoff" && <Stoffkartotek />}
+    </>
   );
 }

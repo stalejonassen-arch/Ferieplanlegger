@@ -42,6 +42,9 @@ body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font
 .wrap { max-width: 1000px; margin: 0 auto; padding-inline: 16px;
   padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(48px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 16px; }
+/* Store PC-skjermer: bruk mer av bredden (tidsplan, tabeller og rapporter) */
+@media (min-width: 1400px) { .wrap { max-width: 1240px; } }
+@media (min-width: 1800px) { .wrap { max-width: 1440px; } }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: .005em; }
 h1 { font-size: 30px; font-weight: 700; line-height: 1; }
 h2 { font-size: 24px; font-weight: 600; line-height: 1.15; }
@@ -386,6 +389,8 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
 .rp-signatur small { display: block; font-size: 12px; color: #5A6278; }
 .rp-linje { height: 36px; border-bottom: 1.5px solid #1B2236; margin-bottom: 6px; }
 .rp-bunn { margin-top: 30px; padding-top: 10px; border-top: 1px solid #E4E8F0; font-size: 11px; color: #5A6278; text-align: center; }
+nav.tabs.hoved button.mer { display: none; }
+
 @media (max-width: 640px) {
   .rapport { padding: 22px 18px !important; }
   .rp-topp { flex-direction: column; } .rp-firma { text-align: left; }
@@ -415,6 +420,17 @@ table.cal tr.sum td.over { color: #FFFFFF; background: var(--warn); font-weight:
   nav.tabs.hoved .badge { position: absolute; top: 2px; left: 50%; margin-left: 6px; }
   nav.tabs.hoved .fane-lang { display: none; }
   nav.tabs.hoved .fane-kort { display: inline; }
+  /* Mer enn fem faner: de fire første + «Mer» */
+  nav.tabs.hoved button.ekstra { display: none; }
+  nav.tabs.hoved button.mer { display: flex; }
+  .mer-ark { position: fixed; inset: 0; z-index: 19; background: rgba(0, 0, 0, .28); display: flex; align-items: flex-end; }
+  .mer-liste { width: 100%; background: var(--surface); border-radius: 18px 18px 0 0; padding: 10px 10px calc(84px + env(safe-area-inset-bottom, 0px));
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, .35); }
+  .mer-liste button { display: flex; align-items: center; gap: 10px; padding: 14px 12px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg); color: var(--fg); font: 600 15px var(--f-body); text-align: left; position: relative; }
+  .mer-liste button[aria-current] { border-color: var(--accent); background: color-mix(in srgb, var(--sel) 22%, transparent); }
+  .mer-liste .ikon { width: 22px; height: 22px; flex: none; color: var(--accent); }
+  .mer-liste .badge { margin-left: auto; }
   /* Prosjektlista som kort på mobil i stedet for en trang tabell */
   .prosjekttabell thead { display: none; }
   .prosjekttabell, .prosjekttabell tbody { display: block; }
