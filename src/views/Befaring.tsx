@@ -161,7 +161,7 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
         return ny;
       });
       const nye = (r.nye_punkter ?? []).filter((y) => (y.tekst ?? "").trim()).map((y) => ({ tekst: y.tekst!.trim().slice(0, 200), svar: gyldig(y.svar), maal: (y.maal ?? "").trim(), merknad: (y.merknad ?? "").trim() }));
-      const notat = [e.notat.trim(), (r.notat ?? "").trim(), (r.tilbudstekst ?? "").trim() ? `Forslag til tilbudstekst:\n${r.tilbudstekst!.trim()}` : ""].filter(Boolean).join("\n\n");
+      const notat = [e.notat.trim(), (r.notat ?? "").trim(), e.type === "tilbud" && (r.tilbudstekst ?? "").trim() ? `Forslag til tilbudstekst:\n${r.tilbudstekst!.trim()}` : ""].filter(Boolean).join("\n\n");
       sett({ punkter: [...punkter, ...nye], notat: notat.slice(0, 10000) });
       setTale("");
       setKiMelding(`KI fylte ut ${antall} punkt${antall === 1 ? "" : "er"}${nye.length ? ` og la til ${nye.length} nye` : ""}. Se over, og trykk Lagre.`);
