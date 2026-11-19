@@ -7,9 +7,9 @@ import { ukesjekk } from "../lib/ukesjekk";
 import { useTilbud } from "./Tilbud";
 
 export function Ukesjekk() {
-  const { d, idag } = useApp();
+  const { d, idag, meg } = useApp();
   const { liste } = useTilbud();
-  const punkter = ukesjekk(d, idag, liste ?? [], helligdag);
+  const punkter = ukesjekk(d, idag, liste ?? [], helligdag, meg.navn);
   const avvik = punkter.filter((p) => !p.ok);
   const dag = new Date(`${idag}T12:00:00Z`).getUTCDay();
   return (
