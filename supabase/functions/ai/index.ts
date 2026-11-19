@@ -33,8 +33,9 @@ async function spor(system: string, innhold: Innhold[], verktoy: { name: string;
     method: "POST",
     headers: { "x-api-key": NOKKEL, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
-      model: MODELL, max_tokens: 2000, system,
-      tools: [verktoy], tool_choice: { type: "tool", name: verktoy.name },
+      // Nyere modeller tillater ikke tvunget verktøyvalg; «auto» + tydelig beskjed i systemteksten gir samme resultat
+      model: MODELL, max_tokens: 4000, system: `${system}\n\nSvar alltid ved å kalle verktøyet «${verktoy.name}» – aldri med vanlig tekst.`,
+      tools: [verktoy], tool_choice: { type: "auto" },
       messages: [{ role: "user", content: innhold }],
     }),
   });
