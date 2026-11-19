@@ -17,6 +17,7 @@ export interface Time {
   service_id?: string | null;
   /** stempel = logget inn/ut i sanntid, manuell = ført i etterkant, endret = stempel som er rettet, svenn = importert fra Svenn */
   kilde?: "stempel" | "manuell" | "endret" | "svenn";
+  opprettet?: string;
 }
 /** Pågående innlogging på jobb */
 export interface Stempling { ansatt_id: string; prosjekt_id: string | null; dato: string; fra: string; startet: string; reklamasjon_id?: string | null; tillegg_id?: string | null; service_id?: string | null }

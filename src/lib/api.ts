@@ -105,6 +105,10 @@ export interface Api {
   lagreReklamasjonOppsett(o: NonNullable<Data["reklOppsett"]>): Promise<void>;
   /** Hvilken reklamasjon du jobber med mens du er logget inn */
   stempleReklamasjon(id: string | null): Promise<void>;
+  /** Logget inn på feil prosjekt: flytt hele økten til riktig prosjekt */
+  rettStempling(prosjekt: string | null): Promise<void>;
+  /** Logget ut ved en feil: åpne økten igjen (de første 15 minuttene) */
+  angreUtlogging(): Promise<void>;
   /** Serviceoppdrag: registrer eller endre (returnerer id) */
   lagreService(s: import("./service").NyService): Promise<string>;
   slettService(id: string): Promise<void>;
@@ -721,6 +725,8 @@ function supabaseApi(sb: SupabaseClient): Api {
     async slettReklamasjon(id) { ok(await sb.from("reklamasjoner").delete().eq("id", id)); },
     async lagreReklamasjonsprosjekt(id) { ok(await sb.rpc("lagre_reklamasjonsprosjekt", { p: id })); },
     async lagreReklamasjonOppsett(o) { ok(await sb.rpc("lagre_reklamasjon_oppsett", { timer: o.timer, ansvar: o.ansvar, frist_dager: o.fristDager, prosjekt: o.prosjekt })); },
+    async rettStempling(prosjekt) { ok(await sb.rpc("rett_stempling", { prosjekt: prosjekt || null })); },
+    async angreUtlogging() { ok(await sb.rpc("angre_utlogging")); },
     async stempleReklamasjon(id) { ok(await sb.rpc("stemple_reklamasjon", { r: id })); },
     async lagreService(x) {
       const { id, ...rad } = x;

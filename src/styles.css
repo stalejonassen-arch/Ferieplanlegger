@@ -1639,3 +1639,6 @@ button.mr-navn:hover { text-decoration: underline; }
 .tl-knapper { margin-left: auto; display: inline-flex; gap: 6px; }
 .tl-overstyrt { padding: 6px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .tl-skjema { display: grid; gap: 10px; padding: 12px; border-radius: 10px; background: var(--sunk, #f5f5f5); }
+
+.angre-kort { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px;
+  background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .25); }
