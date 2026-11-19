@@ -117,6 +117,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0078_dagbok_bare_fakturerbart.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0079_befaring.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0080_ai.sql", "utf8"));
+  for (const f of ["0081_hms", "0082_timer_overstyring", "0083_rett_stempling", "0084_stemple_overlapp"]) await db.exec(readFileSync(`supabase/migrations/${f}.sql`, "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -381,6 +382,16 @@ describe("dagbok og tilleggsarbeid", () => {
     await as(JIM, "select public.stemple('ut', null, '', 0, '16:00')");
     const g = await as<any>(JIM, "select kilde, til from public.timer where ansatt_id=$1 and dato < (now() at time zone 'Europe/Oslo')::date", [jim]);
     expect(g[0].til.slice(0, 5)).toBe("16:00");
+    // Overlapp: allerede ført 09–10 i går, logget inn 08–16 → bare 08–09 og 10–16 lagres, utlogging går
+    await as(JIM, "select public.stemple('inn', null)");
+    await db.query("update public.stempling set dato=dato-1, fra='08:00' where ansatt_id=$1", [jim]);
+    await db.query("delete from public.timer where ansatt_id=$1", [jim]);
+    await as(JIM, "insert into public.timer (ansatt_id, dato, fra, til) values ($1, (now() at time zone 'Europe/Oslo')::date - 1, '09:00', '10:00')", [jim]);
+    await as(JIM, "select public.stemple('ut', null, '', 30, '16:00')");
+    const o = await as<any>(JIM, "select fra, til, lunsj_min, kilde from public.timer where ansatt_id=$1 order by fra", [jim]);
+    expect(o.map((r: any) => `${r.fra.slice(0, 5)}-${r.til.slice(0, 5)}`)).toEqual(["08:00-09:00", "09:00-10:00", "10:00-16:00"]);
+    expect(o.reduce((a: number, r: any) => a + (r.kilde === "stempel" ? r.lunsj_min : 0), 0)).toBe(30);
+    expect(await as(JIM, "select * from public.stempling")).toHaveLength(0);
     // Manuell føring
     const [m] = await as<any>(JIM, "insert into public.timer (ansatt_id, dato, fra, til, kilde) values ($1, '2027-05-03', '07:00', '08:00', 'stempel') returning kilde", [jim]);
     expect(m.kilde).toBe("manuell");
