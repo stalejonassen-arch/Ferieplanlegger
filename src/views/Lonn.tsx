@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Timeliste } from "./Timeliste";
 import { useApp } from "../App";
 import { MND, vd } from "../lib/ferie";
 import { lastNedCsv, lonnAarCsv, lonnCsv, lonnMaaned, lonnTimerCsv, lonnTimerMaaned } from "../lib/lonn";
@@ -22,8 +23,13 @@ export function Lonn() {
     if (t) kjor(() => api.lunsjUnntak(t.id, true), "Godkjent uten lunsjtrekk");
   };
 
+  const [tlAnsatt, setTlAnsatt] = useState<string | undefined>(undefined);
+  const visTimeliste = (id: string) => { setTlAnsatt(id); requestAnimationFrame(() => document.getElementById("timeliste")?.scrollIntoView({ behavior: "smooth", block: "start" })); };
+
   return (
     <>
+      <Timeliste key={tlAnsatt ?? "start"} startAnsatt={tlAnsatt} />
+
       <section className="panel">
         <div className="cal-head">
           <h2 style={{ margin: 0 }}>Timer i lønnskjøringen</h2>
@@ -45,7 +51,7 @@ export function Lonn() {
               <tbody>
                 {timer.map((r) => (
                   <tr key={r.ansatt.id}>
-                    <td>{r.ansatt.ansattnr ? <span className="muted">{r.ansatt.ansattnr} · </span> : null}{r.ansatt.navn}<div className="small muted">{t2(r.ansatt.normaltid_uke ?? 37.5)} t/uke{r.ansatt.lunsjtrekk ? " · lunsjtrekk" : ""}</div></td>
+                    <td>{r.ansatt.ansattnr ? <span className="muted">{r.ansatt.ansattnr} · </span> : null}<button className="linkbtn" onClick={() => visTimeliste(r.ansatt.id)} title="Åpne timelista">{r.ansatt.navn}</button><div className="small muted">{t2(r.ansatt.normaltid_uke ?? 37.5)} t/uke{r.ansatt.lunsjtrekk ? " · lunsjtrekk" : ""}</div></td>
                     <td className="n">{t2(r.normal) || "–"}</td>
                     <td className="n">{t2(r.ot50) || "–"}</td>
                     <td className="n">{t2(r.ot100) || "–"}</td>

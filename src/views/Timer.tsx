@@ -61,7 +61,7 @@ export function Timer({ etter }: { etter?: React.ReactNode } = {}) {
 
   const dager = Array.from({ length: 7 }, (_, i) => addDays(uke, i));
   const ukeTimer = d.timer.filter((t) => t.ansatt_id === hvem.id && t.dato >= uke && t.dato <= dager[6]);
-  const lonn = useMemo(() => lonnsdager(hvem, d.timer, uke, dager[6]), [hvem, d.timer, uke]);
+  const lonn = useMemo(() => lonnsdager(hvem, d.timer, uke, dager[6], d.overstyringer ?? []), [hvem, d.timer, uke, d.overstyringer]);
   const sum = (k: "timer" | "normal" | "ot50" | "ot100" | "lunsjtrekk" | "km") => lonn.reduce((n, x) => n + x[k], 0);
   const ikkeGodkjent = ukeTimer.filter((t) => t.status !== "godkjent").map((t) => t.id);
   const lunsjMin = f.lunsj ? (hvem.lunsj_min ?? 30) : 0;
@@ -106,7 +106,7 @@ export function Timer({ etter }: { etter?: React.ReactNode } = {}) {
         requestAnimationFrame(() => document.getElementById("timer-uke")?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }} />}
       {leder && !meSelv && (
-        <div className="banner"><span>Viser timene til <b>{hvem.navn}</b>.</span>
+        <div className="banner"><span>Viser timene til <b>{hvem.navn}</b>. Hele uka eller måneden med overstyring finner du i <a href="#lonn">Lønn → Timeliste</a>.</span>
           <button className="btn sm" onClick={() => { setHvemId(meg.id); setF(tom(meg)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>‹ Tilbake til oversikten</button></div>
       )}
       {mangler.length > 0 && (
@@ -200,6 +200,7 @@ export function Timer({ etter }: { etter?: React.ReactNode } = {}) {
                     {dag && <span className="muted"> · {t2(dag.timer - dag.lunsjtrekk)} t</span>}
                   </div>
                   {dag?.lunsjavvik && <div className="small" style={{ color: "var(--warn)" }}>Lunsj er ikke registrert – {lunsjStd} min trekkes.</div>}
+                  {dag?.overstyrt && <div className="small"><span className="chip venter">Lønn overstyrt</span> {dag.overstyrt.grunn} <span className="muted">· {t2(dag.normal)} normal{dag.ot50 ? ` · ${t2(dag.ot50)} t 50 %` : ""}{dag.ot100 ? ` · ${t2(dag.ot100)} t 100 %` : ""}{dag.lunsjtrekk ? ` · ${t2(dag.lunsjtrekk)} t lunsjtrekk` : ""}</span></div>}
                   {rader.length ? rader.map((t) => (
                     <div key={t.id} className={`item ${t.status === "godkjent" ? "godkjent" : "venter"}`}>
                       <div style={{ minWidth: 0 }}>

@@ -55,6 +55,9 @@ export interface Api {
   settTimestatus(ids: string[], status: "levert" | "godkjent"): Promise<void>;
   /** Leder: godta en dag uten lunsjtrekk */
   lunsjUnntak(id: string, unntak: boolean): Promise<void>;
+  /** Leder: overstyr lønnsgrunnlaget for en dag (null i et felt = bruk det som er regnet ut) */
+  lagreOverstyring(o: import("./timer").Overstyring): Promise<void>;
+  slettOverstyring(ansattId: string, dato: string): Promise<void>;
   lagreProsjekt(p: Partial<Prosjekt> & { navn: string }, nyKunde?: string): Promise<void>;
   /** Kunde laget i ByggLogg (ny eller endret) */
   lagreKunde(k: Partial<import("./timer").Kunde> & { navn: string }): Promise<string>;
@@ -300,7 +303,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler, befaringer] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler, befaringer, overst] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -336,6 +339,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         alle(() => sb.from("serviceoppdrag").select("*").order("opprettet", { ascending: false }).order("id"), 10000),
         sb.from("sjekkliste_maler").select("*").order("navn").limit(1000),
         alle(() => sb.from("befaringer").select("*").order("dato", { ascending: false }).order("id"), 5000),
+        alle(() => sb.from("timer_overstyring").select("ansatt_id, dato, normal, ot50, ot100, lunsjtrekk, grunn, endret_av, endret").gte("dato", fraDato).order("dato").order("ansatt_id"), 20000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -366,6 +370,7 @@ function supabaseApi(sb: SupabaseClient): Api {
         sjekklister: sjekklister.error ? [] : sjekklister.data,
         sjekklisteMaler: sjMaler.error ? [] : (sjMaler.data as SjekklisteMal[]),
         befaringer: befaringer.error ? [] : (befaringer.data as import("./befaring").Befaring[]),
+        overstyringer: overst.error ? [] : (overst.data as any[]).map((o) => ({ ...o, normal: o.normal == null ? null : Number(o.normal), ot50: o.ot50 == null ? null : Number(o.ot50), ot100: o.ot100 == null ? null : Number(o.ot100), lunsjtrekk: o.lunsjtrekk == null ? null : Number(o.lunsjtrekk) })),
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
         serviceoppdrag: service.error ? [] : (service.data as import("./service").Serviceoppdrag[]),
@@ -443,6 +448,11 @@ function supabaseApi(sb: SupabaseClient): Api {
     },
     async slettTime(id) { ok(await sb.from("timer").delete().eq("id", id)); },
     async settTimestatus(ids, status) { if (ids.length) ok(await sb.from("timer").update({ status }).in("id", ids)); },
+    async lagreOverstyring(o) {
+      const { endret_av: _a, endret: _e, ...rad } = o;
+      ok(await sb.from("timer_overstyring").upsert(rad, { onConflict: "ansatt_id,dato" }));
+    },
+    async slettOverstyring(ansattId, dato) { ok(await sb.from("timer_overstyring").delete().eq("ansatt_id", ansattId).eq("dato", dato)); },
     async lunsjUnntak(id, unntak) { ok(await sb.from("timer").update({ lunsj_unntak: unntak }).eq("id", id)); },
     async lagreAvvik(a) {
       const { id, ...rad } = a;

@@ -28,6 +28,16 @@ describe("timer og lønnsgrunnlag", () => {
     // Samme uke for en med 40-timers uke: 2,5 t overtid
     expect(sum(lonnsdager(ans({ normaltid_uke: 40 }), uke("07:00", "16:00"), "2027-03-01", "2027-03-07")).ot50).toBe(2.5);
   });
+  it("leder kan overstyre lønnsgrunnlaget for en dag, og ukas overtid regnes videre fra det", () => {
+    // 5 × 8,5 t = 42,5 t; mandag overstyres til 6 t normal + 2,5 t 100 % (f.eks. avtalt utrykning)
+    const o = [{ ansatt_id: "a", dato: "2027-03-01", normal: 6, ot50: 0, ot100: 2.5, lunsjtrekk: null, grunn: "Utrykning" }];
+    const dager = lonnsdager(ans(), uke("07:00", "16:00"), "2027-03-01", "2027-03-07", o);
+    expect(dager[0]).toMatchObject({ normal: 6, ot50: 0, ot100: 2.5, overstyrt: { grunn: "Utrykning", beregnet: { normal: 8.5, ot50: 0, ot100: 0 } } });
+    // Resten av uka: 6 + 4 × 8,5 = 40 t ordinært, så 2,5 t går til 50 % på slutten av uka
+    expect(sum(dager)).toEqual({ normal: 37.5, ot50: 2.5, ot100: 2.5 });
+    // Andre ansattes overstyringer påvirker ikke
+    expect(sum(lonnsdager(ans(), uke("07:00", "16:00"), "2027-03-01", "2027-03-07", [{ ...o[0]!, ansatt_id: "b" }]))).toEqual({ normal: 37.5, ot50: 5, ot100: 0 });
+  });
   it("søndag og helligdag gir 100 %", () => {
     const tim = [t("2027-03-07", "08:00", "12:00", 0), t("2027-05-17", "08:00", "12:00", 0)];
     expect(sum(lonnsdager(ans(), tim, "2027-03-01", "2027-05-31"))).toEqual({ normal: 0, ot50: 0, ot100: 8 });

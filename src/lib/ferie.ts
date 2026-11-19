@@ -72,6 +72,8 @@ export interface Data {
   dgKategorier?: import("./dg").DgKategori[];
   stempling: Stempling[];
   fravaer: Fravaer[];
+  /** Leders overstyring av lønnsgrunnlaget per dag (leder ser alle, ansatte sine egne) */
+  overstyringer?: import("./timer").Overstyring[];
   /** Verktøy, arbeidstøy og forbruk (egne linjer, leder ser alle) */
   utstyr?: Utstyr[];
   utstyrGrenser?: UtstyrGrenser;

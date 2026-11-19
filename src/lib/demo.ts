@@ -356,6 +356,15 @@ export function demoApi(): Api {
       for (const t of d.timer) if (ids.includes(t.id)) t.status = status;
       endret();
     },
+    async lagreOverstyring(o) {
+      if (!leder()) throw new Error("Bare leder kan overstyre timer.");
+      const liste = d.overstyringer ?? (d.overstyringer = []);
+      const i = liste.findIndex((x) => x.ansatt_id === o.ansatt_id && x.dato === o.dato);
+      const ny = { ...o, endret_av: meg()?.id ?? null, endret: new Date().toISOString() };
+      if (i >= 0) liste[i] = ny; else liste.push(ny);
+      endret();
+    },
+    async slettOverstyring(ansattId, dato) { d.overstyringer = (d.overstyringer ?? []).filter((x) => !(x.ansatt_id === ansattId && x.dato === dato)); endret(); },
     async lunsjUnntak(id, unntak) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       const t = d.timer.find((x) => x.id === id);
