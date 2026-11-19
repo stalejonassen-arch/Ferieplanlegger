@@ -25,7 +25,7 @@ export function TimerOversikt({ onVelg }: { onVelg: (ansattId: string, dato: str
   const rader = useMemo<OversiktRad[]>(() => sorterAnsatte(d).filter((a) => a.aktiv).map((a) => {
     const egne = d.timer.filter((t) => t.ansatt_id === a.id && t.dato >= fra && t.dato <= til);
     const sum = (f: (t: (typeof egne)[number]) => boolean) => egne.filter(f).reduce((n, t) => n + Number(t.timer), 0);
-    const lonn = lonnsdager(a, d.timer, fra, til);
+    const lonn = lonnsdager(a, d.timer, fra, til, d.overstyringer ?? []);
     // Hverdager uten timer fram til i dag (bare for de som fører timer)
     const forer = a.i_timerapport !== false;
     const mangler: string[] = [];

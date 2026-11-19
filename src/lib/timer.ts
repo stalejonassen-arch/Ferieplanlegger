@@ -54,6 +54,14 @@ export interface Dag {
   lunsjavvik: boolean;
   normal: number; ot50: number; ot100: number;
   km: number; reisetid: number;
+  /** Leder har overstyrt lønnsgrunnlaget for dagen */
+  overstyrt?: { grunn: string; beregnet: { normal: number; ot50: number; ot100: number; lunsjtrekk: number } };
+}
+
+/** Leders overstyring av lønnsgrunnlaget for én dag (null = bruk det som er regnet ut) */
+export interface Overstyring {
+  ansatt_id: string; dato: string; normal: number | null; ot50: number | null; ot100: number | null; lunsjtrekk: number | null;
+  grunn: string; endret_av?: string | null; endret?: string;
 }
 
 /**
@@ -63,8 +71,9 @@ export interface Dag {
  * For ansatte med lunsjtrekk trekkes lunsj på dager over 5,5 timer uten registrert lunsj,
  * med mindre leder har godkjent dagen som unntak.
  */
-export function lonnsdager(a: Ansatt, timer: Time[], fra: string, til: string): Dag[] {
+export function lonnsdager(a: Ansatt, timer: Time[], fra: string, til: string, overstyringer: Overstyring[] = []): Dag[] {
   const egne = timer.filter((t) => t.ansatt_id === a.id);
+  const over = new Map(overstyringer.filter((o) => o.ansatt_id === a.id).map((o) => [o.dato, o]));
   const ut: Dag[] = [];
   // Start på mandag så ukas overtid blir riktig selv om perioden starter midt i uka
   for (let uke = mandag(fra); uke <= til; uke = addDays(uke, 7)) {
@@ -72,7 +81,8 @@ export function lonnsdager(a: Ansatt, timer: Time[], fra: string, til: string): 
     for (let i = 0; i < 7; i++) {
       const dato = addDays(uke, i);
       const dagens = egne.filter((t) => t.dato === dato);
-      if (!dagens.length) continue;
+      const o = over.get(dato);
+      if (!dagens.length && !o) continue;
       const sum = dagens.reduce((n, t) => n + Number(t.timer), 0);
       const lunsj = dagens.reduce((n, t) => n + t.lunsj_min, 0);
       const unntak = dagens.some((t) => t.lunsj_unntak);
@@ -85,12 +95,17 @@ export function lonnsdager(a: Ansatt, timer: Time[], fra: string, til: string): 
         const plass = Math.max(0, normaltid(a) - ordinaer);
         normal = Math.min(netto, plass);
         ot50 = netto - normal;
-        ordinaer += netto;
       }
+      const beregnet = { normal, ot50, ot100, lunsjtrekk: trekk };
+      // Leders overstyring erstatter det som er regnet ut (felt uten verdi beholdes)
+      const n = (x: number | null | undefined, std: number) => (x == null ? std : Number(x));
+      const dag = o ? { normal: n(o.normal, normal), ot50: n(o.ot50, ot50), ot100: n(o.ot100, ot100), lunsjtrekk: n(o.lunsjtrekk, trekk) } : beregnet;
+      if (!helg100(dato)) ordinaer += dag.normal + dag.ot50;
       if (dato >= fra && dato <= til) {
         ut.push({
-          dato, timer: sum, lunsjtrekk: trekk, lunsjavvik: mangler && !unntak, normal, ot50, ot100,
+          dato, timer: sum, lunsjtrekk: dag.lunsjtrekk, lunsjavvik: !o && mangler && !unntak, normal: dag.normal, ot50: dag.ot50, ot100: dag.ot100,
           km: dagens.reduce((n, t) => n + Number(t.km), 0), reisetid: dagens.reduce((n, t) => n + Number(t.reisetid), 0),
+          ...(o ? { overstyrt: { grunn: o.grunn, beregnet } } : {}),
         });
       }
     }
@@ -115,7 +130,7 @@ function fravaerDager(d: Data, ansattId: string, fra: string, til: string) {
 }
 
 export function lonnTimer(d: Data, a: Ansatt, fra: string, til: string): LonnTimer {
-  const dager = lonnsdager(a, d.timer, fra, til);
+  const dager = lonnsdager(a, d.timer, fra, til, d.overstyringer ?? []);
   const s = (f: (x: Dag) => number) => r2(dager.reduce((n, x) => n + f(x), 0));
   return {
     ansatt: a, normal: s((x) => x.normal), ot50: s((x) => x.ot50), ot100: s((x) => x.ot100),
