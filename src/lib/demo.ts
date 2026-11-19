@@ -453,12 +453,25 @@ export function demoApi(): Api {
       if (handling !== "inn") {
         if (!s) throw new Error("Du er ikke logget inn.");
         if (s.dato !== idag) { if (!o.til) throw new Error("Du ble ikke logget ut. Skriv inn når du sluttet."); slutt = o.til; }
-        if (slutt > s.fra) d.timer.push({ id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
+        if (slutt > s.fra) d.timer.push({ opprettet: new Date().toISOString(), id: nyId(), ansatt_id: m.id, prosjekt_id: s.prosjekt_id, dato: s.dato, fra: s.fra, til: slutt, lunsj_min: o.lunsj ?? 0,
           timer: varighet(s.fra, slutt, o.lunsj ?? 0), lunsj_unntak: false, km: 0, reisetid: 0, beskrivelse: o.beskrivelse ?? "", status: "levert", fakturerbar: !!s.prosjekt_id && !s.reklamasjon_id && s.prosjekt_id !== d.reklamasjonProsjekt, kilde: "stempel", reklamasjon_id: s.reklamasjon_id ?? null, tillegg_id: s.tillegg_id ?? null, service_id: s.service_id ?? null });
         d.stempling = d.stempling.filter((x) => x.ansatt_id !== m.id);
       }
       if (handling !== "ut") d.stempling.push({ ansatt_id: m.id, prosjekt_id: o.prosjekt ?? null, dato: idag, fra: handling === "bytt" && s?.dato === idag ? slutt : naa, startet: n.toISOString() });
       endret();
+    },
+    async rettStempling(prosjekt) {
+      const m = meg(); const s = d.stempling.find((x) => x.ansatt_id === m?.id);
+      if (!s) throw new Error("Du er ikke logget inn.");
+      Object.assign(s, { prosjekt_id: prosjekt || null, reklamasjon_id: null, tillegg_id: null, service_id: null }); endret();
+    },
+    async angreUtlogging() {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      if (d.stempling.some((x) => x.ansatt_id === m.id)) throw new Error("Du er allerede logget inn.");
+      const t = d.timer.filter((x) => x.ansatt_id === m.id && x.kilde === "stempel" && x.status === "levert" && x.opprettet && Date.now() - Date.parse(x.opprettet) < 15 * 6e4).pop();
+      if (!t) throw new Error("Det er ingen utlogging å angre. Det går bare de første 15 minuttene – ellers retter du timene i ukelista.");
+      d.stempling.push({ ansatt_id: m.id, prosjekt_id: t.prosjekt_id, dato: t.dato, fra: t.fra.slice(0, 5), startet: new Date(`${t.dato}T${t.fra.slice(0, 5)}:00`).toISOString(), reklamasjon_id: t.reklamasjon_id ?? null, tillegg_id: t.tillegg_id ?? null, service_id: t.service_id ?? null });
+      d.timer = d.timer.filter((x) => x.id !== t.id); endret();
     },
     async lagreFravaer(f) {
       const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");

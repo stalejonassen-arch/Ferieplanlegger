@@ -121,10 +121,21 @@ export function Stempling() {
     </>
   );
 
+  // Logget ut ved en feil? Kan angres de første 15 minuttene
+  const nyUt = !s ? d.timer.filter((t) => t.ansatt_id === meg.id && t.kilde === "stempel" && t.status === "levert" && t.opprettet && Date.now() - Date.parse(t.opprettet) < 15 * 6e4)
+    .sort((a, b) => (a.opprettet ?? "").localeCompare(b.opprettet ?? "")).pop() : undefined;
+  const angreKort = nyUt && (
+    <div className="angre-kort small">
+      <span>Logget ut kl. {nyUt.til.slice(0, 5)} fra {navn(nyUt.prosjekt_id)}. Trykket feil?</span>
+      <button className="btn lys sm" disabled={venter} onClick={async () => { setVenter(true); await kjor(() => api.angreUtlogging(), "Utloggingen er angret – du er logget inn igjen"); setVenter(false); }}>Angre utlogging</button>
+    </div>
+  );
+
   if (!s) {
     return (
       <section className="stempel" style={{ flexDirection: "column", alignItems: "stretch" }}>
         {dagbokKort}
+        {angreKort}
         <div>
           <h2 style={{ margin: "0 0 4px" }}>{hilsen(naa.getHours())}, {fornavn}</h2>
           <div className="klokke">{kvarter(naa)}</div>
@@ -195,6 +206,20 @@ export function Stempling() {
           </button>
         </div>
       </details>
+      {!gammel && (
+        <details>
+          <summary className="small" style={{ cursor: "pointer", fontWeight: 600 }}>Trykket feil prosjekt? Rett det</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            <p className="small dempet" style={{ margin: 0 }}>Hele økten fra kl. {s.fra} flyttes til prosjektet du velger. Det blir ikke delt opp.</p>
+            {velger}
+            <button className="btn lys" disabled={venter || prosjekt === (s.prosjekt_id ?? "")}
+              onClick={async () => { setVenter(true); await kjor(() => api.rettStempling(prosjekt || null), `Rettet – du står på ${navn(prosjekt || null)} fra kl. ${s.fra}`); setVenter(false); }}>
+              Flytt økten til {prosjekt ? d.prosjekter.find((p) => p.id === prosjekt)?.navn : "internt"}
+            </button>
+          </div>
+        </details>
+      )}
+      <p className="small dempet" style={{ margin: 0 }}>Feil tid eller timer tidligere i uka? Trykk «Endre» i ukelista under. Godkjente timer retter leder.</p>
     </section>
   );
 }
