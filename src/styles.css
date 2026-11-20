@@ -1655,3 +1655,23 @@ button.mr-navn:hover { text-decoration: underline; }
 
 .angre-kort { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px;
   background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .25); }
+
+/* Befaring rom for rom */
+.rom-liste { display: flex; flex-direction: column; gap: 8px; }
+.rom-kort { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.rom-kort.aapen { border-color: var(--accent); }
+.rom-hode { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 12px; background: none; border: 0; text-align: left; color: inherit; cursor: pointer; font: inherit; }
+.rom-innhold { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
+.rom-maal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rom-maal input { width: 100%; }
+.rom-aapninger { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.rom-resultat { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.rom-skisse { color: var(--fg); max-width: 100%; }
+.mengder { display: grid; grid-template-columns: auto auto; gap: 2px 14px; margin: 0; font-size: 14px; }
+.mengder > div { display: contents; }
+.mengder dt { color: var(--muted); }
+.mengder dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.rom-sum { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--sunk); }
+.rom-ny { display: flex; flex-direction: column; gap: 8px; }
+.rom-maal .field input[aria-invalid] { border-color: var(--warn); }
+.rom-innhold > .field, .rom-innhold .field { flex: none; }

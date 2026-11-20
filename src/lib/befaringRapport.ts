@@ -7,6 +7,7 @@ import { langDato } from "./ferie";
 import { BEFARING_SVAR, BEFARING_TYPE, type Befaring } from "./befaring";
 import { PROFIL } from "./profil";
 import { brytLinjer } from "./sluttrapport";
+import { mengdeLinjer, romMaalTekst, romMengder, romSkisse, sumMengder, type BefaringRom } from "./befaringRom";
 
 export interface BefaringRapportData {
   firma: string;
@@ -18,6 +19,7 @@ export interface BefaringRapportData {
   bilder: { data: Uint8Array; tekst?: string }[];
   signatur?: { png: string; navn: string; tid: string };
   overtakelse: boolean;
+  rom?: BefaringRom[];
 }
 
 /** Samler det som skal i rapporten. Bildene hentes av den som kaller (de ligger i lagringen). */
@@ -47,6 +49,7 @@ export function befaringData(d: Data, b: Befaring, bilder: { data: Uint8Array; t
     bilder,
     signatur: b.signatur ? { png: b.signatur, navn: b.signert_navn, tid: b.signert_tid ? langDato(b.signert_tid.slice(0, 10)) : "" } : undefined,
     overtakelse: b.type === "overtakelse",
+    rom: (b.rom ?? []).filter((r) => r.navn.trim()),
   };
 }
 
@@ -121,6 +124,52 @@ export async function lagBefaringRapport(d: BefaringRapportData, fonter?: { R: U
       for (const e of ekstra) { side.drawText(e, { x: M + 16, y, size: 9, font: R, color: DEMPET }); y -= 12; }
       side.drawLine({ start: { x: M, y: y + 4 }, end: { x: A4.w - M, y: y + 4 }, thickness: 0.3, color: LINJE });
       y -= 5;
+    }
+  }
+
+  // Rom for rom: mål, mengder og skisse
+  if (d.rom?.length) {
+    overskrift("Rom og mål");
+    const SK_B = 150, SK_H = 95;
+    for (const r of d.rom) {
+      const maal = romMaalTekst(r);
+      const mengder = mengdeLinjer(romMengder(r)).map(([k, v]) => `${k}: ${v}`);
+      const notat = (r.notat ?? "").trim();
+      const skisse = romSkisse(r, SK_B - 30, SK_H - 20);
+      const tekstB = B_ - (skisse ? SK_B + 10 : 0);
+      const linjer = [
+        ...(maal ? brytLinjer(maal, R, 9.5, tekstB) : []),
+        ...mengder.flatMap((x) => brytLinjer(x, R, 9, tekstB)),
+        ...(notat ? notat.split("\n").flatMap((x) => brytLinjer(x, R, 9, tekstB)) : []),
+      ];
+      const h = Math.max(16 + linjer.length * 12, skisse ? skisse.h + 30 : 0);
+      plass(h + 8);
+      tekst(r.navn, M, 11, B, NAVY);
+      let ly = y - 15;
+      for (const l of linjer) { side.drawText(l, { x: M, y: ly, size: 9, font: R, color: TEKST }); ly -= 12; }
+      if (skisse) {
+        const x0 = A4.w - M - SK_B + (SK_B - skisse.w) / 2, top = y - 10;
+        side.drawRectangle({ x: x0, y: top - skisse.h, width: skisse.w, height: skisse.h, borderColor: TEKST, borderWidth: 1.2, color: rgb(0.97, 0.96, 0.93) });
+        for (const v of skisse.vinduer) side.drawLine({ start: { x: x0 + v.x, y: top }, end: { x: x0 + v.x + v.w, y: top }, thickness: 3, color: rgb(0.23, 0.56, 0.85) });
+        for (const v of skisse.dorer) {
+          side.drawLine({ start: { x: x0 + v.x, y: top - skisse.h }, end: { x: x0 + v.x + v.w, y: top - skisse.h }, thickness: 3, color: rgb(1, 1, 1) });
+          side.drawLine({ start: { x: x0 + v.x, y: top - skisse.h }, end: { x: x0 + v.x + v.w, y: top - skisse.h + v.w }, thickness: 1, color: rgb(0.71, 0.51, 0.16) });
+        }
+        const lt = `${String(r.lengde).replace(".", ",")} m`, bt = `${String(r.bredde).replace(".", ",")} m`;
+        side.drawText(lt, { x: x0 + skisse.w / 2 - R.widthOfTextAtSize(lt, 8) / 2, y: top + 3, size: 8, font: R, color: DEMPET });
+        side.drawText(bt, { x: x0 + skisse.w + 3, y: top - skisse.h / 2 - 3, size: 8, font: R, color: DEMPET });
+      }
+      y -= h;
+      side.drawLine({ start: { x: M, y: y + 4 }, end: { x: A4.w - M, y: y + 4 }, thickness: 0.3, color: LINJE });
+      y -= 6;
+    }
+    if (d.rom.length > 1) {
+      const sum = mengdeLinjer(sumMengder(d.rom));
+      if (sum.length) {
+        plass(20 + sum.length * 13);
+        tekst("Totalt for alle rom", M, 11, B, NAVY); y -= 15;
+        for (const [k, v] of sum) { tekst(k, M, 9.5, R, TEKST); side.drawText(v, { x: M + 200, y, size: 9.5, font: B, color: TEKST }); y -= 13; }
+      }
     }
   }
 

@@ -124,7 +124,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0083_dagbok_bare_fakturerbart.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0084_befaring.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0085_ai.sql", "utf8"));
-  for (const f of ["0081_hms", "0082_timer_overstyring", "0083_rett_stempling", "0084_stemple_overlapp"]) await db.exec(readFileSync(`supabase/migrations/${f}.sql`, "utf8"));
+  for (const f of ["0081_hms", "0082_timer_overstyring", "0083_rett_stempling", "0084_stemple_overlapp", "0085_befaring_rom"]) await db.exec(readFileSync(`supabase/migrations/${f}.sql`, "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';

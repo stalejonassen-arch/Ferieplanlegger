@@ -14,6 +14,8 @@ import { Bilder } from "./Bilder";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { KundeVelger } from "./Service";
 import { bildeTilKi, Snakk, useKi } from "./Ki";
+import { flettKiRom, rensRom, type KiRom } from "../lib/befaringRom";
+import { RomListe } from "./BefaringRom";
 
 const fornavn = (navn?: string) => (navn ?? "").split(" ")[0] ?? "";
 
@@ -149,8 +151,8 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
       const urler = siste.length ? await api.bildeUrler(siste.map((x) => x.sti)) : {};
       const b64 = (await Promise.all(siste.map((x) => bildeTilKi(urler[x.sti] ?? x.sti)))).filter((x): x is string => !!x);
       type KiPunkt = { nr?: number; tekst?: string; svar?: string; maal?: string; merknad?: string };
-      const r = await api.ai<{ notat?: string; punkter?: KiPunkt[]; nye_punkter?: KiPunkt[]; tilbudstekst?: string }>("befaring",
-        { type: e.type, tittel: e.tittel, punkter: e.punkter.map((x) => ({ tekst: x.tekst })), tekst: tale, bilder: b64 });
+      const r = await api.ai<{ notat?: string; punkter?: KiPunkt[]; nye_punkter?: KiPunkt[]; tilbudstekst?: string; rom?: KiRom[] }>("befaring",
+        { type: e.type, tittel: e.tittel, punkter: e.punkter.map((x) => ({ tekst: x.tekst })), rom: (e.rom ?? []).map((x) => x.navn), tekst: tale, bilder: b64 });
       const gyldig = (v?: string): BefaringSvar | "" => (v === "ok" || v === "avvik" || v === "na" ? v : "");
       let antall = 0;
       const punkter = e.punkter.map((x, i) => {
@@ -162,9 +164,10 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
       });
       const nye = (r.nye_punkter ?? []).filter((y) => (y.tekst ?? "").trim()).map((y) => ({ tekst: y.tekst!.trim().slice(0, 200), svar: gyldig(y.svar), maal: (y.maal ?? "").trim(), merknad: (y.merknad ?? "").trim() }));
       const notat = [e.notat.trim(), (r.notat ?? "").trim(), e.type === "tilbud" && (r.tilbudstekst ?? "").trim() ? `Forslag til tilbudstekst:\n${r.tilbudstekst!.trim()}` : ""].filter(Boolean).join("\n\n");
-      sett({ punkter: [...punkter, ...nye], notat: notat.slice(0, 10000) });
+      const rom = flettKiRom(e.rom ?? [], Array.isArray(r.rom) ? r.rom : []);
+      sett({ punkter: [...punkter, ...nye], notat: notat.slice(0, 10000), rom: rom.rom });
       setTale("");
-      setKiMelding(`KI fylte ut ${antall} punkt${antall === 1 ? "" : "er"}${nye.length ? ` og la til ${nye.length} nye` : ""}. Se over, og trykk Lagre.`);
+      setKiMelding(`KI fylte ut ${antall} punkt${antall === 1 ? "" : "er"}${nye.length ? ` og la til ${nye.length} nye` : ""}${rom.endret ? `, og mål i ${rom.endret} rom` : ""}. Se over, og trykk Lagre.`);
     } catch (x) { setKiMelding(x instanceof Error ? x.message : String(x)); }
     setKiJobber(false);
   };
@@ -175,6 +178,7 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
       id: b.id, type: ny.type, tittel: ny.tittel, dato: ny.dato, prosjekt_id: ny.prosjekt_id, kunde_id: ny.kunde_id, kunde_navn: ny.kunde_navn,
       telefon: ny.telefon, epost: ny.epost, adresse: ny.adresse, deltakere: ny.deltakere, notat: ny.notat,
       punkter: ny.punkter.map(({ tekst, svar, merknad, maal, avvik_id }): BefaringPunkt => ({ tekst: tekst.trim(), svar: svar || "", merknad: (merknad ?? "").trim(), maal: (maal ?? "").trim(), ...(avvik_id ? { avvik_id } : {}) })).filter((p) => p.tekst),
+      rom: rensRom(ny.rom ?? []),
       status: ny.status, tilbud_id: ny.tilbud_id,
       ...(x.signatur !== undefined ? { signatur: x.signatur, signert_navn: x.signert_navn ?? "" } : {}),
     }).then(() => {}), melding);
@@ -250,11 +254,20 @@ export function BefaringSkjema({ b, lukk }: { b: Befaring; lukk: () => void }) {
       {ki && !laast && (
         <div className="ki-boks">
           <b>Fyll ut med KI</b>
-          <span className="small muted">Fortell hva du ser og hva kunden vil{bilder.length ? `, så ser KI også på ${Math.min(6, bilder.length)} av bildene` : " – ta gjerne bilder først (nederst)"}. KI fyller ut punkter, mål og notat{e.type === "tilbud" ? " og foreslår tilbudstekst" : ""}. Ingenting lagres før du trykker Lagre.</span>
-          <Snakk value={tale} onChange={setTale} rader={3} placeholder="F.eks. «Tre vinduer i stua, 120 ganger 140. Råte i nedre karm på det ene. Kunden vil ha hvite vinduer med lufteventil.»" />
+          <span className="small muted">Fortell hva du ser og hva kunden vil{bilder.length ? `, så ser KI også på ${Math.min(6, bilder.length)} av bildene` : " – ta gjerne bilder først (nederst)"}. KI fyller ut punkter, rom med mål og notat{e.type === "tilbud" ? " og foreslår tilbudstekst" : ""}. Ingenting lagres før du trykker Lagre.</span>
+          <Snakk value={tale} onChange={setTale} rader={3} placeholder="F.eks. «Stua er 5,2 ganger 4 meter, takhøyde 2,4. Tre vinduer 120 ganger 140, råte i nedre karm på det ene. Kunden vil ha nytt eikeparkett og hvite vinduer med lufteventil.»" />
           <div className="row"><button type="button" className="btn" disabled={kiJobber || (!tale.trim() && !bilder.length)} onClick={fyllMedKi}>{kiJobber ? "Fyller ut …" : "Fyll ut befaringen"}</button></div>
           {kiMelding && <p className="small" style={{ margin: 0 }}>{kiMelding}</p>}
         </div>
+      )}
+
+      {(e.type === "tilbud" || (e.rom ?? []).length > 0) ? (
+        <RomListe rom={e.rom ?? []} laast={laast} bilder={bilder} til={{ befaring_id: b.id, prosjekt_id: e.prosjekt_id }} onChange={(rom) => sett({ rom })} />
+      ) : !laast && (
+        <details>
+          <summary className="small" style={{ cursor: "pointer", fontWeight: 600 }}>Rom og mål</summary>
+          <RomListe rom={e.rom ?? []} laast={laast} bilder={bilder} til={{ befaring_id: b.id, prosjekt_id: e.prosjekt_id }} onChange={(rom) => sett({ rom })} />
+        </details>
       )}
 
       <h3 style={{ margin: "6px 0 0" }}>Punkter <span className="small muted">({t.besvart}/{t.antall}{t.avvik ? `, ${t.avvik} avvik` : ""})</span></h3>

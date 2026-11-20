@@ -74,6 +74,7 @@ async function befaring(b: Record<string, unknown>) {
   const punkter = (Array.isArray(b.punkter) ? b.punkter : []).slice(0, 60).map((p, i) => `${i + 1}. ${kort((p as { tekst?: string }).tekst, 200)}`);
   const bilder = (Array.isArray(b.bilder) ? b.bilder : []).slice(0, 6).filter((x) => typeof x === "string" && x.length < 1_500_000) as string[];
   const tale = kort(b.tekst, 8000).trim();
+  const rom = (Array.isArray(b.rom) ? b.rom : []).slice(0, 60).map((x) => kort(x, 80)).filter(Boolean);
   if (!tale && !bilder.length) throw new Error("Si noe om befaringen eller ta bilder først.");
   const hva = type === "tilbud" ? "en befaring hos kunden før tilbud" : type === "overtakelse" ? "en overtakelse (ferdigbefaring) med kunden" : "en befaring underveis på jobben";
   const system = [
@@ -81,9 +82,12 @@ async function befaring(b: Record<string, unknown>) {
     "Fyll ut punktene bare der det sagte eller bildene gir grunnlag. Ikke finn på mål – bruk bare mål som er sagt eller står tydelig skrevet.",
     "Svar «avvik» bare når det er en feil, mangel eller skade. Skriv alt på norsk bokmål, kort og faglig.",
     "Nye punkter bare for viktige ting som ikke passer i noen av de eksisterende.",
+    "Rom: for hvert rom som er nevnt eller vises med mål, fyll ut «rom» med navn (bruk samme navn som et eksisterende rom når det er det samme), lengde, bredde og takhøyde i meter, dører og vinduer (antall, bredde og høyde i meter) og hva som skal gjøres der.",
+    "Mål som sies i centimeter (f.eks. «120 ganger 140») gjøres om til meter. Er et bilde en plantegning eller et skjermbilde fra en skanne-app med mål, les målene derfra.",
+    "Mål og antall som ikke er sagt eller står tydelig, utelates – ikke gjett.",
   ].join(" ");
   const innhold: Innhold[] = [
-    { type: "text", text: `Befaring: ${kort(b.tittel, 200)}\nSjekkpunkter:\n${punkter.join("\n") || "(ingen)"}\n\nDette ble sagt:\n${tale || "(ingenting – bare bilder)"}` },
+    { type: "text", text: `Befaring: ${kort(b.tittel, 200)}\nSjekkpunkter:\n${punkter.join("\n") || "(ingen)"}\nRom som allerede er lagt inn: ${rom.join(", ") || "(ingen)"}\n\nDette ble sagt:\n${tale || "(ingenting – bare bilder)"}` },
     ...bilder.map((data): Innhold => ({ type: "image", source: { type: "base64", media_type: data.startsWith("iVBOR") ? "image/png" : "image/jpeg", data } })),
   ];
   const punkt = {
@@ -102,6 +106,19 @@ async function befaring(b: Record<string, unknown>) {
       properties: {
         notat: { type: "string", description: "Kort sammendrag: kundens ønsker, valg, ting å huske" },
         punkter: { type: "array", items: punkt },
+        rom: {
+          type: "array", description: "Rom med mål (meter). Utelat felt som ikke er kjent.",
+          items: {
+            type: "object", required: ["navn"],
+            properties: {
+              navn: { type: "string", description: "F.eks. «Stue», «Soverom 2», «Bad»" },
+              lengde: { type: "number" }, bredde: { type: "number" }, hoyde: { type: "number", description: "Takhøyde" },
+              dorer: { type: "array", items: { type: "object", properties: { antall: { type: "integer" }, bredde: { type: "number" }, hoyde: { type: "number" } } } },
+              vinduer: { type: "array", items: { type: "object", properties: { antall: { type: "integer" }, bredde: { type: "number" }, hoyde: { type: "number" } } } },
+              notat: { type: "string", description: "Hva som skal gjøres i rommet" },
+            },
+          },
+        },
         nye_punkter: { type: "array", items: { type: "object", required: ["tekst"], properties: { tekst: { type: "string" }, svar: { type: "string", enum: ["", "ok", "avvik", "na"] }, maal: { type: "string" }, merknad: { type: "string" } } } },
         ...(type === "tilbud" ? { tilbudstekst: { type: "string", description: "Utkast til beskrivelse av arbeidet i tilbudet (uten priser)" } } : {}),
       },
