@@ -754,7 +754,14 @@ function supabaseApi(sb: SupabaseClient): Api {
     async lagreBefaring(x) {
       const { id, ...rad } = x as typeof x & Record<string, unknown>;
       for (const k of ["utfort_av", "opprettet", "endret", "signert_tid"]) delete (rad as Record<string, unknown>)[k];
-      const r = id ? await sb.from("befaringer").update(rad).eq("id", id).select("id").single() : await sb.from("befaringer").insert(rad).select("id").single();
+      const lagre = (x: Record<string, unknown>) => (id ? sb.from("befaringer").update(x).eq("id", id).select("id").single() : sb.from("befaringer").insert(x).select("id").single());
+      let r = await lagre(rad);
+      // Databasen er ikke oppdatert med rom ennå: lagre resten, og si fra om rommene
+      if (r.error && "rom" in rad && /\brom\b/.test(r.error.message)) {
+        const { rom, ...uten } = rad as Record<string, unknown>;
+        r = await lagre(uten);
+        if (!r.error && Array.isArray(rom) && rom.length) throw new Error("Befaringen er lagret, men rommene kunne ikke lagres ennå. Prøv igjen litt senere.");
+      }
       return (ok(r) as { id: string }).id;
     },
     async slettBefaring(id) { ok(await sb.from("befaringer").delete().eq("id", id)); },
