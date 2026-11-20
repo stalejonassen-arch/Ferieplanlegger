@@ -771,7 +771,25 @@ export function demoApi(): Api {
         return { tekst: `${tekst.charAt(0).toUpperCase()}${tekst.slice(1)}${/[.!?]$/.test(tekst) ? "" : "."}`, vaer: /regn/i.test(tekst) ? "Regn" : "", hindringer: /vent/i.test(tekst) ? "Ventet på levering." : "" } as never;
       }
       const punkter = (data.punkter as { tekst: string }[] | undefined) ?? [];
-      return { notat: tekst ? `Fra befaringen: ${tekst}` : "Vurdert ut fra bildene.", punkter: punkter.slice(0, 2).map((_, i) => ({ nr: i + 1, svar: "ok", maal: "", merknad: "" })), nye_punkter: [], tilbudstekst: tekst ? `Arbeid som avtalt: ${tekst}` : "" } as never;
+      // Demo: «stua er 5,2 ganger 4, takhøyde 2,4, to vinduer 120 ganger 140» → rom med mål
+      const tallord: Record<string, number> = { en: 1, ett: 1, én: 1, to: 2, tre: 3, fire: 4, fem: 5, seks: 6 };
+      const rom = [...tekst.matchAll(/(\p{L}+)\s+(?:er\s+)?(\d+(?:[.,]\d+)?)\s*(?:ganger|x|×)\s*(\d+(?:[.,]\d+)?)([^.]*)/giu)]
+        .filter((m) => !/vindu|dør/i.test(m[1]))
+        .map((m) => {
+          const resten = m[4];
+          const n = (x?: string) => (x ? Number(x.replace(",", ".")) : undefined);
+          const vindu = resten.match(/(\p{L}+|\d+)\s+vindu(?:er)?\s+(\d+)\s*(?:ganger|x)\s*(\d+)/iu);
+          const dor = resten.match(/(\p{L}+|\d+)\s+dør(?:er)?/iu);
+          const ant = (x: string) => tallord[x.toLowerCase()] ?? (Number(x) || 1);
+          const navn = m[1].toLowerCase().replace(/^stua$/, "stue").replace(/^kjøkkenet$/, "kjøkken").replace(/^badet$/, "bad");
+          return {
+            navn: navn.charAt(0).toUpperCase() + navn.slice(1), lengde: n(m[2]), bredde: n(m[3]),
+            hoyde: n(resten.match(/takhøyde\s+(\d+(?:[.,]\d+)?)/i)?.[1]),
+            vinduer: vindu ? [{ antall: ant(vindu[1]), bredde: Number(vindu[2]), hoyde: Number(vindu[3]) }] : [],
+            dorer: dor ? [{ antall: ant(dor[1]) }] : [],
+          };
+        });
+      return { notat: tekst ? `Fra befaringen: ${tekst}` : "Vurdert ut fra bildene.", punkter: punkter.slice(0, 2).map((_, i) => ({ nr: i + 1, svar: "ok", maal: "", merknad: "" })), nye_punkter: [], tilbudstekst: tekst ? `Arbeid som avtalt: ${tekst}` : "", rom } as never;
     },
     async slettBefaring(id) { d.befaringer = (d.befaringer ?? []).filter((b) => b.id !== id); d.bilder = d.bilder.filter((b) => b.befaring_id !== id); endret(); },
     async slettService(id) { if (!leder()) throw new Error("Bare leder kan slette."); d.serviceoppdrag = (d.serviceoppdrag ?? []).filter((s) => s.id !== id); endret(); },

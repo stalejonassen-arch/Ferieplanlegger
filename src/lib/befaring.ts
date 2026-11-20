@@ -1,6 +1,7 @@
 // Befaring: før tilbud, underveis på prosjektet og ved overtakelse (ferdigbefaring) med kunden.
 // Punktene besvares med OK / Avvik / Ikke aktuelt, med merknad og eventuelt mål.
 // På et prosjekt blir punkter med «Avvik» automatisk avvik i avviksregisteret (gjøres i databasen).
+import { mengdeTekst, type BefaringRom } from "./befaringRom";
 
 export type BefaringType = "tilbud" | "underveis" | "overtakelse";
 export type BefaringSvar = "ok" | "avvik" | "na";
@@ -25,6 +26,8 @@ export interface Befaring {
   deltakere: string;
   notat: string;
   punkter: BefaringPunkt[];
+  /** Rom for rom med mål (lengde, bredde, takhøyde, dører og vinduer) */
+  rom?: BefaringRom[];
   status: "apen" | "ferdig";
   utfort_av: string | null;
   tilbud_id: string | null;
@@ -92,6 +95,8 @@ export function befaringKunde(b: Pick<Befaring, "kunde_navn" | "adresse">, kunde
 export function tilbudFraBefaring(b: Befaring): string {
   const deler: string[] = [];
   if (b.notat.trim()) deler.push(b.notat.trim());
+  const rom = mengdeTekst(b.rom ?? []);
+  if (rom) deler.push(rom);
   const maal = b.punkter.filter((p) => (p.maal ?? "").trim()).map((p) => `${p.tekst}: ${p.maal!.trim()}`);
   if (maal.length) deler.push(`Mål: ${maal.join("; ")}`);
   const merk = b.punkter.filter((p) => (p.merknad ?? "").trim()).map((p) => `${p.tekst}: ${p.merknad!.trim()}`);
