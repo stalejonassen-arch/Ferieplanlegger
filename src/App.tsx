@@ -71,6 +71,7 @@ const IKON: Record<string, React.ReactNode> = {
   timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>,
   chat: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></>,
   prosjekter: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
+  befaring: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1" /><path d="M8.5 12.5l2.2 2.2 4.8-4.8" /><path d="M8 18h8" /></>,
   plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
   avvik: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4M12 17v.5" /></>,
   utstyr: <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8 6.2 21l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></>,
@@ -95,10 +96,10 @@ const SKYLINE = (
 );
 export const useApp = () => useContext(AppCtx);
 
-type Fane = "timer" | "chat" | "prosjekter" | "plan" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern" | "vilkar";
+type Fane = "timer" | "chat" | "prosjekter" | "befaring" | "plan" | "avvik" | "utstyr" | "kurs" | "rapporter" | "syk" | "min" | "kal" | "sok" | "lonn" | "regler" | "oppsett" | "personvern" | "vilkar";
 const lesFane = (): Fane => {
   const h = location.hash.slice(1);
-  return (["timer", "chat", "prosjekter", "plan", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern", "vilkar"] as const).includes(h as Fane) ? (h as Fane) : "timer";
+  return (["timer", "chat", "prosjekter", "befaring", "plan", "avvik", "utstyr", "kurs", "rapporter", "syk", "min", "kal", "sok", "lonn", "regler", "oppsett", "personvern", "vilkar"] as const).includes(h as Fane) ? (h as Fane) : "timer";
 };
 
 export function App() {
@@ -322,6 +323,7 @@ export function App() {
   const mineReklamasjoner = b("reklamasjon") ? (d.reklamasjoner ?? []).filter((r) => r.ansvarlig_id === meg.id && (r.status === "godkjent" || (r.status === "utbedret" && !r.signatur))).length : 0;
   const visPlanFane = b("plan") || (planlegger && (b("materiell") || b("bestilling") || b("reklamasjon"))) || mineReklamasjoner > 0;
   const faner: [Fane, string][] = [["timer", "Timer"], ...(b("chat") ? [["chat", "Chat"] as [Fane, string]] : []), ["prosjekter", "Prosjekter"],
+    ...(b("befaring") ? [["befaring", "Befaring"] as [Fane, string]] : []),
     ...(visPlanFane ? [["plan", planlegger ? "Butikk/prosjektleder" : "Plan"] as [Fane, string]] : []),
     ...(b("avvik") || b("hms") || kontrollor ? [["avvik", kontrollor ? "Kvalitet" : b("hms") ? "HMS" : "Avvik"] as [Fane, string]] : []),
     ...(b("utstyr") ? [["utstyr", "Utstyr"] as [Fane, string]] : b("kurs") ? [["kurs", "Kurs og bevis"] as [Fane, string]] : []),
@@ -347,6 +349,7 @@ export function App() {
   const ulestChat = [...ulesteMeldinger(meldinger, lest, meg.id).values()].reduce((a, b) => a + b, 0);
   document.title = ulestChat ? `(${ulestChat}) ByggLogg` : "ByggLogg";
   const merke = (f: Fane) => f === "min" ? (leder ? venter : 0) : f === "chat" ? ulestChat : f === "avvik" ? aapneAvvik : f === "plan" ? planVarsel
+    : f === "befaring" ? (d.befaringer ?? []).filter((x) => x.status === "apen" && x.utfort_av === meg.id).length
     : f === "utstyr" ? kursVarsel : f === "rapporter" ? nyeRapporter.length + nyePersonlige.length : 0;
 
   return (
@@ -433,7 +436,8 @@ export function App() {
 
         {aktiv === "timer" && <><VarselBanner />{leder && <Ukesjekk />}<Timer etter={<>{b("service") && <MineServiceoppdrag />}{b("egenkontroll") && <MineKontroller />}{b("tilbud") && <MineTilbud />}{b("vaer") && <Vaer />}{b("kampanjer") && <KampanjeKort />}</>} />{b("kampanjer") && <KampanjerAv />}</>}
         {aktiv === "chat" && <Chat />}
-        {aktiv === "prosjekter" && <Prosjekter etterListen={<>{b("befaring") && <Befaringer />}{b("service") && <ServiceOppdrag />}{b("tilbud") && <Tilbudsoppfolging />}</>} />}
+        {aktiv === "befaring" && <Befaringer />}
+        {aktiv === "prosjekter" && <Prosjekter etterListen={<>{b("service") && <ServiceOppdrag />}{b("tilbud") && <Tilbudsoppfolging />}</>} />}
         {aktiv === "avvik" && (kontrollor ? <KvalitetFane medAvvik={b("avvik")} medHms={b("hms")} /> : b("hms") ? <AvvikOgHms medAvvik={b("avvik")} /> : <Avvik />)}
         {aktiv === "utstyr" && <Utstyr />}
         {aktiv === "kurs" && <Kompetanse />}
