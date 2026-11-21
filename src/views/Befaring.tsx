@@ -19,7 +19,7 @@ import { RomListe } from "./BefaringRom";
 
 const fornavn = (navn?: string) => (navn ?? "").split(" ")[0] ?? "";
 
-/** Liste over befaringer: alle (under Prosjekter) eller for ett prosjekt */
+/** Liste over befaringer: alle (egen fane) eller for ett prosjekt */
 export function Befaringer({ p }: { p?: Prosjekt }) {
   const { d, meg } = useApp();
   const [aapen, setAapen] = useState<string | null>(null);
