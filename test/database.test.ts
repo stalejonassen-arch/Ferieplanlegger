@@ -117,7 +117,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/0078_dagbok_bare_fakturerbart.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0079_befaring.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/0080_ai.sql", "utf8"));
-  for (const f of ["0081_hms", "0082_timer_overstyring", "0083_rett_stempling", "0084_stemple_overlapp", "0085_befaring_rom"]) await db.exec(readFileSync(`supabase/migrations/${f}.sql`, "utf8"));
+  for (const f of ["0081_hms", "0082_timer_overstyring", "0083_rett_stempling", "0084_stemple_overlapp", "0085_befaring_rom", "0086_kontrakt"]) await db.exec(readFileSync(`supabase/migrations/${f}.sql`, "utf8"));
   await db.exec(`
     update public.ansatte set epost='${JIM}' where navn='Jim Kato';
     update public.ansatte set epost='${MADS}' where navn='Mads Kjerstad';
@@ -1368,5 +1368,32 @@ describe("befaring", () => {
     const [s] = await as<any>(JIM, "update public.befaringer set signatur = 'data:image/png;base64,x', signert_navn = 'Kari', status = 'ferdig' where id = $1 returning signert_tid", [o.id]);
     expect(s.signert_tid).toBeTruthy();
     await expect(as(JIM, "update public.befaringer set notat = 'endret' where id = $1", [o.id])).rejects.toThrow(/signert av kunden/);
+  });
+});
+
+describe("kontrakt", () => {
+  it("prosjektleder registrerer kontrakt, snekker melder sak, varsel låses når det er sendt", async () => {
+    const [p] = await as<any>(STALE, "insert into public.prosjekter (navn) values ('Fasade borettslag') returning id");
+    await expect(as(JIM, "insert into public.kontrakter (prosjekt_id, standard) values ($1, '8405')", [p.id])).rejects.toThrow();
+    const [k] = await as<any>(STALE, "insert into public.kontrakter (prosjekt_id, standard, bh_navn, epost_skriftlig) values ($1, '8405', 'Styreleder', true) returning id, bedrift_id, opprettet_av", [p.id]);
+    expect(k.opprettet_av).toBe((await as<any>(STALE, "select public.mitt_ansatt_id() id"))[0].id);
+
+    const [s1] = await as<any>(JIM, "insert into public.ns_saker (kontrakt_id, prosjekt_id, nr, type, tittel) values ($1, $2, 99, 'irregulaer', 'Styret ba om ekstra beslag') returning nr, prosjekt_id, meldt_av, status", [k.id, p.id]);
+    expect(s1.nr).toBe(1);
+    expect(s1.meldt_av).toBe(await idOf("Jim Kato"));
+    const [s2] = await as<any>(MADS, "insert into public.ns_saker (kontrakt_id, prosjekt_id, nr, type, tittel) values ($1, $2, 0, 'medvirkning', 'Venter på tegninger') returning id, nr", [k.id, p.id]);
+    expect(s2.nr).toBe(2);
+
+    // Snekkeren kan ikke sende varsel, prosjektleder kan
+    await expect(as(JIM, "insert into public.ns_varsler (sak_id, retning, type, tekst) values ($1, 'ut', 'varsel', 'x')", [s2.id])).rejects.toThrow();
+    const [v] = await as<any>(STALE, "insert into public.ns_varsler (sak_id, retning, type, tekst, sendt, sendt_til) values ($1, 'ut', 'varsel', 'Vi varsler om forsinkede tegninger.', now(), 'styret@example.no') returning id", [s2.id]);
+    const [sak] = await as<any>(STALE, "select status from public.ns_saker where id = $1", [s2.id]);
+    expect(sak.status).toBe("varslet");
+    await expect(as(STALE, "update public.ns_varsler set tekst = 'endret' where id = $1", [v.id])).rejects.toThrow(/sendt varsel/);
+    await as(STALE, "update public.ns_varsler set svar = 'Tatt til etterretning', svar_tid = now() where id = $1", [v.id]);
+    await expect(as(STALE, "delete from public.ns_varsler where id = $1 returning id", [v.id])).resolves.toHaveLength(0);
+
+    // Andre bedrifter ser ingenting
+    expect(await as("fremmed@example.no", "select * from public.ns_saker")).toHaveLength(0);
   });
 });
