@@ -9,6 +9,7 @@ import { addDays, isoOf } from "./ferie";
 import { PROFIL } from "./profil";
 import { mandag, varighet, type Time } from "./timer";
 import { STANDARD_KVOTER, type Utstyr } from "./utstyr";
+import { statusEtterVarsel, type KontraktFrist, type NsKontrakt, type NsSak, type NsVarsel } from "./ns";
 
 const y0 = new Date().getFullYear();
 const y = y0 + 1;
@@ -52,10 +53,12 @@ function startdata(): Data {
   const kunder = [
     { id: "k1", visma_nr: 10021, navn: "Merete Hansen", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
     { id: "k2", visma_nr: 10022, navn: "Jonas Lunde", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
+    { id: "k3", visma_nr: 10031, navn: "Blomstergata Borettslag", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
   ];
   const prosjekter = [
     { id: "p1", visma_nr: 10879, navn: "Skifte vindu", kunde_id: "k1", adresse: "Keiser Wilhelms gate 22, 6003 Ålesund", kontakt_navn: "Merete", kontakt_telefon: "900 00 000", selger_id: "stale", snekker_id: "mads", estimert_timer: 38, start: null, slutt: null, aktiv: true },
     { id: "p2", visma_nr: 10874, navn: "Renovere bad", kunde_id: "k2", adresse: "", estimert_timer: 120, start: null, slutt: null, aktiv: true },
+    { id: "p4", visma_nr: 10885, navn: "Ny fasade og balkonger, Blomstergata 3", kunde_id: "k3", adresse: "Blomstergata 3, 6008 Ålesund", selger_id: "butikk2", snekker_id: "snekker2", estimert_timer: 640, start: null, slutt: null, aktiv: true },
     { id: "p3", visma_nr: 10712, navn: "Nytt kjøkken og gulv", kunde_id: "k1", adresse: "Storgata 14, 6260 Skodje", estimert_timer: 90, start: null, slutt: `${y0 - 1}-11-20`, aktiv: false },
     { id: "prek", visma_nr: 900, navn: "Reklamasjon", kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: true },
     { id: "psvc", visma_nr: 901, navn: "Service", kunde_id: null, adresse: "", estimert_timer: null, start: null, slutt: null, aktiv: true },
@@ -72,7 +75,7 @@ function startdata(): Data {
   ];
   return { avdelinger, ansatte, ferieaar: [{ ansatt_id: "jim", aar: y, overfort: 4 }], soknader, kunder, prosjekter, timer, avvik, bilder: [], dagbok: [
     { id: "db1", prosjekt_id: "p2", ansatt_id: "mads", dato: addDays(m0, 2), vaer: "Regn", tekst: "Revet gammelt flislagt gulv og vegger. Avfall kjørt til gjenvinning.", hindringer: "", opprettet: new Date().toISOString() },
-  ], tillegg: [], maal: 7000, maalOmsetning: 28000000,
+  ], tillegg: demoKontraktTillegg(), maal: 7000, maalOmsetning: 28000000,
     // Fakturerte timer fra Visma i år, så målgrafen har noe å vise (rundt månedsmålet på 583 t, juli med fellesferie)
     fakturerteTimer: (() => {
       const y = new Date().getFullYear(), m = new Date().getMonth() + 1;
@@ -88,7 +91,49 @@ function startdata(): Data {
     kampanjer: demoKampanjer(),
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], personrapporter: [], salgKategorier: demoSalg(), dgKategorier: structuredClone(STANDARD_DG), stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
     utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) },
-    ...demoPlan(addDays(m0, 7)) };
+    ...demoPlan(addDays(m0, 7)), ...demoKontrakt() };
+}
+
+/** ByggLogg Kontrakt i demoen: et borettslag med NS 8405-kontrakt, tre saker og varslene på dem.
+ *  Sak 1 er ikke varslet ennå (fristen nærmer seg), sak 2 venter på svar fra byggherren, sak 3 er en godkjent endringsordre. */
+function demoKontrakt(): Pick<Data, "kontrakter" | "kontraktFrister" | "nsSaker" | "nsVarsler"> {
+  const idag = isoOf(new Date());
+  const tid = (dager: number, kl = "09:00") => new Date(`${addDays(idag, dager)}T${kl}:00`).toISOString();
+  const naa = new Date().toISOString();
+  const kontrakter: NsKontrakt[] = [{
+    id: "kt1", prosjekt_id: "p4", standard: "8405", kontraktssum: 2450000, dagmulkt_promille: 1, sluttfrist: addDays(idag, 60), overtakelse: null,
+    sikkerhet: "Bankgaranti 10 % i byggetiden, 3 % i reklamasjonstiden", bh_navn: "Eva Lie, byggeleder", bh_epost: "eva.lie@demo.no", bh_telefon: "911 11 111",
+    epost_skriftlig: true, bh_skjema: false, varsel_dager: 5, notat: "Byggemøte hver tirsdag kl. 09. Referatene teller som skriftlige når de er godkjent.",
+    opprettet_av: "stale", opprettet: tid(-40), oppdatert: tid(-40),
+  }];
+  const kontraktFrister: KontraktFrist[] = [
+    { id: "kf1", kontrakt_id: "kt1", type: "delfrist", tittel: "Fasade nord ferdig", dato: addDays(idag, 10), dagmulkt: true, ferdig: false },
+    { id: "kf2", kontrakt_id: "kt1", type: "delfrist", tittel: "Stillas mot gata tatt ned", dato: addDays(idag, -12), dagmulkt: false, ferdig: true },
+    { id: "kf3", kontrakt_id: "kt1", type: "sluttfrist", tittel: "Sluttfrist (overtakelse)", dato: addDays(idag, 60), dagmulkt: true, ferdig: false },
+  ];
+  const sak = (id: string, nr: number, type: NsSak["type"], tittel: string, beskrivelse: string, oppdaget: number, status: NsSak["status"], x: Partial<NsSak> = {}): NsSak =>
+    ({ id, nr, kontrakt_id: "kt1", prosjekt_id: "p4", type, tittel, beskrivelse, oppdaget: tid(oppdaget, "13:30"), meldt_av: "snekker2", ansvarlig_id: "butikk2",
+      avvik_id: null, dagbok_id: null, status, belop: null, dager: null, opprettet: tid(oppdaget, "13:30"), ...x });
+  const nsSaker: NsSak[] = [
+    sak("ns1", 1, "irregulaer", "Byggeleder ber om ekstra lekting på gavlveggen", "Byggeleder sa på byggeplassen at gavlveggen skal ha dobbel lekting. Det står ikke i beskrivelsen.", -3, "ny"),
+    sak("ns2", 2, "medvirkning", "Tegninger for balkongfester kom for sent", "Arbeidstegningene for balkongfestene skulle komme i uke 1. De kom 9 dager senere, og to mann sto uten arbeid i to dager.", -20, "varslet", { dager: 4 }),
+    sak("ns3", 3, "endring", "Endringsordre 1: brannklassifisert kledning på nordveggen", "Byggherren endret kledningen til brannklasse B-s1,d0 på nordveggen.", -30, "avklart", { belop: 148000, dager: 5, meldt_av: "butikk2" }),
+  ];
+  const varsel = (id: string, sak_id: string, retning: NsVarsel["retning"], type: NsVarsel["type"], tekst: string, sendt: number, x: Partial<NsVarsel> = {}): NsVarsel =>
+    ({ id, sak_id, retning, type, tekst, sendt: tid(sendt, "15:00"), sendt_til: retning === "ut" ? "eva.lie@demo.no" : "", lest: null, svar: "", svar_tid: null, opprettet_av: retning === "ut" ? "butikk2" : null, opprettet: tid(sendt, "14:00"), ...x });
+  const nsVarsler: NsVarsel[] = [
+    varsel("nv1", "ns2", "ut", "varsel", "Vi varsler at arbeidstegningene for balkongfestene kom senere enn avtalt, og at dette har gitt stans i arbeidet. Vi tar forbehold om krav på fristforlengelse og vederlagsjustering (NS 8405 pkt. 21.1).", -18, { lest: tid(-18, "16:10") }),
+    varsel("nv2", "ns3", "inn", "varsel", "Endringsordre nr. 1: Kledningen på nordveggen endres til brannklasse B-s1,d0.", -30),
+    varsel("nv3", "ns3", "ut", "krav", "Krav etter endringsordre nr. 1: kr 148 000 eks. mva. og 5 dagers fristforlengelse (NS 8405 pkt. 22.1). Spesifikasjon vedlagt.", -27, { svar: "Godkjent på byggemøte.", svar_tid: tid(-22, "10:00") }),
+  ];
+  return { kontrakter, kontraktFrister, nsSaker, nsVarsler };
+}
+
+/** Tilleggsarbeidet som hører til endringsordre 1 i kontraktsdemoen */
+function demoKontraktTillegg(): Data["tillegg"] {
+  const t = new Date(Date.now() - 27 * 864e5).toISOString();
+  return [{ id: "tl-eo1", prosjekt_id: "p4", opprettet_av: "butikk2", tittel: "EO 1: Brannklassifisert kledning nordvegg", beskrivelse: "Bytte fra standard kledning til brannklasse B-s1,d0 på nordveggen.",
+    timer: 96, materiell: "Brannimpregnert kledning, ca. 210 m²", pris: 148000, status: "signert", signert_navn: "Eva Lie", signatur: "", signert_tid: t, opprettet: t, sak_id: "ns3" }];
 }
 
 /** Arbeidsplan og materialliste for demoen, rundt uka som går (m = mandag denne uka) */
@@ -420,6 +465,96 @@ export function demoApi(): Api {
       ] : [];
     },
     async slettTillegg(id) { d.tillegg = d.tillegg.filter((y) => y.id !== id); endret(); },
+    // ByggLogg Kontrakt: samme regler som vaktene og tilgangen i 0086_kontrakt.sql
+    async lagreKontrakt(x) {
+      const m = meg(); if (!m || !planlegger()) throw new Error("Bare leder og prosjektleder kan registrere kontrakten.");
+      if (!d.prosjekter.some((p) => p.id === x.prosjekt_id)) throw new Error("Prosjektet finnes ikke.");
+      if (x.varsel_dager != null && (x.varsel_dager < 1 || x.varsel_dager > 30)) throw new Error("Varslingsfristen må være mellom 1 og 30 dager.");
+      if (x.dagmulkt_promille != null && (x.dagmulkt_promille < 0 || x.dagmulkt_promille > 100)) throw new Error("Dagmulkten må være mellom 0 og 100 promille.");
+      const liste = (d.kontrakter ??= []);
+      const g = x.id ? liste.find((k) => k.id === x.id) : undefined;
+      if (liste.some((k) => k.prosjekt_id === x.prosjekt_id && k.id !== g?.id)) throw new Error("Prosjektet har allerede en kontrakt.");
+      const naa = new Date().toISOString();
+      if (g) { Object.assign(g, x, { oppdatert: naa }); endret(); return g.id; }
+      const ny: NsKontrakt = { id: nyId(), kontraktssum: null, dagmulkt_promille: null, sluttfrist: null, overtakelse: null, sikkerhet: "", bh_navn: "", bh_epost: "", bh_telefon: "",
+        epost_skriftlig: false, bh_skjema: false, varsel_dager: 5, notat: "", ...x, opprettet_av: m.id, opprettet: naa, oppdatert: naa } as NsKontrakt;
+      liste.push(ny); endret(); return ny.id;
+    },
+    async slettKontrakt(id) {
+      if (!leder()) throw new Error("Bare leder kan slette kontrakten.");
+      const saker = new Set((d.nsSaker ?? []).filter((s) => s.kontrakt_id === id).map((s) => s.id));
+      d.kontrakter = (d.kontrakter ?? []).filter((k) => k.id !== id);
+      d.kontraktFrister = (d.kontraktFrister ?? []).filter((f) => f.kontrakt_id !== id);
+      d.nsSaker = (d.nsSaker ?? []).filter((s) => !saker.has(s.id));
+      d.nsVarsler = (d.nsVarsler ?? []).filter((v) => !saker.has(v.sak_id));
+      for (const t of [...d.tillegg, ...d.timer]) if (t.sak_id && saker.has(t.sak_id)) t.sak_id = null;
+      endret();
+    },
+    async lagreKontraktFrist(x) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre fristene.");
+      if (!(d.kontrakter ?? []).some((k) => k.id === x.kontrakt_id)) throw new Error("Kontrakten finnes ikke.");
+      if (!x.tittel.trim()) throw new Error("Skriv hva fristen gjelder.");
+      const liste = (d.kontraktFrister ??= []);
+      const g = x.id ? liste.find((f) => f.id === x.id) : undefined;
+      if (g) { Object.assign(g, x); endret(); return g.id; }
+      const ny: KontraktFrist = { id: nyId(), type: "annet", dagmulkt: false, ferdig: false, ...x } as KontraktFrist;
+      liste.push(ny); endret(); return ny.id;
+    },
+    async slettKontraktFrist(id) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan endre fristene.");
+      d.kontraktFrister = (d.kontraktFrister ?? []).filter((f) => f.id !== id); endret();
+    },
+    async lagreNsSak(x) {
+      const m = meg(); if (!m) throw new Error("Du har ikke tilgang til å gjøre dette.");
+      const k = (d.kontrakter ?? []).find((y) => y.id === x.kontrakt_id);
+      if (!k) throw new Error("Kontrakten finnes ikke.");
+      if (!x.tittel.trim()) throw new Error("Skriv kort hva som har skjedd.");
+      if (x.dager != null && x.dager < 0) throw new Error("Antall dager kan ikke være negativt.");
+      const liste = (d.nsSaker ??= []);
+      const g = x.id ? liste.find((s) => s.id === x.id) : undefined;
+      if (g) {
+        if (!planlegger() && !(g.meldt_av === m.id && g.status === "ny")) throw new Error("Saken følges opp av leder eller prosjektleder. Ta kontakt med dem.");
+        // Løpenummer, hvem som meldte og når det ble oppdaget endres ikke
+        const { nr: _nr, meldt_av: _m, oppdaget: _o, prosjekt_id: _p, ...rest } = x as Partial<NsSak>;
+        Object.assign(g, rest, { kontrakt_id: g.kontrakt_id }); endret(); return g.id;
+      }
+      const naa = new Date().toISOString();
+      const nr = Math.max(0, ...liste.filter((s) => s.kontrakt_id === k.id).map((s) => s.nr)) + 1;
+      const ny: NsSak = { beskrivelse: "", ansvarlig_id: null, avvik_id: null, dagbok_id: null, status: "ny", belop: null, dager: null, oppdaget: naa, ...x,
+        id: nyId(), nr, prosjekt_id: k.prosjekt_id, meldt_av: m.id, opprettet: naa } as NsSak;
+      liste.unshift(ny); endret(); return ny.id;
+    },
+    async slettNsSak(id) {
+      if (!leder()) throw new Error("Bare leder kan slette en sak.");
+      d.nsSaker = (d.nsSaker ?? []).filter((s) => s.id !== id);
+      d.nsVarsler = (d.nsVarsler ?? []).filter((v) => v.sak_id !== id);
+      for (const t of [...d.tillegg, ...d.timer]) if (t.sak_id === id) t.sak_id = null;
+      endret();
+    },
+    async lagreNsVarsel(x) {
+      const m = meg(); if (!m || !planlegger()) throw new Error("Bare leder og prosjektleder kan sende og registrere varsler.");
+      const sak = (d.nsSaker ?? []).find((s) => s.id === x.sak_id);
+      if (!sak) throw new Error("Saken finnes ikke.");
+      const liste = (d.nsVarsler ??= []);
+      const g = x.id ? liste.find((v) => v.id === x.id) : undefined;
+      if (g && g.sendt && (["tekst", "sendt", "type", "retning", "sendt_til"] as const).some((f) => x[f] !== undefined && x[f] !== g[f]))
+        throw new Error("Et sendt varsel kan ikke endres.");
+      const varSendt = !!g?.sendt;
+      let v: NsVarsel;
+      if (g) { Object.assign(g, x, { sak_id: g.sak_id }); v = g; }
+      else {
+        v = { tekst: "", sendt: null, sendt_til: "", lest: null, svar: "", svar_tid: null, ...x, id: nyId(), opprettet_av: m.id, opprettet: new Date().toISOString() } as NsVarsel;
+        liste.push(v);
+      }
+      if (v.retning === "ut" && v.sendt && !varSendt) sak.status = statusEtterVarsel(sak.status, v.type);
+      endret(); return v.id;
+    },
+    async slettNsVarsel(id) {
+      if (!planlegger()) throw new Error("Bare leder og prosjektleder kan slette varsler.");
+      const v = (d.nsVarsler ?? []).find((y) => y.id === id);
+      if (v?.sendt) throw new Error("Et sendt varsel kan ikke slettes.");
+      d.nsVarsler = (d.nsVarsler ?? []).filter((y) => y.id !== id); endret();
+    },
     async lagreRapport(r) {
       if (!leder()) throw new Error("Du har ikke tilgang til å gjøre dette.");
       const sti = r.fil ? URL.createObjectURL(r.fil) : undefined;
@@ -1052,6 +1187,10 @@ function thauglandDrakt(d: Data): Data {
     { id: "k1", visma_nr: 20311, navn: "Byggmester Hansen AS", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
     { id: "k2", visma_nr: 20348, navn: "Snekker Olsen AS", adresse: "", postnr: "", poststed: "", telefon: "", epost: "", aktiv: true },
   ];
+  // Grossist: ingen NS-kontrakt i denne demoen
+  d.prosjekter = d.prosjekter.filter((x) => x.id !== "p4");
+  d.tillegg = d.tillegg.filter((x) => x.prosjekt_id !== "p4");
+  Object.assign(d, { kontrakter: [], kontraktFrister: [], nsSaker: [], nsVarsler: [] });
   const p = d.prosjekter;
   if (p[0]) Object.assign(p[0], { navn: "Rekkehus Grefsen – leveranser", adresse: "Grefsenveien 12, 0482 Oslo", estimert_timer: 40 });
   if (p[1]) Object.assign(p[1], { navn: "Enebolig Nittedal – materialpakke", adresse: "Hagan, 1480 Slattum", estimert_timer: 60 });

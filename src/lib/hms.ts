@@ -41,6 +41,8 @@ export type TilleggStatus = "utkast" | "signert" | "avvist" | "fakturert";
 export interface Tillegg {
   id: string; prosjekt_id: string; opprettet_av: string; tittel: string; beskrivelse: string; timer: number | null; materiell: string;
   pris: number | null; status: TilleggStatus; signert_navn: string; signatur: string; signert_tid: string | null; opprettet: string;
+  /** NS-saken tillegget hører til (ByggLogg Kontrakt) */
+  sak_id?: string | null;
 }
 export const TILLEGG_STATUS: Record<TilleggStatus, string> = { utkast: "Ikke signert", signert: "Signert av kunde", avvist: "Avvist", fakturert: "Fakturert" };
 export const VAER = ["Sol", "Skyet", "Regn", "Snø", "Vind", "Kuling", "Frost"];

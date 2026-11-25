@@ -106,6 +106,11 @@ export interface Data {
   sjekklisteMaler?: import("./kvalitet").SjekklisteMal[];
   /** Befaringer (før tilbud, underveis og overtakelse) */
   befaringer?: import("./befaring").Befaring[];
+  /** ByggLogg Kontrakt: NS-kontrakter per prosjekt, kontraktsfrister, NS-saker og varsler */
+  kontrakter?: import("./ns").NsKontrakt[];
+  kontraktFrister?: import("./ns").KontraktFrist[];
+  nsSaker?: import("./ns").NsSak[];
+  nsVarsler?: import("./ns").NsVarsel[];
   sja?: import("./kvalitet").Sja[];
   bestillinger?: import("./kvalitet").Bestilling[];
   /** Reklamasjoner og bedriftens faste reklamasjonsprosjekt */

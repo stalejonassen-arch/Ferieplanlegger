@@ -188,6 +188,18 @@ export interface Api {
   slettDagbok(id: string): Promise<void>;
   lagreTillegg(t: Partial<Tillegg> & { prosjekt_id: string; tittel: string }): Promise<string>;
   slettTillegg(id: string): Promise<void>;
+  /** ByggLogg Kontrakt: kontrakten på et prosjekt (leder og prosjektleder). Returnerer id. */
+  lagreKontrakt(k: import("./ns").NyKontrakt): Promise<string>;
+  slettKontrakt(id: string): Promise<void>;
+  /** Delfrister, sluttfrist, ettårsbefaring og andre datoer i kontrakten */
+  lagreKontraktFrist(f: import("./ns").NyKontraktFrist): Promise<string>;
+  slettKontraktFrist(id: string): Promise<void>;
+  /** NS-sak: alle ansatte kan melde, leder og prosjektleder følger opp. Returnerer id. */
+  lagreNsSak(s: import("./ns").NySak): Promise<string>;
+  slettNsSak(id: string): Promise<void>;
+  /** Varsel inn eller ut på en sak. Et sendt varsel kan ikke endres, bare få svar. Returnerer id. */
+  lagreNsVarsel(v: import("./ns").NyttVarsel): Promise<string>;
+  slettNsVarsel(id: string): Promise<void>;
   /** Leder: ordrer i Visma knyttet til prosjektet */
   prosjektOrdre(prosjektId: string): Promise<ProsjektOrdre[]>;
   slettBilde(id: string, sti: string): Promise<void>;
@@ -307,7 +319,7 @@ function supabaseApi(sb: SupabaseClient): Api {
     async loggUt() { await sb.auth.signOut(); },
     async hent() {
       const fraDato = new Date(Date.now() - 430 * 864e5).toISOString().slice(0, 10);
-      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler, befaringer, overst] = await Promise.all([
+      const [avdelinger, ansatte, ferieaar, soknader, kunder, prosjekter, timer, avvik, bilder, dagbok, tillegg, bedrift, rapporter, lest, personrapp, salgKat, stempling, fravaer, ordrer, fakt, utstyr, kompetanse, omsetning, kampanjer, oppgaver, leveranser, materialer, sjekklister, sjaer, bestillinger, reklamasjoner, service, sjMaler, befaringer, overst, kontrakter, kFrister, nsSaker, nsVarsler] = await Promise.all([
         sb.from("avdelinger").select("*").order("rekkefolge"),
         sb.from("ansatte").select("*"),
         sb.from("ferieaar").select("*"),
@@ -344,6 +356,11 @@ function supabaseApi(sb: SupabaseClient): Api {
         sb.from("sjekkliste_maler").select("*").order("navn").limit(1000),
         alle(() => sb.from("befaringer").select("*").order("dato", { ascending: false }).order("id"), 5000),
         alle(() => sb.from("timer_overstyring").select("ansatt_id, dato, normal, ot50, ot100, lunsjtrekk, grunn, endret_av, endret").gte("dato", fraDato).order("dato").order("ansatt_id"), 20000),
+        // ByggLogg Kontrakt (tomme lister hvis databasen ikke har tabellene ennå)
+        alle(() => sb.from("kontrakter").select("*").order("opprettet").order("id"), 5000),
+        alle(() => sb.from("kontrakt_frister").select("*").order("dato").order("id"), 20000),
+        alle(() => sb.from("ns_saker").select("*").order("opprettet", { ascending: false }).order("id"), 20000),
+        alle(() => sb.from("ns_varsler").select("*").order("opprettet").order("id"), 50000),
       ]);
       const b0 = (bedrift.data as any[])?.[0] ?? {};
       return {
@@ -374,6 +391,10 @@ function supabaseApi(sb: SupabaseClient): Api {
         sjekklister: sjekklister.error ? [] : sjekklister.data,
         sjekklisteMaler: sjMaler.error ? [] : (sjMaler.data as SjekklisteMal[]),
         befaringer: befaringer.error ? [] : (befaringer.data as import("./befaring").Befaring[]),
+        kontrakter: kontrakter.error ? [] : (kontrakter.data as any[]).map((k) => ({ ...k, kontraktssum: k.kontraktssum == null ? null : Number(k.kontraktssum), dagmulkt_promille: k.dagmulkt_promille == null ? null : Number(k.dagmulkt_promille) })),
+        kontraktFrister: kFrister.error ? [] : (kFrister.data as import("./ns").KontraktFrist[]),
+        nsSaker: nsSaker.error ? [] : (nsSaker.data as any[]).map((x) => ({ ...x, belop: x.belop == null ? null : Number(x.belop) })),
+        nsVarsler: nsVarsler.error ? [] : (nsVarsler.data as import("./ns").NsVarsel[]),
         overstyringer: overst.error ? [] : (overst.data as any[]).map((o) => ({ ...o, normal: o.normal == null ? null : Number(o.normal), ot50: o.ot50 == null ? null : Number(o.ot50), ot100: o.ot100 == null ? null : Number(o.ot100), lunsjtrekk: o.lunsjtrekk == null ? null : Number(o.lunsjtrekk) })),
         sja: sjaer.error ? [] : sjaer.data,
         bestillinger: bestillinger.error ? [] : bestillinger.data,
@@ -423,7 +444,14 @@ function supabaseApi(sb: SupabaseClient): Api {
         .on("postgres_changes", { event: "*", schema: "public", table: "utstyr" }, snart)
         .on("postgres_changes", { event: "*", schema: "public", table: "kompetanse" }, snart)
         .subscribe();
-      return () => { sb.removeChannel(ch); };
+      // Kontrakt i egen kanal: mangler tabellene i databasen, stopper ikke det oppdateringene for resten av appen
+      const kch = sb.channel("kontrakt")
+        .on("postgres_changes", { event: "*", schema: "public", table: "kontrakter" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "kontrakt_frister" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "ns_saker" }, snart)
+        .on("postgres_changes", { event: "*", schema: "public", table: "ns_varsler" }, snart)
+        .subscribe();
+      return () => { sb.removeChannel(ch); sb.removeChannel(kch); };
     },
     async lagreSoknad(s) {
       const rad = { ansatt_id: s.ansatt_id, fra: s.fra, til: s.til, merknad: s.merknad };
@@ -490,6 +518,35 @@ function supabaseApi(sb: SupabaseClient): Api {
       return (ok(r) as { id: string }).id;
     },
     async slettTillegg(id) { ok(await sb.from("tillegg").delete().eq("id", id)); },
+    // ByggLogg Kontrakt. Bedrift, prosjekt, løpenummer og hvem som opprettet settes av vaktene i databasen.
+    async lagreKontrakt(x) {
+      const { id, ...rad } = x as typeof x & Record<string, unknown>;
+      for (const k of ["bedrift_id", "opprettet_av", "opprettet", "oppdatert"]) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("kontrakter").update(rad).eq("id", id).select("id").single() : await sb.from("kontrakter").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettKontrakt(id) { ok(await sb.from("kontrakter").delete().eq("id", id)); },
+    async lagreKontraktFrist(x) {
+      const { id, ...rad } = x as typeof x & Record<string, unknown>;
+      delete (rad as Record<string, unknown>).bedrift_id;
+      const r = id ? await sb.from("kontrakt_frister").update(rad).eq("id", id).select("id").single() : await sb.from("kontrakt_frister").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettKontraktFrist(id) { ok(await sb.from("kontrakt_frister").delete().eq("id", id)); },
+    async lagreNsSak(x) {
+      const { id, ...rad } = x as typeof x & Record<string, unknown>;
+      for (const k of ["bedrift_id", "prosjekt_id", "nr", "meldt_av", "opprettet"]) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("ns_saker").update(rad).eq("id", id).select("id").single() : await sb.from("ns_saker").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettNsSak(id) { ok(await sb.from("ns_saker").delete().eq("id", id)); },
+    async lagreNsVarsel(x) {
+      const { id, ...rad } = x as typeof x & Record<string, unknown>;
+      for (const k of ["bedrift_id", "token", "opprettet_av", "opprettet"]) delete (rad as Record<string, unknown>)[k];
+      const r = id ? await sb.from("ns_varsler").update(rad).eq("id", id).select("id").single() : await sb.from("ns_varsler").insert(rad).select("id").single();
+      return (ok(r) as { id: string }).id;
+    },
+    async slettNsVarsel(id) { ok(await sb.from("ns_varsler").delete().eq("id", id)); },
     async prosjektOrdre(prosjektId) {
       const r = ok(await sb.from("prosjekt_ordre").select("*").eq("prosjekt_id", prosjektId).order("ordredato", { ascending: false })) as ProsjektOrdre[];
       return r.map((o) => ({ ...o, sum_netto: Number(o.sum_netto), kostnad: Number(o.kostnad), dekningsbidrag: Number(o.dekningsbidrag), fakturert: Number(o.fakturert) }));

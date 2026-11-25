@@ -13,6 +13,8 @@ export interface Time {
   reklamasjon_id?: string | null;
   /** Timer på et tilleggsarbeid (underprosjekt) på samme prosjekt */
   tillegg_id?: string | null;
+  /** NS-saken timene hører til (ByggLogg Kontrakt) */
+  sak_id?: string | null;
   /** Timer på et serviceoppdrag (føres på serviceprosjektet) */
   service_id?: string | null;
   /** stempel = logget inn/ut i sanntid, manuell = ført i etterkant, endret = stempel som er rettet, svenn = importert fra Svenn */

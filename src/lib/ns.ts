@@ -116,3 +116,55 @@ export function frister(k: Kontrakt, saker: Sak[], varsler: Varsel[], kfrister: 
   const rang: Record<Niva, number> = { over: 0, idag: 1, snart: 2, ok: 3 };
   return ut.sort((a, b) => rang[a.niva] - rang[b.niva] || a.dato.localeCompare(b.dato));
 }
+
+// ---------------------------------------------------------------------------
+// Radene slik de ligger i databasen (0086_kontrakt.sql)
+// ---------------------------------------------------------------------------
+export type FristType = "delfrist" | "sluttfrist" | "ettaarsbefaring" | "garanti" | "annet";
+export type VarselType = Varsel["type"];
+
+export interface NsKontrakt extends Kontrakt {
+  prosjekt_id: string;
+  kontraktssum: number | null;
+  dagmulkt_promille: number | null;
+  sikkerhet: string;
+  /** Byggherrens representant */
+  bh_navn: string; bh_epost: string; bh_telefon: string;
+  /** Er det avtalt at e-post gjelder som skriftlig? */
+  epost_skriftlig: boolean;
+  /** Krever byggherren egne skjema for varsler? */
+  bh_skjema: boolean;
+  notat: string;
+  opprettet_av: string | null; opprettet: string; oppdatert: string;
+}
+export interface KontraktFrist extends KFrist { kontrakt_id: string; type: FristType }
+export interface NsSak extends Sak {
+  kontrakt_id: string; prosjekt_id: string;
+  beskrivelse: string;
+  meldt_av: string | null; ansvarlig_id: string | null;
+  avvik_id: string | null; dagbok_id: string | null;
+  belop: number | null;
+  /** Krav om fristforlengelse i dager */
+  dager: number | null;
+  opprettet: string;
+}
+export interface NsVarsel extends Varsel {
+  id: string;
+  tekst: string;
+  sendt_til: string;
+  lest: string | null;
+  svar: string;
+  opprettet_av: string | null; opprettet: string;
+}
+
+export type NyKontrakt = Partial<Omit<NsKontrakt, "id" | "opprettet_av" | "opprettet" | "oppdatert">> & { id?: string; prosjekt_id: string; standard: Standard };
+export type NyKontraktFrist = Partial<Omit<KontraktFrist, "id">> & { id?: string; kontrakt_id: string; tittel: string; dato: string };
+export type NySak = Partial<Pick<NsSak, "beskrivelse" | "ansvarlig_id" | "avvik_id" | "dagbok_id" | "status" | "belop" | "dager" | "oppdaget">> & { id?: string; kontrakt_id: string; type: SakType; tittel: string };
+export type NyttVarsel = Partial<Pick<NsVarsel, "tekst" | "sendt" | "sendt_til" | "lest" | "svar" | "svar_tid">> & { id?: string; sak_id: string; retning: NsVarsel["retning"]; type: VarselType };
+
+/** Status saken får når et varsel sendes ut (samme regel som vakten i databasen) */
+export function statusEtterVarsel(s: SakStatus, type: VarselType): SakStatus {
+  if (type === "krav" && (s === "ny" || s === "varslet")) return "krav";
+  if (type === "varsel" && s === "ny") return "varslet";
+  return s;
+}
