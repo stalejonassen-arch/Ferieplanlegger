@@ -91,7 +91,7 @@ function startdata(): Data {
     kampanjer: demoKampanjer(),
     omsetning: (() => { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const f = [0.88, 1.38, 2.06, 1.89, 2.70, 2.24, 1.61, 2.22, 2.73, 1.93, 1.45, 1.78], n = [0.99, 1.45, 2.83, 2.30, 2.71, 2.92, 1.69, 2.25, 2.77, 1.9, 1.5, 1.8]; const ut = []; for (let i = 0; i < 12; i++) { ut.push({ aar: y - 1, mnd: i + 1, belop: Math.round(f[i] * 1e6), oppdatert: new Date().toISOString() }); if (i + 1 <= m) ut.push({ aar: y, mnd: i + 1, belop: Math.round(n[i] * 1e6 * (i + 1 === m ? new Date().getDate() / 30 : 1)), oppdatert: new Date().toISOString() }); } return ut; })(), rapporter: [], lest: [], personrapporter: [], salgKategorier: demoSalg(), dgKategorier: structuredClone(STANDARD_DG), stempling: [], fravaer: [], egenmelding: { maksDager: 3, maksGanger: 4 },
     utstyr: demoUtstyr(), utstyrGrenser: { arbeidstoy: null, verktoy: null, sammeMnd: 6, kvoter: structuredClone(STANDARD_KVOTER) },
-    ...demoPlan(addDays(m0, 7)), ...demoKontrakt() };
+    ...demoPlan(addDays(m0, 7)), ...demoKontrakt(), modulerAv: ["kontraktpaa"] };
 }
 
 /** ByggLogg Kontrakt i demoen: et borettslag med NS 8405-kontrakt, tre saker og varslene på dem.
@@ -1190,7 +1190,7 @@ function thauglandDrakt(d: Data): Data {
   // Grossist: ingen NS-kontrakt i denne demoen
   d.prosjekter = d.prosjekter.filter((x) => x.id !== "p4");
   d.tillegg = d.tillegg.filter((x) => x.prosjekt_id !== "p4");
-  Object.assign(d, { kontrakter: [], kontraktFrister: [], nsSaker: [], nsVarsler: [] });
+  Object.assign(d, { kontrakter: [], kontraktFrister: [], nsSaker: [], nsVarsler: [], modulerAv: [] });
   const p = d.prosjekter;
   if (p[0]) Object.assign(p[0], { navn: "Rekkehus Grefsen – leveranser", adresse: "Grefsenveien 12, 0482 Oslo", estimert_timer: 40 });
   if (p[1]) Object.assign(p[1], { navn: "Enebolig Nittedal – materialpakke", adresse: "Hagan, 1480 Slattum", estimert_timer: 60 });

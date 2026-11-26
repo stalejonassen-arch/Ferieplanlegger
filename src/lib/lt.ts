@@ -1170,6 +1170,8 @@ export const LT_TEKST: Record<string, string> = {
 "Melde og følge opp avvik og uønskede hendelser": "Pranešti apie nukrypimus ir nepageidaujamus įvykius bei juos stebėti",
 "Små betalte oppdrag hos kunden på en dag eller to – hastegrad, timer, materiell og fakturering": "Nedideli mokami darbai pas klientą vienai ar dviem dienoms – skubumas, valandos, medžiagos ir sąskaitos",
 "Kunden melder feil på ferdig jobb – vurdering, utbedring og kostnad": "Klientas praneša apie baigto darbo defektą – įvertinimas, taisymas ir kaina",
+"Kontrakt (NS)": "Sutartis (NS)",
+"NS-kontrakter på større prosjekter – frister, varsler, saker og endringsordrer. Appen avgjør ingen juridiske spørsmål": "NS sutartys didesniuose projektuose – terminai, pranešimai, bylos ir pakeitimų nurodymai. Programėlė nesprendžia jokių teisinių klausimų",
 "Tilleggsarbeid som kunden signerer": "Papildomi darbai, kuriuos pasirašo klientas",
 "Utstyr og arbeidstøy": "Įranga ir darbo drabužiai",
 "Verktøy, arbeidstøy og forbruk per ansatt": "Įrankiai, darbo drabužiai ir sunaudojamos medžiagos pagal darbuotoją",

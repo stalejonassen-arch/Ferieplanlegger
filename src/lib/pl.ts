@@ -1145,6 +1145,8 @@ export const PL_TEKST: Record<string, string> = {
 "Melde og følge opp avvik og uønskede hendelser": "Zgłaszanie i śledzenie zdarzeń oraz niepożądanych incydentów",
 "Små betalte oppdrag hos kunden på en dag eller to – hastegrad, timer, materiell og fakturering": "Małe płatne zlecenia u klienta na dzień lub dwa – pilność, godziny, materiał i fakturowanie",
 "Kunden melder feil på ferdig jobb – vurdering, utbedring og kostnad": "Klient zgłasza wadę w zakończonej pracy – ocena, naprawa i koszt",
+"Kontrakt (NS)": "Umowa (NS)",
+"NS-kontrakter på større prosjekter – frister, varsler, saker og endringsordrer. Appen avgjør ingen juridiske spørsmål": "Umowy NS przy większych projektach – terminy, powiadomienia, sprawy i polecenia zmian. Aplikacja nie rozstrzyga żadnych kwestii prawnych",
 "Tilleggsarbeid som kunden signerer": "Prace dodatkowe podpisywane przez klienta",
 "Utstyr og arbeidstøy": "Sprzęt i odzież robocza",
 "Verktøy, arbeidstøy og forbruk per ansatt": "Narzędzia, odzież robocza i materiały zużywalne na pracownika",

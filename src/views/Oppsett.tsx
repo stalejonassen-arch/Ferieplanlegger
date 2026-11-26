@@ -8,7 +8,7 @@ import { PLAGG, STANDARD_KVOTER, type Kvoter } from "../lib/utstyr";
 import { arkivProsjekter, foreslaKobling, importRader, lesSvenn, lesSvennArkiv, lesXlsx, svennBildetekst, svennProsjekter, type Kobling, type SvennFil, type SvennProsjekt, type SvennRad } from "../lib/svenn";
 import type { SvennResultat } from "../lib/api";
 import { KampanjeOppsett } from "./Kampanjer";
-import { MODULER, bruker, type Modul } from "../lib/moduler";
+import { MODULER, bruker, settModul, type Modul } from "../lib/moduler";
 import { ProsjektVelger } from "./ProsjektVelger";
 import { DraktOppsett } from "./Drakt";
 import { VarselOversikt } from "./Varsler";
@@ -253,12 +253,9 @@ function AnsattKort({ a, lagre, overfort, inn, oppdaterInn }: { a: Ansatt; lagre
 /** Hvilke deler av appen bedriften bruker. Det som slås av, forsvinner fra menyene for alle, men ingenting slettes. */
 function ModulOppsett() {
   const { d, kjor } = useApp();
-  const av = new Set(d.modulerAv ?? []);
   const sett = (m: Modul, paa: boolean) => {
-    const ny = new Set(av);
-    if (paa) ny.delete(m); else ny.add(m);
     const navn = MODULER.find((x) => x.id === m)?.navn ?? m;
-    kjor(() => api.lagreModuler([...ny]), paa ? `${navn} er slått på` : `${navn} er slått av`);
+    kjor(() => api.lagreModuler(settModul(d.modulerAv ?? [], m, paa)), paa ? `${navn} er slått på` : `${navn} er slått av`);
   };
   return (
     <section className="panel" id="opp-deler">
@@ -268,7 +265,7 @@ function ModulOppsett() {
         {MODULER.map((m) => (
           <li key={m.id}>
             <label className="modul-valg">
-              <input type="checkbox" role="switch" checked={!av.has(m.id)} onChange={(e) => sett(m.id, e.target.checked)} aria-label={m.navn} />
+              <input type="checkbox" role="switch" checked={bruker(d, m.id)} onChange={(e) => sett(m.id, e.target.checked)} aria-label={m.navn} />
               <span><b>{m.navn}</b><span className="small muted">{m.hva}</span></span>
             </label>
           </li>

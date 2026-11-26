@@ -4,7 +4,7 @@ import type { Data } from "./ferie";
 
 export type Modul =
   | "chat" | "plan" | "materiell" | "bestilling" | "egenkontroll" | "sja" | "avvik" | "hms" | "reklamasjon" | "service" | "befaring" | "ai" | "tilbud" | "dagbok" | "tillegg"
-  | "utstyr" | "kurs" | "rapporter" | "kampanjer" | "vaer" | "okonomi" | "sluttdok";
+  | "utstyr" | "kurs" | "rapporter" | "kampanjer" | "vaer" | "okonomi" | "sluttdok" | "kontrakt";
 
 export const MODULER: { id: Modul; navn: string; hva: string }[] = [
   { id: "chat", navn: "Chat", hva: "Meldinger i felles kanal, per prosjekt og mellom to ansatte" },
@@ -29,7 +29,25 @@ export const MODULER: { id: Modul; navn: string; hva: string }[] = [
   { id: "vaer", navn: "Vær", hva: "Værvarsel på forsiden" },
   { id: "okonomi", navn: "Økonomi på prosjektet", hva: "Lønnsomhet per prosjekt (bare leder ser den)" },
   { id: "sluttdok", navn: "Sluttdokumentasjon", hva: "Sluttrapport til kunden og Boligmappa" },
+  { id: "kontrakt", navn: "Kontrakt (NS)", hva: "NS-kontrakter på større prosjekter – frister, varsler, saker og endringsordrer. Appen avgjør ingen juridiske spørsmål" },
 ];
 
+/** Nye deler som er av til leder slår dem på. Er de slått på, står «<id>paa» i listen (samme kolonne, moduler_av). */
+export const AV_SOM_STANDARD: readonly Modul[] = ["kontrakt"];
+const paaMerke = (m: Modul) => `${m}paa`;
+
 /** Er denne delen av appen slått på for bedriften? */
-export const bruker = (d: Pick<Data, "modulerAv">, m: Modul) => !(d.modulerAv ?? []).includes(m);
+export const bruker = (d: Pick<Data, "modulerAv">, m: Modul) => {
+  const av = d.modulerAv ?? [];
+  if (av.includes(m)) return false;
+  return !AV_SOM_STANDARD.includes(m) || av.includes(paaMerke(m));
+};
+
+/** Ny liste for moduler_av når leder slår en del av eller på. */
+export function settModul(av: readonly string[], m: Modul, paa: boolean): string[] {
+  const ny = new Set(av);
+  ny.delete(m); ny.delete(paaMerke(m));
+  if (!paa) { if (!AV_SOM_STANDARD.includes(m)) ny.add(m); }
+  else if (AV_SOM_STANDARD.includes(m)) ny.add(paaMerke(m));
+  return [...ny].sort();
+}

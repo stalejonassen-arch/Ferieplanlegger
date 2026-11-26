@@ -17,7 +17,7 @@ Appen avgjør ingen juridiske spørsmål. Teksten i NS-standardene gjengis ikke,
 - [x] 1. Database: `0086_kontrakt.sql` (kontrakter, kontraktsfrister, NS-saker, varsler, kobling fra tillegg og timer) med tilgangstester.
 - [x] 2. Regler og fristmotor: `src/lib/ns.ts` med tester (`test/ns.test.ts`).
 - [x] 3. API og demo: typer og kall i `src/lib/api.ts`, og et demoprosjekt med NS 8405-kontrakt, saker og varsler i `src/lib/demo.ts`.
-- [ ] 4. Modul «Kontrakt» i `moduler.ts`, av som standard (slås på per bedrift under Oppsett).
+- [x] 4. Modul «Kontrakt» i `moduler.ts`, av som standard (slås på per bedrift under Oppsett).
 - [ ] 5. Kontrakt-fanen på prosjektet (PC): kontraktskort (registrer og rediger), fristliste fra fristmotoren, liste over saker.
 - [ ] 6. «Meld hendelse» på mobil: fra prosjektet, og som knapp fra avvik og dagbok. Type, kort tekst, bilde. Tre trykk.
 - [ ] 7. Sak og varsel: sakside med historikk, varselutkast fylt ut fra saken (med punkthenvisning), PDF, «marker som sendt». Selve e-postsendingen venter på Ståle.
@@ -34,3 +34,4 @@ Appen avgjør ingen juridiske spørsmål. Teksten i NS-standardene gjengis ikke,
 
 - 2026-11-25: Steg 1 og 2 ferdig. Migrering 0086 og fristmotor med tester. Regeltabellen bruker bare punktnumre som er kontrollert mot CMS Kluge; resten står tomt til advokat har sett over.
 - 2026-11-25: Steg 3 ferdig. Typer i `ns.ts`, kall i `api.ts` (egen realtime-kanal, tomme lister hvis tabellene mangler), demoprosjekt «Ny fasade og balkonger, Blomstergata 3» med NS 8405-kontrakt, tre saker, varsler og EO-tillegg. Demoen følger samme regler som databasen; tester i `test/kontrakt.test.ts`.
+- 2026-11-26: Steg 4 ferdig. Modulen «Kontrakt (NS)» i `moduler.ts`, av som standard: slås på under Oppsett › Deler av appen, og lagres som «kontraktpaa» i samme kolonne (`moduler_av`), så ingen ny migrering trengs. På i demoen. Tester i `test/moduler.test.ts` og `database.test.ts`.

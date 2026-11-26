@@ -870,6 +870,8 @@ describe("deler av appen", () => {
     await expect(as(JIM, "select public.lagre_moduler(array['chat'])")).rejects.toThrow(/Bare leder/);
     await as(STALE, "select public.lagre_moduler(array['chat', 'vaer', 'chat', 'Ugyldig!', 'x'])");
     expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual(["chat", "vaer"]);
+    await as(STALE, "select public.lagre_moduler(array['kontraktpaa'])");
+    expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual(["kontraktpaa"]);
     await as(STALE, "select public.lagre_moduler(array[]::text[])");
     expect((await db.query<any>("select moduler_av from public.bedrifter where id = 1")).rows[0].moduler_av).toEqual([]);
   });
