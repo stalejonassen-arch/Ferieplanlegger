@@ -18,7 +18,7 @@ Appen avgjør ingen juridiske spørsmål. Teksten i NS-standardene gjengis ikke,
 - [x] 2. Regler og fristmotor: `src/lib/ns.ts` med tester (`test/ns.test.ts`).
 - [x] 3. API og demo: typer og kall i `src/lib/api.ts`, og et demoprosjekt med NS 8405-kontrakt, saker og varsler i `src/lib/demo.ts`.
 - [x] 4. Modul «Kontrakt» i `moduler.ts`, av som standard (slås på per bedrift under Oppsett).
-- [ ] 5. Kontrakt-fanen på prosjektet (PC): kontraktskort (registrer og rediger), fristliste fra fristmotoren, liste over saker.
+- [x] 5. Kontrakt-fanen på prosjektet (PC): kontraktskort (registrer og rediger), fristliste fra fristmotoren, liste over saker.
 - [ ] 6. «Meld hendelse» på mobil: fra prosjektet, og som knapp fra avvik og dagbok. Type, kort tekst, bilde. Tre trykk.
 - [ ] 7. Sak og varsel: sakside med historikk, varselutkast fylt ut fra saken (med punkthenvisning), PDF, «marker som sendt». Selve e-postsendingen venter på Ståle.
 - [ ] 8. Endringsregister: tillegg koblet til sak, med NS-status og sum. På NS-prosjekter godkjennes endringsordren av byggherrens representant, ikke kunden på skjermen.
@@ -35,3 +35,4 @@ Appen avgjør ingen juridiske spørsmål. Teksten i NS-standardene gjengis ikke,
 - 2026-11-25: Steg 1 og 2 ferdig. Migrering 0086 og fristmotor med tester. Regeltabellen bruker bare punktnumre som er kontrollert mot CMS Kluge; resten står tomt til advokat har sett over.
 - 2026-11-25: Steg 3 ferdig. Typer i `ns.ts`, kall i `api.ts` (egen realtime-kanal, tomme lister hvis tabellene mangler), demoprosjekt «Ny fasade og balkonger, Blomstergata 3» med NS 8405-kontrakt, tre saker, varsler og EO-tillegg. Demoen følger samme regler som databasen; tester i `test/kontrakt.test.ts`.
 - 2026-11-26: Steg 4 ferdig. Modulen «Kontrakt (NS)» i `moduler.ts`, av som standard: slås på under Oppsett › Deler av appen, og lagres som «kontraktpaa» i samme kolonne (`moduler_av`), så ingen ny migrering trengs. På i demoen. Tester i `test/moduler.test.ts` og `database.test.ts`.
+- 2026-11-27: Steg 5 ferdig. Fanen «Kontrakt» på prosjektet (`src/views/Kontrakt.tsx`): kontraktskort med registrer/endre (leder sletter), fristliste fra fristmotoren med tall på fanen, saksliste, og delfrister i kontrakten (legg til, ferdig, slett). Fanen vises når modulen er på og prosjektet har kontrakt (eller for leder/prosjektleder). Kontraktssum og beløp vises bare for leder/prosjektleder. Skjemahjelpere med tester i `ns.ts`/`test/ns.test.ts`, tekster i en/pl/lt. Sjekket i demo på PC.

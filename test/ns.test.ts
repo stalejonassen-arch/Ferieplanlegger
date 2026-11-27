@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { frister, leggTilMnd, niva, preklusiv, epostHolder, punkt, type Kontrakt, type Sak, type Varsel } from "../src/lib/ns";
+import { frister, leggTilMnd, niva, preklusiv, epostHolder, punkt, lesTall, fraSkjema, tilSkjema, sorterSaker, aapenSak, type Kontrakt, type Sak, type Varsel } from "../src/lib/ns";
 
 const k: Kontrakt = { id: "k", standard: "8405", overtakelse: null, sluttfrist: null, varsel_dager: 5 };
 const sak = (id: string, nr: number, type: Sak["type"], oppdaget: string, status: Sak["status"] = "ny"): Sak => ({ id, nr, type, tittel: `Sak ${nr}`, oppdaget, status });
@@ -57,5 +57,40 @@ describe("fristmotoren", () => {
        { id: "2", type: "delfrist", tittel: "Stillas ned", dato: "2027-02-01", dagmulkt: false, ferdig: true }], "2027-02-27");
     expect(f.map((x) => x.hva)).toEqual(["Ferdig fasade (dagmulkt)", "Send sluttoppstilling med alle krav og forbehold"]);
     expect(f[1]!.dato).toBe("2027-05-15");
+  });
+});
+
+describe("kontraktsskjemaet", () => {
+  it("leser kroner med mellomrom og komma, og tomt felt blir null", () => {
+    expect(lesTall("2 450 000")).toBe(2450000);
+    expect(lesTall("kr 1 250,50")).toBe(1250.5);
+    expect(lesTall("")).toBeNull();
+    expect(Number.isNaN(lesTall("mye"))).toBe(true);
+  });
+
+  it("gjør skjemaet om til en rad med samme grenser som databasen", () => {
+    const f = { ...tilSkjema(), kontraktssum: "2 450 000", dagmulkt: "1", sluttfrist: "2027-03-01", bh_navn: " Eva Lie ", bh_epost: "eva@demo.no" };
+    const r = fraSkjema(f, "p4");
+    expect("ok" in r && r.ok).toMatchObject({ prosjekt_id: "p4", standard: "8405", kontraktssum: 2450000, dagmulkt_promille: 1, sluttfrist: "2027-03-01", overtakelse: null, varsel_dager: 5, bh_navn: "Eva Lie" });
+    expect("ok" in r && "id" in r.ok).toBe(false);
+    expect(fraSkjema({ ...f, varsel_dager: "0" }, "p4")).toHaveProperty("feil");
+    expect(fraSkjema({ ...f, varsel_dager: "31" }, "p4")).toHaveProperty("feil");
+    expect(fraSkjema({ ...f, dagmulkt: "150" }, "p4")).toHaveProperty("feil");
+    expect(fraSkjema({ ...f, kontraktssum: "to millioner" }, "p4")).toHaveProperty("feil");
+    expect(fraSkjema({ ...f, bh_epost: "eva.demo.no" }, "p4")).toHaveProperty("feil");
+  });
+
+  it("en lagret kontrakt kan fylles inn i skjemaet og lagres uendret", () => {
+    const k = { id: "kt1", prosjekt_id: "p4", standard: "8407" as const, kontraktssum: 1000000.5, dagmulkt_promille: 1.5, sluttfrist: "2027-01-10", overtakelse: null, varsel_dager: 7,
+      sikkerhet: "Garanti", bh_navn: "Per", bh_epost: "per@x.no", bh_telefon: "1", epost_skriftlig: true, bh_skjema: true, notat: "n", opprettet_av: null, opprettet: "", oppdatert: "" };
+    const r = fraSkjema(tilSkjema(k), k.prosjekt_id, k.id);
+    expect("ok" in r && r.ok).toMatchObject({ id: "kt1", standard: "8407", kontraktssum: 1000000.5, dagmulkt_promille: 1.5, varsel_dager: 7, epost_skriftlig: true, bh_skjema: true });
+  });
+
+  it("åpne saker kommer først, nyeste først", () => {
+    const s = sorterSaker([{ nr: 1, status: "ny" as const }, { nr: 2, status: "avklart" as const }, { nr: 3, status: "varslet" as const }]);
+    expect(s.map((x) => x.nr)).toEqual([3, 1, 2]);
+    expect(aapenSak({ status: "bestridt" })).toBe(true);
+    expect(aapenSak({ status: "lukket" })).toBe(false);
   });
 });

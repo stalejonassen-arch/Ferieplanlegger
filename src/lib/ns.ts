@@ -168,3 +168,67 @@ export function statusEtterVarsel(s: SakStatus, type: VarselType): SakStatus {
   if (type === "varsel" && s === "ny") return "varslet";
   return s;
 }
+
+// ---------------------------------------------------------------------------
+// Visning og skjema (Kontrakt-fanen på prosjektet)
+// ---------------------------------------------------------------------------
+export const SAK_STATUS: Record<SakStatus, string> = {
+  ny: "Ny", varslet: "Varslet", krav: "Krav sendt", avklart: "Avklart", avvist: "Avvist", bestridt: "Bestridt", lukket: "Lukket",
+};
+/** Fargen på statusbrikken (samme klasser som ellers i appen) */
+export const SAK_CHIP: Record<SakStatus, "venter" | "godkjent" | "avslatt" | "demo"> = {
+  ny: "avslatt", varslet: "venter", krav: "venter", avklart: "godkjent", avvist: "demo", bestridt: "avslatt", lukket: "demo",
+};
+export const NIVA_TEKST: Record<Niva, string> = { over: "Passert", idag: "I dag", snart: "Snart", ok: "" };
+export const NIVA_CHIP: Record<Niva, "venter" | "godkjent" | "avslatt" | "demo"> = { over: "avslatt", idag: "avslatt", snart: "venter", ok: "demo" };
+export const FRISTTYPER: Record<FristType, string> = {
+  delfrist: "Delfrist", sluttfrist: "Sluttfrist", ettaarsbefaring: "Ettårsbefaring", garanti: "Garanti", annet: "Annet",
+};
+/** Åpen sak = noe som fortsatt skal følges opp */
+export const aapenSak = (s: Pick<Sak, "status">) => s.status !== "lukket" && s.status !== "avklart" && s.status !== "avvist";
+/** Åpne saker først, deretter nyeste først */
+export function sorterSaker<T extends Pick<Sak, "status" | "nr">>(saker: T[]): T[] {
+  return [...saker].sort((a, b) => Number(aapenSak(b)) - Number(aapenSak(a)) || b.nr - a.nr);
+}
+
+/** Feltene i kontraktsskjemaet slik de skrives inn */
+export type KontraktSkjema = {
+  standard: Standard; kontraktssum: string; dagmulkt: string; sluttfrist: string; overtakelse: string; varsel_dager: string;
+  bh_navn: string; bh_epost: string; bh_telefon: string; epost_skriftlig: boolean; bh_skjema: boolean; sikkerhet: string; notat: string;
+};
+
+export function tilSkjema(k?: NsKontrakt | null): KontraktSkjema {
+  const tall = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
+  return {
+    standard: k?.standard ?? "8405", kontraktssum: tall(k?.kontraktssum), dagmulkt: tall(k?.dagmulkt_promille),
+    sluttfrist: k?.sluttfrist ?? "", overtakelse: k?.overtakelse ?? "", varsel_dager: String(k?.varsel_dager ?? 5),
+    bh_navn: k?.bh_navn ?? "", bh_epost: k?.bh_epost ?? "", bh_telefon: k?.bh_telefon ?? "",
+    epost_skriftlig: k?.epost_skriftlig ?? false, bh_skjema: k?.bh_skjema ?? false, sikkerhet: k?.sikkerhet ?? "", notat: k?.notat ?? "",
+  };
+}
+
+/** «2 450 000», «2450000,50» og «1,5» → tall. Tomt → null. Ugyldig → NaN. */
+export function lesTall(s: string): number | null {
+  const t = s.replace(/[\s ]/g, "").replace(/^kr/i, "").replace(",", ".");
+  if (!t) return null;
+  return /^\d+(\.\d+)?$/.test(t) ? Number(t) : NaN;
+}
+
+/** Skjemaet → rad som kan lagres, eller en feilmelding på norsk (samme grenser som databasen) */
+export function fraSkjema(f: KontraktSkjema, prosjekt_id: string, id?: string): { ok: NyKontrakt } | { feil: string } {
+  if (!(f.standard in STANDARDER)) return { feil: "Velg hvilken standard kontrakten bygger på." };
+  const sum = lesTall(f.kontraktssum);
+  if (Number.isNaN(sum)) return { feil: "Kontraktssummen må være et tall (kroner eks. mva)." };
+  const dm = lesTall(f.dagmulkt);
+  if (Number.isNaN(dm) || (dm != null && dm > 100)) return { feil: "Dagmulkten må være mellom 0 og 100 promille." };
+  const vd = lesTall(f.varsel_dager);
+  if (vd == null || Number.isNaN(vd) || !Number.isInteger(vd) || vd < 1 || vd > 30) return { feil: "Egen varslingsfrist må være mellom 1 og 30 dager." };
+  const epost = f.bh_epost.trim();
+  if (epost && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return { feil: "E-postadressen til byggherrens representant ser ikke riktig ut." };
+  return { ok: {
+    ...(id ? { id } : {}), prosjekt_id, standard: f.standard, kontraktssum: sum, dagmulkt_promille: dm,
+    sluttfrist: f.sluttfrist || null, overtakelse: f.overtakelse || null, varsel_dager: vd,
+    bh_navn: f.bh_navn.trim(), bh_epost: epost, bh_telefon: f.bh_telefon.trim(),
+    epost_skriftlig: f.epost_skriftlig, bh_skjema: f.bh_skjema, sikkerhet: f.sikkerhet.trim(), notat: f.notat.trim(),
+  } };
+}

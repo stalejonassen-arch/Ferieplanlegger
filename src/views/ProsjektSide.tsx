@@ -28,11 +28,15 @@ import { taNesteDel } from "../lib/navigasjon";
 import { Stjerne } from "./Favoritt";
 import { Befaringer } from "./Befaring";
 import { Snakk, useKi } from "./Ki";
+import { KontraktDel, presserendeFrister } from "./Kontrakt";
+import { usePlanlegger } from "./Plan";
 
-type Del = "oversikt" | "befaring" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
+type Del = "oversikt" | "kontrakt" | "befaring" | "plan" | "materiell" | "egenkontroll" | "hms" | "chat" | "historikk" | "dagbok" | "tillegg" | "bilder" | "dokumenter" | "avvik" | "reklamasjon" | "statistikk" | "okonomi" | "sluttdok";
 
 export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void }) {
-  const { d, leder, meg, chat } = useApp();
+  const { d, leder, meg, chat, idag } = useApp();
+  const planlegger = usePlanlegger();
+  const harKontrakt = (d.kontrakter ?? []).some((x) => x.prosjekt_id === p.id);
   const [del, setDel] = useState<Del>(() => (taNesteDel(p.id) as Del | null) ?? "oversikt");
   useEffect(() => {
     const f = () => setTimeout(() => { const x = taNesteDel(p.id); if (x) { setDel(x as Del); setTimeout(() => document.querySelector(".seksjoner")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150); } }, 0);
@@ -52,6 +56,8 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   useEffect(() => { setAntallDok(null); api.fdv(p.id).then((x) => setAntallDok(x.dok.length)).catch(() => {}); }, [p.id]);
   const alleDeler: [Del, string, number | null][] = [
     ["oversikt", "Oversikt", null],
+    // NS-kontrakt: alle ser den når den finnes, leder og prosjektleder kan registrere den
+    ...(harKontrakt || planlegger ? [["kontrakt", "Kontrakt", presserendeFrister(d, p.id, idag) || null] as [Del, string, number | null]] : []),
     ["befaring", "Befaring", (d.befaringer ?? []).filter((b) => b.prosjekt_id === p.id && b.status === "apen").length || null],
     ["plan", "Plan", (d.oppgaver ?? []).filter((o) => o.prosjekt_id === p.id && o.status !== "ferdig").length || null],
     ["materiell", "Materiell", (d.leveranser ?? []).filter((l) => l.prosjekt_id === p.id && l.status !== "levert").length || null],
@@ -66,7 +72,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
   ];
   const deler = alleDeler.filter(([x]) => {
     // Deler leder har slått av for bedriften
-    const m: Partial<Record<Del, Modul[]>> = { befaring: ["befaring"], plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
+    const m: Partial<Record<Del, Modul[]>> = { kontrakt: ["kontrakt"], befaring: ["befaring"], plan: ["plan"], materiell: ["materiell", "bestilling"], egenkontroll: ["egenkontroll"], hms: ["sja"], chat: ["chat"],
       dagbok: ["dagbok"], tillegg: ["tillegg"], avvik: ["avvik"], reklamasjon: ["reklamasjon"], okonomi: ["okonomi"], sluttdok: ["sluttdok"] };
     return !m[x] || m[x]!.some((y) => bruker(d, y));
   });
@@ -99,6 +105,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
         ))}
       </nav>
       {del === "oversikt" && <Oversikt p={p} />}
+      {del === "kontrakt" && <KontraktDel p={p} />}
       {del === "befaring" && <Befaringer p={p} />}
       {del === "plan" && <ProsjektPlan p={p} />}
       {del === "materiell" && <>{bruker(d, "bestilling") && <BestillDel p={p} />}{bruker(d, "materiell") && <Materialliste p={p} />}</>}
@@ -121,6 +128,7 @@ export function ProsjektSide({ p, tilbake }: { p: Prosjekt; tilbake: () => void 
 
 /** Strekikoner for delene av prosjektet */
 const DEL_IKON: Record<string, React.ReactNode> = {
+  kontrakt: <><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5" /><path d="M9 12h7M9 15h4" /><circle cx="15" cy="18" r="1.6" /></>,
   befaring: <><path d="M9 4h6l1 2h3v14H5V6h3z" /><path d="M8.5 12.5l2 2 4.5-4.5" /></>,
   oversikt: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></>,
   plan: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M7 14h6M7 17h9" /></>,
